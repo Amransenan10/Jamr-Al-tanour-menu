@@ -2,10 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { CATEGORIES } from './data';
 import { useCart } from './store';
-import { CartIcon, TrashIcon, PlusIcon, MinusIcon, CloseIcon } from './components/Icons';
-import ProductModal from './components/ProductModal';
-import Dashboard from './components/Dashboard';
-import ImageWithFallback from './components/ImageWithFallback';
+import { CartIcon, TrashIcon, PlusIcon, MinusIcon, CloseIcon } from './Icons';
+import ProductModal from './ProductModal';
+import Dashboard from './Dashboard';
+import ImageWithFallback from './ImageWithFallback';
 import { MenuItem, OrderPayload } from './types';
 
 const App: React.FC = () => {
@@ -25,7 +25,6 @@ const App: React.FC = () => {
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
 
-  // حالة داخلية للمسافة المختارة لضمان الإجبارية
   const [distanceSelected, setDistanceSelected] = useState<number | null>(null);
 
   const filteredItems = menuItems.filter(item => 
@@ -86,12 +85,8 @@ const App: React.FC = () => {
 
   const handleConfirmOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // التحقق من الحقول الأساسية
     if (!customer.name.trim()) return alert('يرجى إدخال الاسم');
     if (!customer.phone.trim()) return alert('يرجى إدخال رقم الجوال');
-    
-    // منطق التوصيل الإجباري
     if (orderType === 'delivery') {
       if (distanceSelected === null) return alert('يرجى اختيار مسافة التوصيل لتحديد السعر');
       if (!customer.locationUrl || !customer.locationUrl.trim()) {
@@ -100,7 +95,6 @@ const App: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    
     const finalFee = orderType === 'delivery' ? (distanceSelected || 0) : 0;
     const payload: OrderPayload = {
       orderType, 
@@ -117,7 +111,6 @@ const App: React.FC = () => {
       const waNumber = branch?.whatsapp || '966504322357';
       const waUrl = `https://wa.me/${waNumber}?text=${constructWhatsAppMessage()}`; 
       window.open(waUrl, '_blank');
-      
       setOrderSuccess(true);
       clearCart();
       setDistanceSelected(null);
@@ -282,7 +275,7 @@ const App: React.FC = () => {
 
       {showCheckout && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-          <div className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in duration-200">
+          <div className="bg-white w-full max-md rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in duration-200">
             <div className="p-6 border-b flex items-center justify-between">
               <h2 className="text-2xl font-bold">إتمام الطلب</h2>
               <button onClick={() => setShowCheckout(false)} className="p-2 hover:bg-gray-100 rounded-full"><CloseIcon className="w-6 h-6 text-gray-500" /></button>
@@ -299,18 +292,16 @@ const App: React.FC = () => {
                   <div className="space-y-3 p-4 bg-gray-50 rounded-2xl border border-orange-100">
                     <h4 className="text-xs font-bold text-red-600">* حدد مسافة التوصيل (إلزامي)</h4>
                     <div className="grid grid-cols-1 gap-2">
-                      <button type="button" onClick={() => setDistanceSelected(5)} className={`py-3 px-4 rounded-xl text-sm font-bold border-2 text-right flex justify-between items-center transition-all ${distanceSelected === 5 ? 'bg-white border-orange-600 text-orange-600 shadow-sm' : 'bg-white border-gray-100 text-gray-400'}`}>
-                        <span>مسافة قريبة (1-3 كم)</span>
-                        <span>5 ر.س</span>
-                      </button>
-                      <button type="button" onClick={() => setDistanceSelected(7)} className={`py-3 px-4 rounded-xl text-sm font-bold border-2 text-right flex justify-between items-center transition-all ${distanceSelected === 7 ? 'bg-white border-orange-600 text-orange-600 shadow-sm' : 'bg-white border-gray-100 text-gray-400'}`}>
-                        <span>مسافة متوسطة (3-6 كم)</span>
-                        <span>7 ر.س</span>
-                      </button>
-                      <button type="button" onClick={() => setDistanceSelected(10)} className={`py-3 px-4 rounded-xl text-sm font-bold border-2 text-right flex justify-between items-center transition-all ${distanceSelected === 10 ? 'bg-white border-orange-600 text-orange-600 shadow-sm' : 'bg-white border-gray-100 text-gray-400'}`}>
-                        <span>مسافة بعيدة (7-10 كم)</span>
-                        <span>10 ر.س</span>
-                      </button>
+                      {[
+                        {d: 5, label: 'مسافة قريبة (1-3 كم)'},
+                        {d: 7, label: 'مسافة متوسطة (3-6 كم)'},
+                        {d: 10, label: 'مسافة بعيدة (7-10 كم)'}
+                      ].map(opt => (
+                        <button key={opt.d} type="button" onClick={() => setDistanceSelected(opt.d)} className={`py-3 px-4 rounded-xl text-sm font-bold border-2 text-right flex justify-between items-center transition-all ${distanceSelected === opt.d ? 'bg-white border-orange-600 text-orange-600 shadow-sm' : 'bg-white border-gray-100 text-gray-400'}`}>
+                          <span>{opt.label}</span>
+                          <span>{opt.d} ر.س</span>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -319,41 +310,34 @@ const App: React.FC = () => {
               <div className="space-y-4">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-gray-900 mr-2">الاسم بالكامل</label>
-                  <input required type="text" placeholder="أدخل اسمك هنا" className="w-full p-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-orange-500 transition-all text-right text-black font-bold placeholder:text-gray-300" value={customer.name} onChange={e => setCustomer({...customer, name: e.target.value})} />
+                  <input required type="text" placeholder="أدخل اسمك هنا" className="w-full p-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-orange-500 transition-all text-right text-black font-bold" value={customer.name} onChange={e => setCustomer({...customer, name: e.target.value})} />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-gray-900 mr-2">رقم الجوال</label>
-                  <input required type="tel" placeholder="05xxxxxxxx" className="w-full p-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-orange-500 transition-all text-right text-black font-bold placeholder:text-gray-300 ltr" value={customer.phone} onChange={e => setCustomer({...customer, phone: e.target.value})} />
+                  <input required type="tel" placeholder="05xxxxxxxx" className="w-full p-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-orange-500 transition-all text-right text-black font-bold ltr" value={customer.phone} onChange={e => setCustomer({...customer, phone: e.target.value})} />
                 </div>
                 
                 {orderType === 'delivery' && (
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-red-600 mr-2">* عنوان التوصيل / الموقع (إلزامي)</label>
+                    <label className="text-xs font-bold text-red-600 mr-2">* عنوان التوصيل (إلزامي)</label>
                     <div className="space-y-2">
                       <button type="button" onClick={getMyLocation} className="w-full py-4 rounded-2xl border-2 border-dashed border-orange-200 text-orange-600 font-black flex items-center justify-center gap-2 hover:bg-orange-50 transition-colors">
-                        📍 {customer.locationUrl && customer.locationUrl.includes('google.com') ? 'تم تحديد موقعك بدقة ✅' : 'إرسال موقعي الحالي (GPS)'}
+                        📍 {customer.locationUrl && customer.locationUrl.includes('google.com') ? 'تم تحديد موقعك بدقة ✅' : 'تحديد موقعي الحالي (GPS)'}
                       </button>
-                      <input 
-                        required 
-                        type="text" 
-                        placeholder="أو اكتب اسم الحي والشارع بالتفصيل..." 
-                        className="w-full p-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-orange-500 transition-all text-right text-black font-bold placeholder:text-gray-300" 
-                        value={customer.locationUrl} 
-                        onChange={e => setCustomer({...customer, locationUrl: e.target.value})} 
-                      />
+                      <input required type="text" placeholder="الحي، الشارع، المعالم..." className="w-full p-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-orange-500 transition-all text-right text-black font-bold" value={customer.locationUrl} onChange={e => setCustomer({...customer, locationUrl: e.target.value})} />
                     </div>
                   </div>
                 )}
                 
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-gray-900 mr-2">ملاحظات إضافية</label>
-                  <textarea placeholder="مثال: الباب الجانبي، الاتصال عند الوصول..." className="w-full p-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-orange-500 resize-none transition-all text-right text-black font-bold placeholder:text-gray-300" rows={2} value={customer.notes} onChange={e => setCustomer({...customer, notes: e.target.value})} />
+                  <textarea placeholder="مثال: الباب الجانبي..." className="w-full p-4 rounded-2xl bg-gray-50 border-none outline-none focus:ring-2 focus:ring-orange-500 resize-none transition-all text-right text-black font-bold" rows={2} value={customer.notes} onChange={e => setCustomer({...customer, notes: e.target.value})} />
                 </div>
               </div>
             </form>
             <div className="p-6 bg-white border-t">
-              <button disabled={isSubmitting || orderSuccess} type="submit" onClick={handleConfirmOrder} className="w-full bg-green-600 hover:bg-green-700 text-white py-5 rounded-3xl font-black text-lg shadow-xl shadow-green-100 transition-all active:scale-95 disabled:opacity-50">
-                {isSubmitting ? 'جاري تحضير الطلب...' : (orderSuccess ? '✅ تم الإرسال بنجاح' : 'تأكيد وإرسال عبر واتساب 🚀')}
+              <button disabled={isSubmitting || orderSuccess} type="submit" onClick={handleConfirmOrder} className="w-full bg-green-600 hover:bg-green-700 text-white py-5 rounded-3xl font-black text-lg shadow-xl transition-all active:scale-95 disabled:opacity-50">
+                {isSubmitting ? 'جاري الإرسال...' : (orderSuccess ? '✅ تم بنجاح' : 'تأكيد وإرسال عبر واتساب 🚀')}
               </button>
             </div>
           </div>

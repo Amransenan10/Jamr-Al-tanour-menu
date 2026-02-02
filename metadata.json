@@ -1,6 +1,6 @@
 {
-  "name": "Copy of مطعم جمر التنور - Gamer Al-Tannour",
-  "description": "Professional digital menu with direct branch ordering and WhatsApp integration for Gamer Al-Tannour Restaurant.",
+  "name": "جمر التنور - المنيو الذكي",
+  "description": "منيو إلكتروني احترافي مع ميزة تحديد الموقع الجغرافي والطلب المباشر عبر الواتساب.",
   "requestFramePermissions": [
     "geolocation"
   ]
