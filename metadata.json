@@ -1,0 +1,7 @@
+{
+  "name": "Copy of مطعم جمر التنور - Gamer Al-Tannour",
+  "description": "Professional digital menu with direct branch ordering and WhatsApp integration for Gamer Al-Tannour Restaurant.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
