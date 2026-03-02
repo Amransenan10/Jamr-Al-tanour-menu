@@ -1,0 +1,5 @@
+{
+  "name": "جمر التنور - منيو إلكتروني",
+  "description": "منيو إلكتروني احترافي لمطعم جمر التنور مع نظام طلبات متكامل",
+  "requestFramePermissions": ["geolocation"]
+}
