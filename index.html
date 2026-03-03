@@ -5,6 +5,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>جمر التنور | المنيو الإلكتروني</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#ff6b00" />
+  <link rel="apple-touch-icon" href="/assets/logo.png" />
   <script>
     // Apply saved theme before React loads to prevent flash
     try {
@@ -21,6 +24,13 @@
 <body>
   <div id="root"></div>
   <script type="module" src="./src/main.tsx"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW ref fail: ', err));
+      });
+    }
+  </script>
 </body>
 
 </html>
