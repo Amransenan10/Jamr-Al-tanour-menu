@@ -163,6 +163,34 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
     );
 };
 
+// ─── Audio Notification ──────────────────────────────────────────────────────
+const playNotificationSound = () => {
+    try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.5);
+    } catch (e) {
+        console.error('Audio play failed', e);
+    }
+};
+
 // ─── CashierPage ─────────────────────────────────────────────────────────────
 const BRANCHES: Branch[] = ['السويدي الغربي', 'طويق'];
 const FILTER_STATUSES: (OrderStatus | 'active')[] = ['active', 'new', 'accepted', 'preparing', 'ready', 'completed'];
@@ -219,6 +247,7 @@ export const CashierPage: React.FC = () => {
                     if (payload.eventType === 'INSERT') {
                         setOrders(prev => [payload.new, ...prev]);
                         setNewOrderAlert(true);
+                        playNotificationSound();
                         setTimeout(() => setNewOrderAlert(false), 4000);
                     } else if (payload.eventType === 'UPDATE') {
                         setOrders(prev => prev.map(o => o.id === payload.new.id ? payload.new : o));
@@ -258,8 +287,8 @@ export const CashierPage: React.FC = () => {
                     <div className="absolute -top-16 -right-16 w-48 h-48 bg-primary/10 rounded-full blur-3xl" />
                     <div className="text-center space-y-8 relative">
                         <div>
-                            <div className="w-20 h-20 bg-primary rounded-3xl flex items-center justify-center shadow-2xl shadow-primary/30 mx-auto mb-5 -rotate-6">
-                                <span className="text-white font-black text-3xl">JT</span>
+                            <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center shadow-2xl shadow-primary/30 mx-auto mb-5 overflow-hidden p-2 border border-white/10">
+                                <img src="/assets/logo.png" alt="جمر التنور" className="w-full h-full object-contain" />
                             </div>
                             <h1 className="text-3xl font-black text-white">لوحة الكاشير</h1>
                             <p className="text-gray-500 mt-2 text-sm">اختر الفرع لبدء استقبال الطلبات</p>
@@ -311,8 +340,8 @@ export const CashierPage: React.FC = () => {
             <div className="sticky top-0 z-40 bg-charcoal/90 backdrop-blur-md border-b border-white/5 px-4 py-4">
                 <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
-                            <span className="text-white font-black text-sm">JT</span>
+                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 overflow-hidden p-1 border border-white/10">
+                            <img src="/assets/logo.png" alt="جمر التنور" className="w-full h-full object-contain" />
                         </div>
                         <div>
                             <h1 className="font-black text-white text-lg leading-none">كاشير جمر التنور</h1>
