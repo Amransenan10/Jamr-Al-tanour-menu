@@ -9,8 +9,9 @@ import { supabase } from './lib/supabaseClient';
 import { CartProvider } from './context/CartContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { Loader2, UtensilsCrossed } from 'lucide-react';
+import { Loader2, UtensilsCrossed, Navigation } from 'lucide-react';
 import { BranchSelectorModal } from './components/BranchSelectorModal';
+import { Link } from 'react-router-dom';
 
 export default function App() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -21,6 +22,7 @@ export default function App() {
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     const savedBranch = localStorage.getItem('jamr_al_tannour_branch') as Branch;
@@ -125,6 +127,33 @@ export default function App() {
             onClose={() => setIsCartOpen(false)}
             branch={selectedBranch || 'السويدي الغربي'}
           />
+
+          {/* Active Order Banner */}
+          <AnimatePresence>
+            {activeOrderId && (
+              <motion.div
+                initial={{ y: 100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 100, opacity: 0 }}
+                className="fixed bottom-6 left-4 right-4 z-40 mx-auto max-w-sm"
+              >
+                <Link
+                  to={`/track/${activeOrderId}`}
+                  className="bg-primary text-white p-4 rounded-2xl shadow-xl shadow-primary/30 flex items-center justify-between hover:scale-[1.02] transition-transform"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                      <Navigation size={20} />
+                    </div>
+                    <div>
+                      <p className="font-bold">لديك طلب جاري تحضيره 🛵</p>
+                      <p className="text-xs text-white/80">اضغط هنا لتتبع حالة الطلب</p>
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </CartProvider>
     </ThemeProvider>

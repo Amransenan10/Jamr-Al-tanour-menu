@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Branch, OrderType, Order } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { cn } from '../lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -14,8 +15,9 @@ interface CartDrawerProps {
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch }) => {
   const { cart, removeFromCart, updateQuantity, totalPrice, clearCart } = useCart();
-  const [step, setStep] = useState<'cart' | 'checkout' | 'success'>('cart');
+  const [step, setStep] = useState<'cart' | 'checkout'>('cart');
   const [orderType, setOrderType] = useState<OrderType>('pickup');
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -58,11 +60,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch 
         status: 'new'
       };
 
-      const { error } = await supabase.from('orders').insert([order]);
+      const { data, error } = await supabase.from('orders').insert([order]).select('id').single();
       if (error) throw error;
 
-      setStep('success');
+      localStorage.setItem('jamr_active_order', data.id);
       clearCart();
+      onClose();
+      navigate(`/track/${data.id}`);
     } catch (e) {
       console.error(e);
       alert('حدث خطأ أثناء إرسال الطلب، يرجى المحاولة مرة أخرى');
@@ -82,7 +86,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch 
             onClick={onClose}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           />
-          
+
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
@@ -239,37 +243,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch 
                   </div>
                 </div>
               )}
-
-              {step === 'success' && (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mb-6 text-white shadow-xl shadow-green-500/20"
-                  >
-                    <CheckCircle2 size={48} />
-                  </motion.div>
-                  <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-3">تم استلام طلبك!</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed max-w-xs">
-                    شكراً لثقتك بـ جمر التنور. طلبك قيد التحضير الآن وسنقوم بالتواصل معك قريباً.
-                  </p>
-                  <button
-                    onClick={onClose}
-                    className="mt-10 px-10 py-4 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/20"
-                  >
-                    العودة للمنيو
-                  </button>
-                </div>
-              )}
             </div>
 
-            {cart.length > 0 && step !== 'success' && (
+            {cart.length > 0 && (
               <div className="p-6 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-white/5 space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500 font-bold">الإجمالي</span>
                   <span className="text-2xl font-black text-primary">{totalPrice} ر.س</span>
                 </div>
-                
+
                 {step === 'cart' ? (
                   <button
                     onClick={() => setStep('checkout')}

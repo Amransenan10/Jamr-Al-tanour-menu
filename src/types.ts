@@ -76,6 +76,6 @@ export interface Order {
   notes?: string;
   total_price: number;
   items: CartItem[];
-  status: 'new' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+  status: 'new' | 'accepted' | 'preparing' | 'ready' | 'completed' | 'cancelled';
   created_at?: string;
 }
