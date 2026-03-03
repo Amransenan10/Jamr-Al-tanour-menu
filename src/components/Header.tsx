@@ -28,8 +28,8 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center justify-between gap-4">
           {/* Logo & Name */}
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
-              <span className="text-white font-bold text-xl">JT</span>
+            <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 overflow-hidden border border-gray-100 dark:border-white/10 p-1">
+              <img src="/assets/logo.png" alt="جمر التنور" className="w-full h-full object-contain" />
             </div>
             <div>
               <h1 className="text-xl font-extrabold text-primary leading-tight">جمر التنور</h1>
