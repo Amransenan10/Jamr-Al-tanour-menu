@@ -94,9 +94,27 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
 
   const calculateTotal = () => {
     if (!product) return 0;
-    const optionsTotal = selectedOptions.reduce((sum, o) => sum + o.price, 0);
-    // Base price might be 0 if sizes carry the full price.
-    return (product.price + optionsTotal) * quantity;
+
+    let basePrice = product.price;
+    let additivesTotal = 0;
+
+    // Separate options into "base price overrides" (like Size) and "additives" (like Extra Cheese)
+    // A simple heuristic: if a group is mandatory (min_selection > 0) and max_selection = 1, its options MIGHT be base price overrides
+    // To make it fully support the user's request (e.g., Small = 15, Medium = 20 stored in DB as 15 and 20):
+    // If we select Medium(20), the base price becomes 20.
+    // If no such option is selected yet, we fall back to product.price (15).
+    const singleSelectionGroups = groups.filter(g => g.max_selection === 1 && g.min_selection > 0);
+    const overrides = selectedOptions.filter(o => singleSelectionGroups.some(g => g.id === o.groupId));
+    const additives = selectedOptions.filter(o => !singleSelectionGroups.some(g => g.id === o.groupId));
+
+    if (overrides.length > 0) {
+      // Sum the overrides (e.g. Size + Choice of Meat)
+      basePrice = overrides.reduce((sum, o) => sum + o.price, 0);
+    }
+
+    additivesTotal = additives.reduce((sum, o) => sum + o.price, 0);
+
+    return (basePrice + additivesTotal) * quantity;
   };
 
   const getMissingRequiredGroups = () => {
@@ -209,6 +227,14 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {items.filter(item => item.group_id === group.id).map(item => {
                             const isSelected = selectedOptions.some(o => o.itemId === item.id);
+                            const isOverrideGroup = group.max_selection === 1 && group.min_selection > 0;
+
+                            // If it's an override group (like Size), show the absolute price if it's not 0.
+                            // Otherwise, show as an additive (+X).
+                            const displayPrice = isOverrideGroup
+                              ? `${item.price} ر.س`
+                              : item.price > 0 ? `+${item.price} ر.س` : 'مجاناً';
+
                             return (
                               <button
                                 key={item.id}
@@ -221,7 +247,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                                 )}
                               >
                                 <span className="font-bold text-sm">{item.name_ar}</span>
-                                <span className="text-xs font-medium">+{item.price} ر.س</span>
+                                <span className="text-xs font-medium">{displayPrice}</span>
                               </button>
                             );
                           })}
