@@ -54,13 +54,15 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
     setSelectedOptions(prev => {
       const filtered = prev.filter(o => o.groupId !== group.id || group.max_selection > 1);
       const exists = prev.find(o => o.itemId === item.id);
-      
+
       if (exists) {
         return prev.filter(o => o.itemId !== item.id);
       }
-      
+
       const groupSelections = prev.filter(o => o.groupId === group.id);
-      if (groupSelections.length >= group.max_selection && group.max_selection === 1) {
+
+      // If max_selection is 1, treat it like a radio button by replacing the previous selection.
+      if (group.max_selection === 1) {
         return [...prev.filter(o => o.groupId !== group.id), {
           groupId: group.id,
           groupName: group.name_ar,
@@ -85,7 +87,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
   };
 
   const handleIngredientToggle = (id: string) => {
-    setRemovedIngredients(prev => 
+    setRemovedIngredients(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
@@ -93,19 +95,29 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
   const calculateTotal = () => {
     if (!product) return 0;
     const optionsTotal = selectedOptions.reduce((sum, o) => sum + o.price, 0);
+    // Base price might be 0 if sizes carry the full price.
     return (product.price + optionsTotal) * quantity;
+  };
+
+  const getMissingRequiredGroups = () => {
+    return groups.filter(group => {
+      const selectionsCount = selectedOptions.filter(o => o.groupId === group.id).length;
+      return selectionsCount < group.min_selection;
+    });
+  };
+
+  const isAddToCartDisabled = () => {
+    return getMissingRequiredGroups().length > 0;
   };
 
   const handleAddToCart = () => {
     if (!product) return;
-    
+
     // Check required options
-    for (const group of groups) {
-      const selections = selectedOptions.filter(o => o.groupId === group.id);
-      if (selections.length < group.min_selection) {
-        alert(`يرجى اختيار ${group.min_selection} من ${group.name_ar}`);
-        return;
-      }
+    const missingGroups = getMissingRequiredGroups();
+    if (missingGroups.length > 0) {
+      // In a well-designed UI, this block shouldn't be reached because the button is disabled.
+      return;
     }
 
     const cartItem: CartItem = {
@@ -134,7 +146,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
             onClick={onClose}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           />
-          
+
           <motion.div
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
@@ -176,15 +188,23 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                   <div className="space-y-8">
                     {/* Option Groups */}
                     {groups.map(group => (
-                      <div key={group.id} className="space-y-4">
+                      <div key={group.id} className={cn("space-y-4 p-4 rounded-3xl", group.min_selection > selectedOptions.filter(o => o.groupId === group.id).length ? "bg-red-50 dark:bg-red-500/5 border border-red-100 dark:border-red-500/10" : "")}>
                         <div className="flex justify-between items-center">
-                          <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                          <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 text-lg">
                             {group.name_ar}
                             {group.min_selection > 0 && (
-                              <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">إجباري</span>
+                              <span className={cn("text-xs px-2.5 py-1 rounded-full font-bold",
+                                selectedOptions.filter(o => o.groupId === group.id).length >= group.min_selection
+                                  ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400"
+                                  : "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"
+                              )}>
+                                {selectedOptions.filter(o => o.groupId === group.id).length >= group.min_selection ? "مكتمل" : "إجباري"}
+                              </span>
                             )}
                           </h3>
-                          <span className="text-xs text-gray-400">اختر {group.max_selection}</span>
+                          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            {group.max_selection === 1 ? 'اختر خيار واحد' : `اختر حتى ${group.max_selection}`}
+                          </span>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {items.filter(item => item.group_id === group.id).map(item => {
@@ -195,8 +215,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                                 onClick={() => handleOptionToggle(group, item)}
                                 className={cn(
                                   "flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-right",
-                                  isSelected 
-                                    ? "border-primary bg-primary/5 text-primary" 
+                                  isSelected
+                                    ? "border-primary bg-primary/5 text-primary"
                                     : "border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-300"
                                 )}
                               >
@@ -257,13 +277,23 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                     <Plus size={20} />
                   </button>
                 </div>
-                
+
                 <button
                   onClick={handleAddToCart}
-                  className="flex-1 bg-primary text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-primary/30 flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all"
+                  disabled={isAddToCartDisabled()}
+                  className={cn(
+                    "flex-1 py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all",
+                    isAddToCartDisabled()
+                      ? "bg-gray-200 dark:bg-white/10 text-gray-400 cursor-not-allowed"
+                      : "bg-primary text-white shadow-xl shadow-primary/30 hover:scale-[1.02] active:scale-95"
+                  )}
                 >
                   <ShoppingBag size={22} />
-                  إضافة {calculateTotal()} ر.س
+                  {isAddToCartDisabled() ? (
+                    <span>اختر {getMissingRequiredGroups()[0]?.name_ar}</span>
+                  ) : (
+                    <span>إضافة • {calculateTotal()} ر.س</span>
+                  )}
                 </button>
               </div>
             </div>
