@@ -32,11 +32,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch 
       navigator.geolocation.getCurrentPosition((pos) => {
         setFormData(prev => ({
           ...prev,
-          location: `Lat: ${pos.coords.latitude}, Lng: ${pos.coords.longitude}`
+          location: `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`
         }));
       }, (err) => {
-        alert('تعذر تحديد الموقع تلقائياً، يرجى إدخاله يدوياً');
+        alert('تعذر تحديد الموقع تلقائياً، يرجى تفعيل إعدادات الموقع أو إدخاله يدوياً');
       });
+    } else {
+      alert('المتصفح الخاص بك لا يدعم تحديد الموقع');
     }
   };
 

@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Loader2, UtensilsCrossed, Navigation } from 'lucide-react';
 import { BranchSelectorModal } from './components/BranchSelectorModal';
 import { Link } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 
 export default function App() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -70,6 +71,7 @@ export default function App() {
     <ThemeProvider>
       <CartProvider>
         <div className="min-h-screen pb-20">
+          <Toaster />
           <Header
             selectedBranch={selectedBranch}
             onBranchChange={handleBranchSelect}
