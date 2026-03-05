@@ -200,22 +200,26 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch 
 
                     {orderType === 'delivery' ? (
                       <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-gray-400 mr-2">عنوان التوصيل</label>
+                        <div className="flex justify-between items-center mr-2 ml-2">
+                          <label className="text-xs font-bold text-gray-400">عنوان التوصيل</label>
+                          <button
+                            type="button"
+                            onClick={handleLocationClick}
+                            className="text-xs font-bold text-primary flex items-center gap-1 hover:opacity-80 transition-opacity"
+                          >
+                            <MapPin size={14} />
+                            تحديد موقعي التلقائي
+                          </button>
+                        </div>
                         <div className="relative">
                           <MapPin className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                           <input
                             type="text"
                             value={formData.location}
                             onChange={e => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                            placeholder="الحي، الشارع، رقم المبنى"
-                            className="w-full pr-12 pl-12 py-3.5 bg-gray-50 dark:bg-white/5 rounded-2xl border-none focus:ring-2 focus:ring-primary/50 outline-none text-sm"
+                            placeholder="الحي، الشارع، رقم المبنى (أو استخدم التحديد التلقائي)"
+                            className="w-full pr-12 pl-4 py-3.5 bg-gray-50 dark:bg-white/5 rounded-2xl border-none focus:ring-2 focus:ring-primary/50 outline-none text-sm"
                           />
-                          <button
-                            onClick={handleLocationClick}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                          >
-                            <MapPin size={18} />
-                          </button>
                         </div>
                       </div>
                     ) : (

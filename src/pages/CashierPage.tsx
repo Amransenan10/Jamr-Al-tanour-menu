@@ -157,18 +157,19 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                                             className="flex-1 flex items-center justify-center gap-2 text-sm font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-xl py-2 hover:bg-blue-500/20 transition-colors"
                                         >
                                             <MapPin size={16} />
-                                            فتح في خرائط جوجل
+                                            فتح في الخرائط
                                             <ExternalLink size={14} className="opacity-50" />
                                         </a>
                                         <button
                                             onClick={() => {
-                                                navigator.clipboard.writeText((order as any).location);
-                                                toast.success('تم نسخ الرابط', { position: 'top-center' });
+                                                navigator.clipboard.writeText(mapUrl);
+                                                toast.success('تم نسخ موقع العميل', { position: 'top-center' });
                                             }}
-                                            className="p-2.5 bg-zinc-800 text-gray-400 hover:text-white rounded-xl transition-colors shrink-0 tooltip"
-                                            title="نسخ الرابط"
+                                            className="flex items-center gap-2 px-3 py-2 bg-zinc-800 text-gray-400 hover:text-white rounded-xl transition-colors shrink-0 tooltip text-sm font-bold"
+                                            title="نسخ موقع العميل"
                                         >
                                             <Copy size={16} />
+                                            نسخ موقع العميل
                                         </button>
                                     </div>
                                 );
