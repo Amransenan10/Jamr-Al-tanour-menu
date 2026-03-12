@@ -4,7 +4,8 @@ import { Branch, Order } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import {
     Clock, CheckCircle2, Package, Loader2, Bell, RefreshCw,
-    MapPin, ShoppingBag, Phone, User, Bike, Coffee, ChevronDown, LogOut, Copy, ExternalLink
+    MapPin, ShoppingBag, Phone, User, Bike, Coffee, ChevronDown, LogOut, Copy, ExternalLink,
+    Settings, Volume2, X
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -222,28 +223,39 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
 };
 
 // ─── Audio Notification ──────────────────────────────────────────────────────
-const playNotificationSound = () => {
+export type SoundType = 'standard' | 'bell' | 'digital';
+export const playNotificationSound = (type: SoundType = 'standard') => {
     try {
         const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
         if (!AudioContext) return;
         const ctx = new AudioContext();
 
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
+        const playTone = (freq: number, oscType: OscillatorType, duration: number, startTime = ctx.currentTime) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = oscType;
+            
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.5, startTime + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+            
+            osc.frequency.setValueAtTime(freq, startTime);
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        };
 
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(800, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
-
-        gain.gain.setValueAtTime(0, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.5);
+        if (type === 'standard') {
+            playTone(800, 'sine', 0.5);
+        } else if (type === 'bell') {
+            playTone(1200, 'sine', 0.8);
+            playTone(1800, 'sine', 0.6, ctx.currentTime + 0.1);
+        } else if (type === 'digital') {
+            playTone(600, 'square', 0.15);
+            playTone(800, 'square', 0.15, ctx.currentTime + 0.15);
+            playTone(1000, 'square', 0.2, ctx.currentTime + 0.3);
+        }
     } catch (e) {
         console.error('Audio play failed', e);
     }
@@ -259,26 +271,114 @@ const FILTER_LABELS: Record<string, string> = {
 
 export const CashierPage: React.FC = () => {
     const [branch, setBranch] = useState<Branch | null>(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [loginBranch, setLoginBranch] = useState<Branch | null>(null);
+    const [password, setPassword] = useState('');
+    const [loginError, setLoginError] = useState('');
+    const [isLoggingIn, setIsLoggingIn] = useState(false);
+
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
     const [filter, setFilter] = useState<OrderStatus | 'active'>('active');
     const [newOrderAlert, setNewOrderAlert] = useState(false);
 
-    // ── Load saved branch ─────────────────────────────────────────────────────
+    const [soundPref, setSoundPref] = useState<SoundType>('standard');
+    const [showSettings, setShowSettings] = useState(false);
+    
+    const [storeStatus, setStoreStatus] = useState<'open' | 'busy' | 'closed'>('open');
+    const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+    const soundPrefRef = React.useRef<SoundType>(soundPref);
     useEffect(() => {
-        const saved = localStorage.getItem('jamr_cashier_branch') as Branch;
-        if (saved) setBranch(saved);
+        soundPrefRef.current = soundPref;
+    }, [soundPref]);
+
+    // ── Load store status and subscribe ───────────────────────────────────────
+    useEffect(() => {
+        const fetchStatus = async () => {
+            const { data } = await supabase.from('store_settings').select('status').single();
+            if (data) setStoreStatus(data.status);
+        };
+        fetchStatus();
+
+        const statusChannel = supabase
+            .channel('store-status-cashier')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'store_settings' }, 
+                (payload) => {
+                    const newRow = payload.new as any;
+                    if (newRow && newRow.status) {
+                        setStoreStatus(newRow.status);
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => { supabase.removeChannel(statusChannel); };
     }, []);
 
-    const selectBranch = (b: Branch) => {
-        setBranch(b);
-        localStorage.setItem('jamr_cashier_branch', b);
+    const toggleStoreStatus = async () => {
+        if (isUpdatingStatus) return;
+        setIsUpdatingStatus(true);
+        const nextStatus = storeStatus === 'open' ? 'busy' : storeStatus === 'busy' ? 'closed' : 'open';
+        
+        const prevStatus = storeStatus;
+        setStoreStatus(nextStatus);
+        
+        const { error } = await supabase.from('store_settings').update({ status: nextStatus }).eq('id', 1);
+        if (error) {
+            setStoreStatus(prevStatus);
+            toast.error('تعذر تحديث حالة المطعم');
+        } else {
+            toast.success(`حالة المطعم: ${nextStatus === 'open' ? 'مفتوح' : nextStatus === 'busy' ? 'مزدحم' : 'مغلق'}`);
+        }
+        setIsUpdatingStatus(false);
+    };
+
+    // ── Load saved branch and settings ─────────────────────────────────────────
+    useEffect(() => {
+        const savedBranch = localStorage.getItem('jamr_cashier_branch') as Branch;
+        const savedAuth = localStorage.getItem('jamr_cashier_auth');
+        if (savedBranch && savedAuth === 'true') {
+            setBranch(savedBranch);
+            setIsAuthenticated(true);
+        }
+        const savedSound = localStorage.getItem('jamr_cashier_sound') as SoundType;
+        if (savedSound) setSoundPref(savedSound);
+    }, []);
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!loginBranch || !password) return;
+        setIsLoggingIn(true);
+        setLoginError('');
+
+        try {
+            const { data, error } = await supabase
+                .from('branch_credentials')
+                .select('password')
+                .eq('branch_name', loginBranch)
+                .single();
+
+            if (error || !data || data.password !== password) {
+                setLoginError('كلمة المرور غير صحيحة');
+                setPassword('');
+            } else {
+                setBranch(loginBranch);
+                setIsAuthenticated(true);
+                localStorage.setItem('jamr_cashier_branch', loginBranch);
+                localStorage.setItem('jamr_cashier_auth', 'true');
+            }
+        } catch (err) {
+            setLoginError('حدث خطأ في الاتصال');
+        } finally {
+            setIsLoggingIn(false);
+        }
     };
 
     // ── Fetch orders ──────────────────────────────────────────────────────────
     const fetchOrders = useCallback(async () => {
-        if (!branch) return;
+        if (!branch || !isAuthenticated) return;
         setLoading(true);
         const { data } = await supabase
             .from('orders')
@@ -305,7 +405,7 @@ export const CashierPage: React.FC = () => {
                     if (payload.eventType === 'INSERT') {
                         setOrders(prev => [payload.new, ...prev]);
                         setNewOrderAlert(true);
-                        playNotificationSound();
+                        playNotificationSound(soundPrefRef.current);
                         setTimeout(() => setNewOrderAlert(false), 4000);
                     } else if (payload.eventType === 'UPDATE') {
                         setOrders(prev => prev.map(o => o.id === payload.new.id ? payload.new : o));
@@ -333,7 +433,7 @@ export const CashierPage: React.FC = () => {
     );
 
     // ── Branch login screen ───────────────────────────────────────────────────
-    if (!branch) {
+    if (!isAuthenticated) {
         return (
             <div className="min-h-screen bg-charcoal flex items-center justify-center p-6">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 pointer-events-none" />
@@ -349,23 +449,64 @@ export const CashierPage: React.FC = () => {
                                 <img src="/assets/logo.png" alt="جمر التنور" className="w-full h-full object-contain" />
                             </div>
                             <h1 className="text-3xl font-black text-white">لوحة الكاشير</h1>
-                            <p className="text-gray-500 mt-2 text-sm">اختر الفرع لبدء استقبال الطلبات</p>
+                            <p className="text-gray-500 mt-2 text-sm">
+                                {loginBranch ? `تسجيل الدخول لفرع ${loginBranch}` : 'اختر الفرع لبدء استقبال الطلبات'}
+                            </p>
                         </div>
-                        <div className="space-y-3">
-                            {BRANCHES.map(b => (
+
+                        {!loginBranch ? (
+                            <div className="space-y-3">
+                                {BRANCHES.map(b => (
+                                    <button
+                                        key={b}
+                                        onClick={() => setLoginBranch(b)}
+                                        className="group w-full flex items-center justify-between p-5 bg-zinc-800 hover:bg-primary rounded-2xl transition-all duration-300 hover:scale-[1.02] active:scale-95"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <MapPin size={20} className="text-primary group-hover:text-white" />
+                                            <span className="text-white font-black text-lg group-hover:text-white">فرع {b}</span>
+                                        </div>
+                                        <ChevronDown size={18} className="text-gray-500 group-hover:text-white -rotate-90" />
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <form onSubmit={handleLogin} className="space-y-4">
+                                <div className="space-y-1">
+                                    <input
+                                        type="password"
+                                        placeholder="أدخل الرمز السري للفرع"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        autoFocus
+                                        className="w-full bg-zinc-800 text-white border-0 rounded-2xl p-4 text-center font-bold text-lg focus:ring-2 focus:ring-primary outline-none transition-all placeholder:text-gray-500"
+                                    />
+                                    {loginError && (
+                                        <p className="text-red-400 text-sm font-bold text-center mt-2">{loginError}</p>
+                                    )}
+                                </div>
+                                
                                 <button
-                                    key={b}
-                                    onClick={() => selectBranch(b)}
-                                    className="group w-full flex items-center justify-between p-5 bg-zinc-800 hover:bg-primary rounded-2xl transition-all duration-300 hover:scale-[1.02] active:scale-95"
+                                    type="submit"
+                                    disabled={!password || isLoggingIn}
+                                    className="w-full bg-primary text-white font-black p-4 rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                                 >
-                                    <div className="flex items-center gap-3">
-                                        <MapPin size={20} className="text-primary group-hover:text-white" />
-                                        <span className="text-white font-black text-lg group-hover:text-white">فرع {b}</span>
-                                    </div>
-                                    <ChevronDown size={18} className="text-gray-500 group-hover:text-white -rotate-90" />
+                                    {isLoggingIn ? <Loader2 size={20} className="animate-spin" /> : 'دخول'}
                                 </button>
-                            ))}
-                        </div>
+                                
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setLoginBranch(null);
+                                        setPassword('');
+                                        setLoginError('');
+                                    }}
+                                    className="w-full text-gray-500 text-sm font-bold hover:text-white transition-colors"
+                                >
+                                    العودة لاختيار الفرع
+                                </button>
+                            </form>
+                        )}
                     </div>
                 </motion.div>
             </div>
@@ -411,6 +552,22 @@ export const CashierPage: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-2">
+                        <button
+                            onClick={toggleStoreStatus}
+                            disabled={isUpdatingStatus}
+                            className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-colors border shadow-sm",
+                                storeStatus === 'open' ? "bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20" :
+                                storeStatus === 'busy' ? "bg-orange-500/10 text-orange-400 border-orange-500/20 hover:bg-orange-500/20" :
+                                "bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20"
+                            )}
+                            title="تغيير حالة المطعم"
+                        >
+                            {isUpdatingStatus ? <Loader2 size={12} className="animate-spin" /> : 
+                             storeStatus === 'open' ? '🟢 مفتوح' : 
+                             storeStatus === 'busy' ? '🟠 مزدحم' : '🔴 مغلق'}
+                        </button>
+                        <div className="w-px h-6 bg-white/10 mx-1"></div>
                         {counts.new > 0 && (
                             <span className="flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-black px-3 py-1.5 rounded-full animate-pulse">
                                 <Bell size={12} /> {counts.new} جديد
@@ -424,9 +581,16 @@ export const CashierPage: React.FC = () => {
                             <RefreshCw size={16} className="text-gray-400" />
                         </button>
                         <button
-                            onClick={() => { setBranch(null); localStorage.removeItem('jamr_cashier_branch'); }}
+                            onClick={() => setShowSettings(true)}
+                            className="p-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors"
+                            title="الإعدادات"
+                        >
+                            <Settings size={16} className="text-gray-400" />
+                        </button>
+                        <button
+                            onClick={() => { setBranch(null); localStorage.removeItem('jamr_cashier_branch'); setIsAuthenticated(false); localStorage.removeItem('jamr_cashier_auth'); }}
                             className="p-2.5 bg-zinc-800 hover:bg-red-500/20 hover:text-red-400 rounded-xl transition-colors"
-                            title="تغيير الفرع"
+                            title="تسجيل الخروج"
                         >
                             <LogOut size={16} className="text-gray-400" />
                         </button>
@@ -506,6 +670,65 @@ export const CashierPage: React.FC = () => {
                     </AnimatePresence>
                 )}
             </div>
+
+            {/* Settings Modal */}
+            <AnimatePresence>
+                {showSettings && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowSettings(false)}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-zinc-900 rounded-3xl p-6 w-full max-w-sm relative z-10 border border-white/10 shadow-2xl"
+                        >
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-black flex items-center gap-2">
+                                    <Volume2 className="text-primary" />
+                                    إعدادات الصوت
+                                </h3>
+                                <button onClick={() => setShowSettings(false)} className="text-gray-500 hover:text-white transition-colors">
+                                    <X size={24} />
+                                </button>
+                            </div>
+                            <div className="space-y-3">
+                                {[
+                                    { id: 'standard', label: 'جرس تنبيه عادي' },
+                                    { id: 'bell', label: 'رنين مطعم' },
+                                    { id: 'digital', label: 'تنبيه رقمي' }
+                                ].map(sound => (
+                                    <button
+                                        key={sound.id}
+                                        onClick={() => {
+                                            setSoundPref(sound.id as SoundType);
+                                            localStorage.setItem('jamr_cashier_sound', sound.id);
+                                            playNotificationSound(sound.id as SoundType); // test the sound
+                                        }}
+                                        className={cn(
+                                            "w-full flex justify-between items-center p-4 rounded-2xl font-bold transition-all",
+                                            soundPref === sound.id
+                                                ? "bg-primary text-white shadow-lg shadow-primary/20"
+                                                : "bg-zinc-800 text-gray-300 hover:bg-zinc-700"
+                                        )}
+                                    >
+                                        <span>{sound.label}</span>
+                                        {soundPref === sound.id && <CheckCircle2 size={18} />}
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-4 text-center">
+                                سيتم تشغيل النغمة المختارة عند وصول طلب جديد
+                            </p>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

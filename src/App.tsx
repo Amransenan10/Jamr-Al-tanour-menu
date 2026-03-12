@@ -24,6 +24,18 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const [storeStatus, setStoreStatus] = useState<'open' | 'busy' | 'closed'>('open');
+
+  useEffect(() => {
+    const statusChannel = supabase.channel('store-status-app')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'store_settings' }, 
+        (payload) => {
+          const newRow = payload.new as any;
+          if (newRow && newRow.status) setStoreStatus(newRow.status);
+        }
+      ).subscribe();
+    return () => { supabase.removeChannel(statusChannel); }
+  }, []);
 
   useEffect(() => {
     const savedBranch = localStorage.getItem('jamr_al_tannour_branch') as Branch;
@@ -39,7 +51,7 @@ export default function App() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [catsRes, prodsRes] = await Promise.all([
+      const [catsRes, prodsRes, statusRes] = await Promise.all([
         supabase
           .from('categories')
           .select('*')
@@ -48,11 +60,13 @@ export default function App() {
         supabase
           .from('products')
           .select('*')
-          .eq('is_available', true)
+          .eq('is_available', true),
+        supabase.from('store_settings').select('status').single()
       ]);
 
       if (catsRes.data) setCategories(catsRes.data);
       if (prodsRes.data) setProducts(prodsRes.data);
+      if (statusRes.data) setStoreStatus(statusRes.data.status);
     } catch (e) {
       console.error('Error fetching data:', e);
     } finally {
@@ -78,6 +92,17 @@ export default function App() {
             onCartOpen={() => setIsCartOpen(true)}
             onSearch={setSearchQuery}
           />
+
+          {storeStatus === 'closed' && (
+              <div className="bg-red-500/10 border-b border-red-500/20 text-red-500 dark:text-red-400 py-3 px-4 text-center text-sm font-bold flex items-center justify-center gap-2">
+                  🔴 عذراً، المطعم مغلق حالياً. لا يمكننا استقبال طلبات جديدة.
+              </div>
+          )}
+          {storeStatus === 'busy' && (
+              <div className="bg-orange-500/10 border-b border-orange-500/20 text-orange-600 dark:text-orange-400 py-3 px-4 text-center text-sm font-bold flex items-center justify-center gap-2">
+                  🟠 نواجه ضغطاً في الطلبات حالياً. قد يتأخر تحضير طلبك قليلاً، شكراً لتفهمك!
+              </div>
+          )}
 
           <BranchSelectorModal
             isOpen={selectedBranch === null}
@@ -128,6 +153,7 @@ export default function App() {
             isOpen={isCartOpen}
             onClose={() => setIsCartOpen(false)}
             branch={selectedBranch || 'السويدي الغربي'}
+            storeStatus={storeStatus}
           />
 
           {/* Active Order Banner */}

@@ -11,20 +11,30 @@ interface CartDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   branch: Branch;
+  storeStatus?: 'open' | 'busy' | 'closed';
 }
 
-export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch }) => {
+export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch, storeStatus = 'open' }) => {
   const { cart, removeFromCart, updateQuantity, totalPrice, clearCart } = useCart();
   const [step, setStep] = useState<'cart' | 'checkout'>('cart');
   const [orderType, setOrderType] = useState<OrderType>('pickup');
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    location: '',
-    notes: '',
-    pickupTime: ''
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<{code: string; type: 'fixed' | 'percentage'; value: number} | null>(null);
+  const [promoError, setPromoError] = useState('');
+  const [promoSuccess, setPromoSuccess] = useState('');
+  const [formData, setFormData] = useState(() => {
+    const savedName = localStorage.getItem('jamr_customer_name') || '';
+    const savedPhone = localStorage.getItem('jamr_customer_phone') || '';
+    const savedLocation = localStorage.getItem('jamr_customer_location') || '';
+    return {
+      name: savedName,
+      phone: savedPhone,
+      location: savedLocation,
+      notes: '',
+      pickupTime: ''
+    };
   });
 
   const handleLocationClick = () => {
@@ -42,6 +52,63 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch 
     }
   };
 
+  const deliveryFee = orderType === 'delivery' ? 5 : 0;
+  
+  let discountAmount = 0;
+  if (appliedPromo) {
+    if (appliedPromo.type === 'fixed') {
+      discountAmount = appliedPromo.value;
+    } else if (appliedPromo.type === 'percentage') {
+      discountAmount = (totalPrice * appliedPromo.value) / 100;
+    }
+  }
+  
+  // Ensure final price doesn't go below 0
+  const finalPrice = Math.max(0, totalPrice + deliveryFee - discountAmount);
+
+  const handleApplyPromo = async () => {
+    if (!promoCodeInput.trim()) return;
+    setPromoError('');
+    setPromoSuccess('');
+    
+    try {
+      const { data, error } = await supabase
+        .from('promo_codes')
+        .select('*')
+        .eq('code', promoCodeInput.trim().toUpperCase())
+        .eq('is_active', true)
+        .single();
+        
+      if (error || !data) {
+        setPromoError('كود الخصم غير صحيح أو غير مفعل');
+        return;
+      }
+      
+      // Check expiry
+      if (data.expiry_date && new Date(data.expiry_date) < new Date()) {
+        setPromoError('تم انتهاء صلاحية كود الخصم');
+        return;
+      }
+
+      setAppliedPromo({
+        code: data.code,
+        type: data.discount_type as 'fixed' | 'percentage',
+        value: data.discount_value
+      });
+      setPromoSuccess('تم تطبيق كود الخصم بنجاح!');
+      setPromoCodeInput('');
+      
+    } catch (e) {
+      setPromoError('حدث خطأ أثناء التحقق من كود الخصم');
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoSuccess('');
+    setPromoError('');
+  };
+
   const handleSubmitOrder = async () => {
     if (!formData.name || !formData.phone || (orderType === 'delivery' && !formData.location)) {
       alert('يرجى إكمال جميع البيانات المطلوبة');
@@ -57,13 +124,25 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch 
         phone: formData.phone,
         location: orderType === 'delivery' ? formData.location : undefined,
         notes: formData.notes,
-        total_price: totalPrice,
+        total_price: finalPrice,
         items: cart,
-        status: 'new'
+        status: 'new',
+        // Typecasting below to bypass strict type checking temporarily, assuming the 'orders' table supports these columns per our recent migration
+        ...({
+          delivery_fee: deliveryFee,
+          discount_amount: discountAmount,
+          promo_code: appliedPromo?.code || null
+        } as any)
       };
 
       const { data, error } = await supabase.from('orders').insert([order]).select('id').single();
       if (error) throw error;
+
+      localStorage.setItem('jamr_customer_name', formData.name);
+      localStorage.setItem('jamr_customer_phone', formData.phone);
+      if (orderType === 'delivery' && formData.location) {
+        localStorage.setItem('jamr_customer_location', formData.location);
+      }
 
       localStorage.setItem('jamr_active_order', data.id);
       clearCart();
@@ -253,17 +332,86 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch 
 
             {cart.length > 0 && (
               <div className="p-6 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-white/5 space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-500 font-bold">الإجمالي</span>
-                  <span className="text-2xl font-black text-primary">{totalPrice} ر.س</span>
+                
+                {/* Promo Code Section */}
+                {step === 'checkout' && (
+                  <div className="space-y-2 border-b border-gray-100 dark:border-white/5 pb-4">
+                    {!appliedPromo ? (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={promoCodeInput}
+                          onChange={e => setPromoCodeInput(e.target.value)}
+                          placeholder="لديك كود خصم؟"
+                          className="flex-1 px-4 py-2 bg-gray-50 dark:bg-white/5 rounded-xl border-none focus:ring-2 focus:ring-primary/50 outline-none text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleApplyPromo}
+                          className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-sm font-bold disabled:opacity-50 transition-opacity"
+                          disabled={!promoCodeInput.trim()}
+                        >
+                          تطبيق
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between bg-green-50 dark:bg-green-500/10 p-3 rounded-xl border border-green-200 dark:border-green-500/20">
+                        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                          <CheckCircle2 size={16} />
+                          <span className="text-sm font-bold">تم تطبيق كود ({appliedPromo.code})</span>
+                        </div>
+                        <button onClick={handleRemovePromo} className="text-gray-400 hover:text-red-500 transition-colors">
+                          <X size={16} />
+                        </button>
+                      </div>
+                    )}
+                    {promoError && <p className="text-xs text-red-500 font-bold">{promoError}</p>}
+                    {promoSuccess && <p className="text-xs text-green-600 dark:text-green-400 font-bold">{promoSuccess}</p>}
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-500 font-bold">المجموع الفرعي</span>
+                    <span className="font-bold text-gray-900 dark:text-white">{totalPrice} ر.س</span>
+                  </div>
+                  
+                  {deliveryFee > 0 && step === 'checkout' && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-500 font-bold">رسوم التوصيل</span>
+                      <span className="font-bold text-gray-900 dark:text-white">+{deliveryFee} ر.س</span>
+                    </div>
+                  )}
+
+                  {discountAmount > 0 && step === 'checkout' && (
+                    <div className="flex justify-between items-center text-sm text-green-600 dark:text-green-400">
+                      <span className="font-bold">خصم ({appliedPromo?.code})</span>
+                      <span className="font-bold">-{discountAmount.toFixed(2)} ر.س</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center pt-2 border-t border-gray-100 dark:border-white/5">
+                    <span className="text-gray-900 dark:text-white font-black">الإجمالي الكلي</span>
+                    <span className="text-2xl font-black text-primary">{step === 'checkout' ? finalPrice.toFixed(2) : totalPrice} ر.س</span>
+                  </div>
                 </div>
+
+                {storeStatus === 'busy' && (
+                  <div className="text-orange-500 bg-orange-500/10 p-2.5 rounded-xl text-xs font-bold text-center">
+                    ملاحظة: نواجه ضغطاً حالياً، قد يتأخر تحضير طلبك قليلاً
+                  </div>
+                )}
 
                 {step === 'cart' ? (
                   <button
+                    disabled={storeStatus === 'closed'}
                     onClick={() => setStep('checkout')}
-                    className="w-full py-4 bg-primary text-white rounded-2xl font-black text-lg shadow-xl shadow-primary/30 flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all"
+                    className={cn(
+                      "w-full py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all disabled:opacity-50",
+                      storeStatus === 'closed' ? "bg-red-500/50 text-white cursor-not-allowed" : "bg-primary text-white shadow-xl shadow-primary/30 hover:scale-[1.02] active:scale-95"
+                    )}
                   >
-                    إتمام الطلب
+                    {storeStatus === 'closed' ? 'المطعم مغلق حالياً' : 'إتمام الطلب'}
                   </button>
                 ) : (
                   <div className="flex gap-3">
@@ -274,11 +422,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch 
                       رجوع
                     </button>
                     <button
-                      disabled={loading}
+                      disabled={loading || storeStatus === 'closed'}
                       onClick={handleSubmitOrder}
-                      className="flex-[2] py-4 bg-primary text-white rounded-2xl font-black text-lg shadow-xl shadow-primary/30 flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                      className={cn(
+                        "flex-[2] py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all disabled:opacity-50",
+                        storeStatus === 'closed' ? "bg-red-500/50 text-white cursor-not-allowed" : "bg-primary text-white shadow-xl shadow-primary/30 hover:scale-[1.02] active:scale-95"
+                      )}
                     >
-                      {loading ? <Loader2 className="animate-spin" /> : 'تأكيد الطلب'}
+                      {loading ? <Loader2 className="animate-spin" /> : storeStatus === 'closed' ? 'المطعم مغلق' : 'تأكيد الطلب'}
                     </button>
                   </div>
                 )}
