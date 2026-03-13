@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+// Version: 2026-03-13-22-40
 import { Header } from './components/Header';
 import { CategoryBar } from './components/CategoryBar';
 import { ProductCard } from './components/ProductCard';
