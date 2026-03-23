@@ -752,9 +752,9 @@ export const CashierPage: React.FC = () => {
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
-                            className="bg-zinc-900 rounded-3xl p-6 w-full max-w-sm relative z-10 border border-white/10 shadow-2xl"
+                            className="bg-zinc-900 rounded-3xl p-6 w-full max-w-sm relative z-10 border border-white/10 shadow-2xl max-h-[90vh] flex flex-col"
                         >
-                            <div className="flex justify-between items-center mb-6">
+                            <div className="flex justify-between items-center mb-6 shrink-0">
                                 <h3 className="text-xl font-black flex items-center gap-2">
                                     <Volume2 className="text-primary" />
                                     إعدادات الصوت
@@ -763,137 +763,141 @@ export const CashierPage: React.FC = () => {
                                     <X size={24} />
                                 </button>
                             </div>
-                            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
-                                {[
-                                    { id: 'standard', label: 'تنبيه قياسي' },
-                                    { id: 'bell', label: 'جرس مطعم' },
-                                    { id: 'digital', label: 'تنبيه رقمي' },
-                                    { id: 'police', label: 'صافرة إنذار' },
-                                    { id: 'melodic', label: 'نغمة هادئة' },
-                                    { id: 'urgent', label: 'تنبيه عاجل' },
-                                    { id: 'soft', label: 'نغمة ناعمة' }
-                                ].map(sound => (
+                            
+                            {/* Scrollable Content */}
+                            <div className="overflow-y-auto pr-2 custom-scrollbar flex-1 space-y-6">
+                                <div className="space-y-2">
+                                    {[
+                                        { id: 'standard', label: 'تنبيه قياسي' },
+                                        { id: 'bell', label: 'جرس مطعم' },
+                                        { id: 'digital', label: 'تنبيه رقمي' },
+                                        { id: 'police', label: 'صافرة إنذار' },
+                                        { id: 'melodic', label: 'نغمة هادئة' },
+                                        { id: 'urgent', label: 'تنبيه عاجل' },
+                                        { id: 'soft', label: 'نغمة ناعمة' }
+                                    ].map(sound => (
+                                        <button
+                                            key={sound.id}
+                                            onClick={() => {
+                                                setSoundPref(sound.id as SoundType);
+                                                localStorage.setItem('jamr_cashier_sound', sound.id);
+                                                playNotificationSound(sound.id as SoundType);
+                                            }}
+                                            className={cn(
+                                                "w-full flex justify-between items-center p-3.5 rounded-2xl font-bold transition-all",
+                                                soundPref === sound.id
+                                                    ? "bg-primary text-white shadow-lg shadow-primary/20"
+                                                    : "bg-zinc-800 text-gray-300 hover:bg-zinc-700"
+                                            )}
+                                        >
+                                            <span className="text-sm">{sound.label}</span>
+                                            {soundPref === sound.id && <CheckCircle2 size={16} />}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="pt-6 border-t border-white/5 space-y-3">
+                                    <h4 className="text-xs font-bold text-gray-500 mb-2 mr-1">حالة المتجر</h4>
+                                    {[
+                                        { id: 'open', label: '🟢 مفتوح', color: 'bg-green-500/10 text-green-400 border-green-500/20' },
+                                        { id: 'busy', label: '🟠 مزدحم', color: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
+                                        { id: 'closed', label: '🔴 مغلق', color: 'bg-red-500/10 text-red-400 border-red-500/20' }
+                                    ].map(status => (
+                                        <button
+                                            key={status.id}
+                                            disabled={isUpdatingStatus}
+                                            onClick={async () => {
+                                                if (isUpdatingStatus || !branch) return;
+                                                setIsUpdatingStatus(true);
+                                                setStoreStatus(status.id as any);
+                                                const { error } = await supabase.from('store_settings').update({ status: status.id }).eq('branch_name', branch);
+                                                if (error) {
+                                                    toast.error('تعذر تحديث الحالة');
+                                                } else {
+                                                    toast.success(`تم التغيير إلى ${status.label}`);
+                                                }
+                                                setIsUpdatingStatus(false);
+                                            }}
+                                            className={cn(
+                                                "w-full flex justify-between items-center p-3.5 rounded-2xl font-bold transition-all border",
+                                                storeStatus === status.id ? status.color : "bg-zinc-800 border-transparent text-gray-400"
+                                            )}
+                                        >
+                                            <span className="text-sm">{status.label}</span>
+                                            {storeStatus === status.id && <CheckCircle2 size={16} />}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="pt-6 border-t border-white/5 space-y-3">
+                                    <h4 className="text-xs font-bold text-gray-500 mb-2 mr-1">تنبيه الطلبات الجديدة</h4>
                                     <button
-                                        key={sound.id}
                                         onClick={() => {
-                                            setSoundPref(sound.id as SoundType);
-                                            localStorage.setItem('jamr_cashier_sound', sound.id);
-                                            playNotificationSound(sound.id as SoundType);
+                                            const newVal = !isPersistentSound;
+                                            setIsPersistentSound(newVal);
+                                            localStorage.setItem('jamr_cashier_persistent_sound', String(newVal));
+                                            if (newVal) toast.success('تفعيل التنبيه المستمر');
                                         }}
                                         className={cn(
-                                            "w-full flex justify-between items-center p-3.5 rounded-2xl font-bold transition-all",
-                                            soundPref === sound.id
-                                                ? "bg-primary text-white shadow-lg shadow-primary/20"
-                                                : "bg-zinc-800 text-gray-300 hover:bg-zinc-700"
+                                            "w-full flex justify-between items-center p-4 rounded-2xl font-bold transition-all border",
+                                            isPersistentSound 
+                                                ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                                                : "bg-zinc-800 border-transparent text-gray-400 opacity-60"
                                         )}
                                     >
-                                        <span className="text-sm">{sound.label}</span>
-                                        {soundPref === sound.id && <CheckCircle2 size={16} />}
+                                        <div className="flex items-center gap-3 text-sm">
+                                            <Bell size={18} className={cn(isPersistentSound && "animate-ring")} />
+                                            <span>تنبيه مستمر حتى القبول</span>
+                                        </div>
+                                        <div className={cn(
+                                            "w-10 h-5 rounded-full relative transition-colors",
+                                            isPersistentSound ? "bg-amber-500" : "bg-zinc-600"
+                                        )}>
+                                            <div className={cn(
+                                                "absolute top-1 w-3 h-3 bg-white rounded-full transition-all",
+                                                isPersistentSound ? "right-6" : "right-1"
+                                            )} />
+                                        </div>
                                     </button>
-                                ))}
-                            </div>
 
-                            <div className="mt-6 pt-6 border-t border-white/5 space-y-3">
-                                <h4 className="text-xs font-bold text-gray-500 mb-2 mr-1">حالة المتجر</h4>
-                                {[
-                                    { id: 'open', label: '🟢 مفتوح', color: 'bg-green-500/10 text-green-400 border-green-500/20' },
-                                    { id: 'busy', label: '🟠 مزدحم', color: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
-                                    { id: 'closed', label: '🔴 مغلق', color: 'bg-red-500/10 text-red-400 border-red-500/20' }
-                                ].map(status => (
                                     <button
-                                        key={status.id}
-                                        disabled={isUpdatingStatus}
-                                        onClick={async () => {
-                                            if (isUpdatingStatus || !branch) return;
-                                            setIsUpdatingStatus(true);
-                                            setStoreStatus(status.id as any);
-                                            const { error } = await supabase.from('store_settings').update({ status: status.id }).eq('branch_name', branch);
-                                            if (error) {
-                                                toast.error('تعذر تحديث الحالة');
+                                        onClick={() => {
+                                            if (notificationPermission !== 'granted') {
+                                                requestNotificationPermission();
                                             } else {
-                                                toast.success(`تم التغيير إلى ${status.label}`);
+                                                const newVal = !useNotifications;
+                                                setUseNotifications(newVal);
+                                                localStorage.setItem('jamr_cashier_use_notifications', String(newVal));
+                                                toast.success(newVal ? 'تم تفعيل الإشعارات' : 'تم إيقاف الإشعارات');
                                             }
-                                            setIsUpdatingStatus(false);
                                         }}
                                         className={cn(
-                                            "w-full flex justify-between items-center p-3.5 rounded-2xl font-bold transition-all border",
-                                            storeStatus === status.id ? status.color : "bg-zinc-800 border-transparent text-gray-400"
+                                            "w-full flex justify-between items-center p-4 rounded-2xl font-bold transition-all border",
+                                            (useNotifications && notificationPermission === 'granted')
+                                                ? "bg-blue-500/10 border-blue-500/30 text-blue-400"
+                                                : "bg-zinc-800 border-transparent text-gray-400 opacity-60"
                                         )}
                                     >
-                                        <span className="text-sm">{status.label}</span>
-                                        {storeStatus === status.id && <CheckCircle2 size={16} />}
+                                        <div className="flex items-center gap-3 text-sm flex-1">
+                                            <Bell size={18} className="shrink-0" />
+                                            <span className="text-right">إشعارات النظام (على الشاشة)</span>
+                                        </div>
+                                        <div className={cn(
+                                            "w-10 h-5 rounded-full relative transition-colors shrink-0 mx-2",
+                                            (useNotifications && notificationPermission === 'granted') ? "bg-blue-500" : "bg-zinc-600"
+                                        )}>
+                                            <div className={cn(
+                                                "absolute top-1 w-3 h-3 bg-white rounded-full transition-all",
+                                                (useNotifications && notificationPermission === 'granted') ? "right-6" : "right-1"
+                                            )} />
+                                        </div>
                                     </button>
-                                ))}
+                                </div>
+
+                                <p className="text-[10px] text-gray-500 mt-4 text-center leading-relaxed">
+                                    سيتم تشغيل النغمة المختارة عند وصول طلب جديد. التنبيه المستمر يكرر الصوت كل 3 ثواني. إشعارات النظام تظهر حتى لو كان المتصفح مصغراً.
+                                </p>
                             </div>
-
-                            <div className="mt-6 pt-6 border-t border-white/5">
-                                <h4 className="text-xs font-bold text-gray-500 mb-2 mr-1">تنبيه الطلبات الجديدة</h4>
-                                <button
-                                    onClick={() => {
-                                        const newVal = !isPersistentSound;
-                                        setIsPersistentSound(newVal);
-                                        localStorage.setItem('jamr_cashier_persistent_sound', String(newVal));
-                                        if (newVal) toast.success('تفعيل التنبيه المستمر');
-                                    }}
-                                    className={cn(
-                                        "w-full flex justify-between items-center p-4 rounded-2xl font-bold transition-all border",
-                                        isPersistentSound 
-                                            ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
-                                            : "bg-zinc-800 border-transparent text-gray-400 opacity-60"
-                                    )}
-                                >
-                                    <div className="flex items-center gap-3 text-sm">
-                                        <Bell size={18} className={cn(isPersistentSound && "animate-ring")} />
-                                        <span>تنبيه مستمر حتى القبول</span>
-                                    </div>
-                                    <div className={cn(
-                                        "w-10 h-5 rounded-full relative transition-colors",
-                                        isPersistentSound ? "bg-amber-500" : "bg-zinc-600"
-                                    )}>
-                                        <div className={cn(
-                                            "absolute top-1 w-3 h-3 bg-white rounded-full transition-all",
-                                            isPersistentSound ? "right-6" : "right-1"
-                                        )} />
-                                    </div>
-                                </button>
-
-                                <button
-                                    onClick={() => {
-                                        if (notificationPermission !== 'granted') {
-                                            requestNotificationPermission();
-                                        } else {
-                                            const newVal = !useNotifications;
-                                            setUseNotifications(newVal);
-                                            localStorage.setItem('jamr_cashier_use_notifications', String(newVal));
-                                            toast.success(newVal ? 'تم تفعيل الإشعارات' : 'تم إيقاف الإشعارات');
-                                        }
-                                    }}
-                                    className={cn(
-                                        "w-full flex justify-between items-center p-4 rounded-2xl font-bold transition-all border",
-                                        (useNotifications && notificationPermission === 'granted')
-                                            ? "bg-blue-500/10 border-blue-500/30 text-blue-400"
-                                            : "bg-zinc-800 border-transparent text-gray-400 opacity-60"
-                                    )}
-                                >
-                                    <div className="flex items-center gap-3 text-sm">
-                                        <Bell size={18} />
-                                        <span>إشعارات النظام (على الشاشة)</span>
-                                    </div>
-                                    <div className={cn(
-                                        "w-10 h-5 rounded-full relative transition-colors",
-                                        (useNotifications && notificationPermission === 'granted') ? "bg-blue-500" : "bg-zinc-600"
-                                    )}>
-                                        <div className={cn(
-                                            "absolute top-1 w-3 h-3 bg-white rounded-full transition-all",
-                                            (useNotifications && notificationPermission === 'granted') ? "right-6" : "right-1"
-                                        )} />
-                                    </div>
-                                </button>
-                            </div>
-
-                            <p className="text-[10px] text-gray-500 mt-4 text-center leading-relaxed">
-                                سيتم تشغيل النغمة المختارة عند وصول طلب جديد. التنبيه المستمر يكرر الصوت كل 3 ثواني. إشعارات النظام تظهر حتى لو كان المتصفح مصغراً.
-                            </p>
                         </motion.div>
                     </div>
                 )}
