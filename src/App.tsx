@@ -5,6 +5,7 @@ import { CategoryBar } from './components/CategoryBar';
 import { ProductCard } from './components/ProductCard';
 import { ProductModal } from './components/ProductModal';
 import { CartDrawer } from './components/CartDrawer';
+import { InstallPWA } from './components/InstallPWA';
 import { Category, Product, Branch } from './types';
 import { supabase } from './lib/supabaseClient';
 import { CartProvider } from './context/CartContext';
@@ -32,7 +33,9 @@ export default function App() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'store_settings' }, 
         (payload) => {
           const newRow = payload.new as any;
-          if (newRow && newRow.status) setStoreStatus(newRow.status);
+          if (newRow && newRow.branch_name === selectedBranch && newRow.status) {
+            setStoreStatus(newRow.status);
+          }
         }
       ).subscribe();
     return () => { supabase.removeChannel(statusChannel); }
@@ -62,7 +65,10 @@ export default function App() {
           .from('products')
           .select('*')
           .eq('is_available', true),
-        supabase.from('store_settings').select('status').single()
+        supabase.from('store_settings')
+          .select('status')
+          .eq('branch_name', selectedBranch || 'السويدي الغربي')
+          .single()
       ]);
 
       if (catsRes.data) setCategories(catsRes.data);
@@ -123,7 +129,7 @@ export default function App() {
                 <p className="text-gray-500 font-medium">جاري تحضير المنيو...</p>
               </div>
             ) : filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-8">
                 <AnimatePresence mode="popLayout">
                   {filteredProducts.map((product) => (
                     <ProductCard
@@ -183,6 +189,8 @@ export default function App() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          <InstallPWA />
         </div>
       </CartProvider>
     </ThemeProvider>

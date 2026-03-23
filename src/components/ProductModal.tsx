@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Minus, Plus, ShoppingBag } from 'lucide-react';
+import { X, Minus, Plus, ShoppingBag, UtensilsCrossed } from 'lucide-react';
 import { Product, OptionGroup, OptionItem, Ingredient, CartItem } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { useCart } from '../context/CartContext';
@@ -179,14 +179,21 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
             </button>
 
             <div className="overflow-y-auto no-scrollbar flex-1">
-              <div className="relative aspect-[16/9] sm:aspect-[21/9]">
-                <img
-                  src={product.image_url || 'https://picsum.photos/seed/food/800/400'}
-                  alt={product.name_ar}
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
+              <div className="relative aspect-[16/9] sm:aspect-[21/9] bg-gray-50 dark:bg-zinc-800/50">
+                {product.image_url ? (
+                  <img
+                    src={product.image_url}
+                    alt={product.name_ar}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-gray-300 dark:text-gray-600">
+                    <UtensilsCrossed size={80} strokeWidth={1} />
+                  </div>
+                )}
               </div>
+
 
               <div className="p-6 sm:p-8">
                 <div className="flex justify-between items-start mb-4">

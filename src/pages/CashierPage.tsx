@@ -223,7 +223,7 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
 };
 
 // ─── Audio Notification ──────────────────────────────────────────────────────
-export type SoundType = 'standard' | 'bell' | 'digital';
+export type SoundType = 'standard' | 'bell' | 'digital' | 'police' | 'melodic' | 'urgent' | 'soft';
 export const playNotificationSound = (type: SoundType = 'standard') => {
     try {
         const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
@@ -255,6 +255,19 @@ export const playNotificationSound = (type: SoundType = 'standard') => {
             playTone(600, 'square', 0.15);
             playTone(800, 'square', 0.15, ctx.currentTime + 0.15);
             playTone(1000, 'square', 0.2, ctx.currentTime + 0.3);
+        } else if (type === 'police') {
+            playTone(800, 'square', 0.4);
+            playTone(600, 'square', 0.4, ctx.currentTime + 0.4);
+        } else if (type === 'melodic') {
+            playTone(440, 'sine', 0.2);
+            playTone(554, 'sine', 0.2, ctx.currentTime + 0.2);
+            playTone(659, 'sine', 0.4, ctx.currentTime + 0.4);
+        } else if (type === 'urgent') {
+            playTone(1000, 'sawtooth', 0.1);
+            playTone(1000, 'sawtooth', 0.1, ctx.currentTime + 0.2);
+            playTone(1000, 'sawtooth', 0.1, ctx.currentTime + 0.4);
+        } else if (type === 'soft') {
+            playTone(523, 'sine', 1.0);
         }
     } catch (e) {
         console.error('Audio play failed', e);
@@ -284,6 +297,9 @@ export const CashierPage: React.FC = () => {
     const [newOrderAlert, setNewOrderAlert] = useState(false);
 
     const [soundPref, setSoundPref] = useState<SoundType>('standard');
+    const [isPersistentSound, setIsPersistentSound] = useState(false);
+    const [useNotifications, setUseNotifications] = useState(false);
+    const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
     const [showSettings, setShowSettings] = useState(false);
     
     const [storeStatus, setStoreStatus] = useState<'open' | 'busy' | 'closed'>('open');
@@ -297,7 +313,8 @@ export const CashierPage: React.FC = () => {
     // ── Load store status and subscribe ───────────────────────────────────────
     useEffect(() => {
         const fetchStatus = async () => {
-            const { data } = await supabase.from('store_settings').select('status').single();
+            if (!branch) return;
+            const { data } = await supabase.from('store_settings').select('status').eq('branch_name', branch).single();
             if (data) setStoreStatus(data.status);
         };
         fetchStatus();
@@ -318,14 +335,14 @@ export const CashierPage: React.FC = () => {
     }, []);
 
     const toggleStoreStatus = async () => {
-        if (isUpdatingStatus) return;
+        if (isUpdatingStatus || !branch) return;
         setIsUpdatingStatus(true);
         const nextStatus = storeStatus === 'open' ? 'busy' : storeStatus === 'busy' ? 'closed' : 'open';
         
         const prevStatus = storeStatus;
         setStoreStatus(nextStatus);
         
-        const { error } = await supabase.from('store_settings').update({ status: nextStatus }).eq('id', 1);
+        const { error } = await supabase.from('store_settings').update({ status: nextStatus }).eq('branch_name', branch);
         if (error) {
             setStoreStatus(prevStatus);
             toast.error('تعذر تحديث حالة المطعم');
@@ -345,7 +362,25 @@ export const CashierPage: React.FC = () => {
         }
         const savedSound = localStorage.getItem('jamr_cashier_sound') as SoundType;
         if (savedSound) setSoundPref(savedSound);
+        const savedPersistent = localStorage.getItem('jamr_cashier_persistent_sound') === 'true';
+        setIsPersistentSound(savedPersistent);
+        const savedNotifications = localStorage.getItem('jamr_cashier_use_notifications') === 'true';
+        setUseNotifications(savedNotifications);
+        if ('Notification' in window) {
+            setNotificationPermission(Notification.permission);
+        }
     }, []);
+
+    const requestNotificationPermission = async () => {
+        if (!('Notification' in window)) return;
+        const permission = await Notification.requestPermission();
+        setNotificationPermission(permission);
+        if (permission === 'granted') {
+            setUseNotifications(true);
+            localStorage.setItem('jamr_cashier_use_notifications', 'true');
+            toast.success('تم تفعيل إشعارات النظام بنجاح');
+        }
+    };
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -406,7 +441,18 @@ export const CashierPage: React.FC = () => {
                         setOrders(prev => [payload.new, ...prev]);
                         setNewOrderAlert(true);
                         playNotificationSound(soundPrefRef.current);
-                        setTimeout(() => setNewOrderAlert(false), 4000);
+                        
+                        // System Notification
+                        if (Notification.permission === 'granted' && localStorage.getItem('jamr_cashier_use_notifications') === 'true') {
+                            new Notification('🔔 طلب جديد وصل!', {
+                                body: `اسم العميل: ${payload.new.customer_name}\nالقيمة: ${payload.new.total_price} ر.س`,
+                                icon: '/assets/logo.png',
+                                tag: 'new-order',
+                                requireInteraction: true
+                            });
+                        }
+
+                        setTimeout(() => setNewOrderAlert(false), 8000);
                     } else if (payload.eventType === 'UPDATE') {
                         setOrders(prev => prev.map(o => o.id === payload.new.id ? payload.new : o));
                     } else if (payload.eventType === 'DELETE') {
@@ -431,6 +477,17 @@ export const CashierPage: React.FC = () => {
     const filtered = orders.filter(o =>
         filter === 'active' ? ACTIVE_STATUSES.includes(o.status) : o.status === filter
     );
+
+    // ── Looping Alert Sound ──────────────────────────────────────────────────
+    useEffect(() => {
+        let interval: any;
+        if (newOrderAlert && isPersistentSound) {
+            interval = setInterval(() => {
+                playNotificationSound(soundPrefRef.current);
+            }, 3000); // Repeat every 3 seconds
+        }
+        return () => clearInterval(interval);
+    }, [newOrderAlert, isPersistentSound]);
 
     // ── Branch login screen ───────────────────────────────────────────────────
     if (!isAuthenticated) {
@@ -528,9 +585,18 @@ export const CashierPage: React.FC = () => {
                         initial={{ y: -60 }}
                         animate={{ y: 0 }}
                         exit={{ y: -60 }}
-                        className="fixed top-0 inset-x-0 z-50 bg-primary text-white text-center py-3 font-black text-lg shadow-2xl shadow-primary/30"
+                        className="fixed top-0 inset-x-0 z-50 bg-primary text-white text-center py-4 font-black text-xl shadow-2xl shadow-primary/30 flex items-center justify-center gap-4 px-6"
                     >
-                        🔔 طلب جديد وصل!
+                        <div className="flex items-center gap-3">
+                            <span className="animate-bounce">🔔</span>
+                            <span>يوجد طلبات جديدة لم يتم قبولها!</span>
+                        </div>
+                        <button 
+                            onClick={() => setNewOrderAlert(false)}
+                            className="bg-white/20 hover:bg-white/30 text-white text-xs px-4 py-2 rounded-xl transition-colors border border-white/20"
+                        >
+                            إيقاف التنبيه
+                        </button>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -697,33 +763,136 @@ export const CashierPage: React.FC = () => {
                                     <X size={24} />
                                 </button>
                             </div>
-                            <div className="space-y-3">
+                            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
                                 {[
-                                    { id: 'standard', label: 'جرس تنبيه عادي' },
-                                    { id: 'bell', label: 'رنين مطعم' },
-                                    { id: 'digital', label: 'تنبيه رقمي' }
+                                    { id: 'standard', label: 'تنبيه قياسي' },
+                                    { id: 'bell', label: 'جرس مطعم' },
+                                    { id: 'digital', label: 'تنبيه رقمي' },
+                                    { id: 'police', label: 'صافرة إنذار' },
+                                    { id: 'melodic', label: 'نغمة هادئة' },
+                                    { id: 'urgent', label: 'تنبيه عاجل' },
+                                    { id: 'soft', label: 'نغمة ناعمة' }
                                 ].map(sound => (
                                     <button
                                         key={sound.id}
                                         onClick={() => {
                                             setSoundPref(sound.id as SoundType);
                                             localStorage.setItem('jamr_cashier_sound', sound.id);
-                                            playNotificationSound(sound.id as SoundType); // test the sound
+                                            playNotificationSound(sound.id as SoundType);
                                         }}
                                         className={cn(
-                                            "w-full flex justify-between items-center p-4 rounded-2xl font-bold transition-all",
+                                            "w-full flex justify-between items-center p-3.5 rounded-2xl font-bold transition-all",
                                             soundPref === sound.id
                                                 ? "bg-primary text-white shadow-lg shadow-primary/20"
                                                 : "bg-zinc-800 text-gray-300 hover:bg-zinc-700"
                                         )}
                                     >
-                                        <span>{sound.label}</span>
-                                        {soundPref === sound.id && <CheckCircle2 size={18} />}
+                                        <span className="text-sm">{sound.label}</span>
+                                        {soundPref === sound.id && <CheckCircle2 size={16} />}
                                     </button>
                                 ))}
                             </div>
-                            <p className="text-xs text-gray-500 mt-4 text-center">
-                                سيتم تشغيل النغمة المختارة عند وصول طلب جديد
+
+                            <div className="mt-6 pt-6 border-t border-white/5 space-y-3">
+                                <h4 className="text-xs font-bold text-gray-500 mb-2 mr-1">حالة المتجر</h4>
+                                {[
+                                    { id: 'open', label: '🟢 مفتوح', color: 'bg-green-500/10 text-green-400 border-green-500/20' },
+                                    { id: 'busy', label: '🟠 مزدحم', color: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
+                                    { id: 'closed', label: '🔴 مغلق', color: 'bg-red-500/10 text-red-400 border-red-500/20' }
+                                ].map(status => (
+                                    <button
+                                        key={status.id}
+                                        disabled={isUpdatingStatus}
+                                        onClick={async () => {
+                                            if (isUpdatingStatus || !branch) return;
+                                            setIsUpdatingStatus(true);
+                                            setStoreStatus(status.id as any);
+                                            const { error } = await supabase.from('store_settings').update({ status: status.id }).eq('branch_name', branch);
+                                            if (error) {
+                                                toast.error('تعذر تحديث الحالة');
+                                            } else {
+                                                toast.success(`تم التغيير إلى ${status.label}`);
+                                            }
+                                            setIsUpdatingStatus(false);
+                                        }}
+                                        className={cn(
+                                            "w-full flex justify-between items-center p-3.5 rounded-2xl font-bold transition-all border",
+                                            storeStatus === status.id ? status.color : "bg-zinc-800 border-transparent text-gray-400"
+                                        )}
+                                    >
+                                        <span className="text-sm">{status.label}</span>
+                                        {storeStatus === status.id && <CheckCircle2 size={16} />}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="mt-6 pt-6 border-t border-white/5">
+                                <h4 className="text-xs font-bold text-gray-500 mb-2 mr-1">تنبيه الطلبات الجديدة</h4>
+                                <button
+                                    onClick={() => {
+                                        const newVal = !isPersistentSound;
+                                        setIsPersistentSound(newVal);
+                                        localStorage.setItem('jamr_cashier_persistent_sound', String(newVal));
+                                        if (newVal) toast.success('تفعيل التنبيه المستمر');
+                                    }}
+                                    className={cn(
+                                        "w-full flex justify-between items-center p-4 rounded-2xl font-bold transition-all border",
+                                        isPersistentSound 
+                                            ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+                                            : "bg-zinc-800 border-transparent text-gray-400 opacity-60"
+                                    )}
+                                >
+                                    <div className="flex items-center gap-3 text-sm">
+                                        <Bell size={18} className={cn(isPersistentSound && "animate-ring")} />
+                                        <span>تنبيه مستمر حتى القبول</span>
+                                    </div>
+                                    <div className={cn(
+                                        "w-10 h-5 rounded-full relative transition-colors",
+                                        isPersistentSound ? "bg-amber-500" : "bg-zinc-600"
+                                    )}>
+                                        <div className={cn(
+                                            "absolute top-1 w-3 h-3 bg-white rounded-full transition-all",
+                                            isPersistentSound ? "right-6" : "right-1"
+                                        )} />
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => {
+                                        if (notificationPermission !== 'granted') {
+                                            requestNotificationPermission();
+                                        } else {
+                                            const newVal = !useNotifications;
+                                            setUseNotifications(newVal);
+                                            localStorage.setItem('jamr_cashier_use_notifications', String(newVal));
+                                            toast.success(newVal ? 'تم تفعيل الإشعارات' : 'تم إيقاف الإشعارات');
+                                        }
+                                    }}
+                                    className={cn(
+                                        "w-full flex justify-between items-center p-4 rounded-2xl font-bold transition-all border",
+                                        (useNotifications && notificationPermission === 'granted')
+                                            ? "bg-blue-500/10 border-blue-500/30 text-blue-400"
+                                            : "bg-zinc-800 border-transparent text-gray-400 opacity-60"
+                                    )}
+                                >
+                                    <div className="flex items-center gap-3 text-sm">
+                                        <Bell size={18} />
+                                        <span>إشعارات النظام (على الشاشة)</span>
+                                    </div>
+                                    <div className={cn(
+                                        "w-10 h-5 rounded-full relative transition-colors",
+                                        (useNotifications && notificationPermission === 'granted') ? "bg-blue-500" : "bg-zinc-600"
+                                    )}>
+                                        <div className={cn(
+                                            "absolute top-1 w-3 h-3 bg-white rounded-full transition-all",
+                                            (useNotifications && notificationPermission === 'granted') ? "right-6" : "right-1"
+                                        )} />
+                                    </div>
+                                </button>
+                            </div>
+
+                            <p className="text-[10px] text-gray-500 mt-4 text-center leading-relaxed">
+                                سيتم تشغيل النغمة المختارة عند وصول طلب جديد. التنبيه المستمر يكرر الصوت كل 3 ثواني. إشعارات النظام تظهر حتى لو كان المتصفح مصغراً.
                             </p>
                         </motion.div>
                     </div>
