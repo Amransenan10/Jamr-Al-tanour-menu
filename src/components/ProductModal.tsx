@@ -223,7 +223,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                     <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-1">{product.name_ar}</h2>
                     <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">{product.description_ar}</p>
                   </div>
-                  <div className="text-primary font-black text-2xl">{product.price} ر.س</div>
+                  <div className="text-primary font-black text-2xl">{calculateTotal()} ر.س</div>
                 </div>
 
                 {loading ? (
@@ -312,11 +312,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
 
                     {/* Item Notes */}
                     <div className="space-y-4">
-                      <h3 className="font-bold text-gray-900 dark:text-white">ملاحظات إضافية على هذا الصنف</h3>
+                      <h3 className="font-bold text-gray-900 dark:text-white">هل لديك أي ملاحظات؟</h3>
                       <textarea
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        placeholder="أتي ملاحظات خاصة بهذا الصنف (مثال: بدون ملح، تقطيع، إلخ)"
+                        placeholder="هل لديك أي ملاحظات؟ (مثال: بدون ملح، تقطيع البيتزا، إلخ)"
                         className="w-full p-4 bg-gray-50 dark:bg-white/5 border-none focus:ring-2 focus:ring-primary/50 text-sm outline-none rounded-2xl resize-none h-24 text-gray-900 dark:text-white"
                       />
                     </div>
