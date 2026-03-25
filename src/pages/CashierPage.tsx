@@ -224,11 +224,24 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
 
 // ─── Audio Notification ──────────────────────────────────────────────────────
 export type SoundType = 'standard' | 'bell' | 'digital' | 'police' | 'melodic' | 'urgent' | 'soft';
+
+let globalAudioCtx: any = null;
+const getAudioContext = () => {
+    if (!globalAudioCtx) {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) globalAudioCtx = new AudioCtx();
+    }
+    return globalAudioCtx;
+};
+
 export const playNotificationSound = (type: SoundType = 'standard') => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        
+        if (ctx.state === 'suspended') {
+            ctx.resume();
+        }
 
         const playTone = (freq: number, oscType: OscillatorType, duration: number, startTime = ctx.currentTime) => {
             const osc = ctx.createOscillator();
@@ -369,6 +382,18 @@ export const CashierPage: React.FC = () => {
         if ('Notification' in window) {
             setNotificationPermission(Notification.permission);
         }
+
+        // Unlock audio on any interaction
+        const unlockAudio = () => {
+            const ctx = getAudioContext();
+            if (ctx && ctx.state === 'suspended') ctx.resume();
+        };
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('touchstart', unlockAudio);
+        return () => {
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+        };
     }, []);
 
     const requestNotificationPermission = async () => {
@@ -440,7 +465,6 @@ export const CashierPage: React.FC = () => {
                     if (payload.eventType === 'INSERT') {
                         setOrders(prev => [payload.new, ...prev]);
                         setNewOrderAlert(true);
-                        playNotificationSound(soundPrefRef.current);
                         
                         // System Notification
                         if (Notification.permission === 'granted' && localStorage.getItem('jamr_cashier_use_notifications') === 'true') {
@@ -478,16 +502,24 @@ export const CashierPage: React.FC = () => {
         filter === 'active' ? ACTIVE_STATUSES.includes(o.status) : o.status === filter
     );
 
+    const counts = {
+        active: orders.filter(o => ACTIVE_STATUSES.includes(o.status)).length,
+        new: orders.filter(o => o.status === 'new').length,
+    };
+
     // ── Looping Alert Sound ──────────────────────────────────────────────────
     useEffect(() => {
         let interval: any;
-        if (newOrderAlert && isPersistentSound) {
+        if (counts.new > 0) {
+            // Play immediately if wasn't already looping
+            playNotificationSound(soundPrefRef.current);
+            // Repeat every 4 seconds until the cashier accepts all new orders
             interval = setInterval(() => {
                 playNotificationSound(soundPrefRef.current);
-            }, 3000); // Repeat every 3 seconds
+            }, 4000);
         }
         return () => clearInterval(interval);
-    }, [newOrderAlert, isPersistentSound]);
+    }, [counts.new]);
 
     // ── Branch login screen ───────────────────────────────────────────────────
     if (!isAuthenticated) {
@@ -571,11 +603,6 @@ export const CashierPage: React.FC = () => {
     }
 
     // ── Main cashier view ─────────────────────────────────────────────────────
-    const counts = {
-        active: orders.filter(o => ACTIVE_STATUSES.includes(o.status)).length,
-        new: orders.filter(o => o.status === 'new').length,
-    };
-
     return (
         <div className="min-h-screen bg-charcoal text-white">
             {/* New order alert banner */}
