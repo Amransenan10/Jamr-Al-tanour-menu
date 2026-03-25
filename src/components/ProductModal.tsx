@@ -133,7 +133,19 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
       basePrice = overrides.reduce((sum, o) => sum + o.price, 0);
     }
 
-    additivesTotal = additives.reduce((sum, o) => sum + o.price, 0);
+    additivesTotal = additives.reduce((sum, o) => {
+      let currentPrice = o.price;
+      const originalItem = items.find(i => i.id === o.itemId);
+      if (originalItem && originalItem.price_rules) {
+        for (const otherOpt of selectedOptions) {
+          if (originalItem.price_rules[otherOpt.itemName] !== undefined) {
+            currentPrice = originalItem.price_rules[otherOpt.itemName];
+            break;
+          }
+        }
+      }
+      return sum + currentPrice;
+    }, 0);
 
     return (basePrice + additivesTotal) * quantity;
   };
@@ -159,13 +171,27 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
       return;
     }
 
+    const finalOptions = selectedOptions.map(opt => {
+      const originalItem = items.find(i => i.id === opt.itemId);
+      let finalPrice = opt.price;
+      if (originalItem && originalItem.price_rules) {
+        for (const otherOpt of selectedOptions) {
+          if (originalItem.price_rules[otherOpt.itemName] !== undefined) {
+            finalPrice = originalItem.price_rules[otherOpt.itemName];
+            break;
+          }
+        }
+      }
+      return { ...opt, price: finalPrice };
+    });
+
     const cartItem: CartItem = {
       id: Math.random().toString(36).substr(2, 9),
       productId: product.id,
       name: product.name_ar,
       price: product.price,
       quantity,
-      options: selectedOptions,
+      options: finalOptions,
       removedIngredients,
       totalPrice: calculateTotal(),
       notes: notes.trim() ? notes.trim() : undefined
@@ -258,11 +284,20 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                             const isSelected = selectedOptions.some(o => o.itemId === item.id);
                             const isOverrideGroup = group.max_selection === 1 && group.min_selection > 0;
 
-                            // If it's an override group (like Size), show the absolute price if it's not 0.
-                            // Otherwise, show as an additive (+X).
+                            // Calculate dynamic UI price based on currently selected options
+                            let displayItemPrice = item.price;
+                            if (item.price_rules) {
+                              for (const opt of selectedOptions) {
+                                if (item.price_rules[opt.itemName] !== undefined) {
+                                  displayItemPrice = item.price_rules[opt.itemName];
+                                  break;
+                                }
+                              }
+                            }
+
                             const displayPrice = isOverrideGroup
-                              ? `${item.price} ر.س`
-                              : item.price > 0 ? `+${item.price} ر.س` : 'مجاناً';
+                              ? `${displayItemPrice} ر.س`
+                              : displayItemPrice > 0 ? `+${displayItemPrice} ر.س` : 'مجاناً';
 
                             return (
                               <button
