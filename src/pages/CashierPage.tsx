@@ -314,6 +314,7 @@ export const CashierPage: React.FC = () => {
     const [useNotifications, setUseNotifications] = useState(false);
     const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
     const [showSettings, setShowSettings] = useState(false);
+    const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
     
     const [storeStatus, setStoreStatus] = useState<'open' | 'busy' | 'closed'>('open');
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -372,6 +373,8 @@ export const CashierPage: React.FC = () => {
         if (savedBranch && savedAuth === 'true') {
             setBranch(savedBranch);
             setIsAuthenticated(true);
+            // We intentionally leave isAudioUnlocked as false here so the overlay shows up 
+            // and forces the user to click at least once when reloading the page.
         }
         const savedSound = localStorage.getItem('jamr_cashier_sound') as SoundType;
         if (savedSound) setSoundPref(savedSound);
@@ -426,6 +429,7 @@ export const CashierPage: React.FC = () => {
             } else {
                 setBranch(loginBranch);
                 setIsAuthenticated(true);
+                setIsAudioUnlocked(true); // User just clicked login, interact implicitly
                 localStorage.setItem('jamr_cashier_branch', loginBranch);
                 localStorage.setItem('jamr_cashier_auth', 'true');
             }
@@ -597,6 +601,33 @@ export const CashierPage: React.FC = () => {
                             </form>
                         )}
                     </div>
+                </motion.div>
+            </div>
+        );
+    }
+
+    // ── Cashier Audio Unlock Overlay ──────────────────────────────────────────
+    if (isAuthenticated && !isAudioUnlocked) {
+        return (
+            <div className="min-h-screen bg-charcoal flex items-center justify-center p-6 cursor-pointer" onClick={() => {
+                const ctx = getAudioContext();
+                if (ctx && ctx.state === 'suspended') ctx.resume();
+                playNotificationSound('soft');
+                setIsAudioUnlocked(true);
+            }}>
+                <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="flex flex-col items-center text-center space-y-6 max-w-sm"
+                >
+                    <div className="w-24 h-24 bg-primary rounded-full flex items-center justify-center animate-pulse shadow-2xl shadow-primary/50">
+                        <Volume2 size={40} className="text-white" />
+                    </div>
+                    <h2 className="text-3xl font-black text-white leading-tight">جاهز لاستقبال الطلبات؟</h2>
+                    <p className="text-gray-400">إضغط في أي مكان على الشاشة لتفعيل الرنين الصوتي للطلبات الجديدة</p>
+                    <button className="px-8 py-4 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/30 mt-4 pointer-events-none">
+                        بدء العمل وتفعيل الصوت
+                    </button>
                 </motion.div>
             </div>
         );
