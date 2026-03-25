@@ -44,6 +44,10 @@ export default function App() {
   useEffect(() => {
     const savedBranch = localStorage.getItem('jamr_al_tannour_branch') as Branch;
     if (savedBranch) setSelectedBranch(savedBranch);
+    
+    const savedOrderId = localStorage.getItem('jamr_active_order');
+    if (savedOrderId) setActiveOrderId(savedOrderId);
+
     fetchData();
   }, []);
 

@@ -6,6 +6,7 @@ import { Branch, OrderType, Order } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { saveOrderLocally } from '../utils/orderStorage';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -135,7 +136,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         } as any)
       };
 
-      const { data, error } = await supabase.from('orders').insert([order]).select('id').single();
+      const { data, error } = await supabase.from('orders').insert([order]).select('id, created_at, status').single();
       if (error) throw error;
 
       localStorage.setItem('jamr_customer_name', formData.name);
@@ -145,6 +146,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
       }
 
       localStorage.setItem('jamr_active_order', data.id);
+
+      saveOrderLocally({
+        id: data.id,
+        created_at: data.created_at || new Date().toISOString(),
+        total: finalPrice,
+        status: data.status || 'new',
+        items_count: cart.reduce((acc, item) => acc + item.quantity, 0)
+      });
+
       clearCart();
       onClose();
       navigate(`/track/${data.id}`);

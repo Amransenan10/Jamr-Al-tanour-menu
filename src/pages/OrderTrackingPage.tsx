@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Order } from '../types';
+import toast from 'react-hot-toast';
+import { updateStoredOrderStatus } from '../utils/orderStorage';
 
 type OrderStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 
@@ -26,6 +28,10 @@ export const OrderTrackingPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
         if (!id) {
             setError('رقم الطلب غير متاح');
             setLoading(false);
@@ -68,6 +74,21 @@ export const OrderTrackingPage: React.FC = () => {
 
                     if (['completed', 'cancelled'].includes(updatedOrder.status)) {
                         localStorage.removeItem('jamr_active_order');
+                    }
+                    
+                    updateStoredOrderStatus(updatedOrder.id, updatedOrder.status);
+
+                    const stepMsg = STATUS_STEPS.find(s => s.id === updatedOrder.status)?.label || 'تحديث جديد';
+                    toast.success(`تحديث في الطلب: ${stepMsg}`, {
+                       duration: 5000,
+                       icon: '🔔',
+                    });
+
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                       new Notification('تحديث في طلب الجمر التنور', {
+                           body: `حالة طلبك الآن: ${stepMsg}`,
+                           icon: '/vite.svg'
+                       });
                     }
                 }
             )

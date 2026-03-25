@@ -1,5 +1,6 @@
 import React from 'react';
-import { Search, Moon, Sun, MapPin, ShoppingCart, ChevronDown } from 'lucide-react';
+import { Search, Moon, Sun, MapPin, ShoppingCart, ChevronDown, User, FileText } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
 import { Branch } from '../types';
@@ -42,6 +43,13 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Actions */}
           <div className="flex items-center gap-2">
+            <Link
+              to="/my-orders"
+              title="طلباتي السابقة"
+              className="p-2.5 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
+            >
+              <FileText size={20} />
+            </Link>
             <button
               onClick={toggleTheme}
               className="p-2.5 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
