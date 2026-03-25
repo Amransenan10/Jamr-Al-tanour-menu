@@ -33,7 +33,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) =
 
         {/* Price Tag in corner */}
         <div className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-primary text-white backdrop-blur-md px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-sm shadow-lg shadow-primary/20">
-          {product.price} ر.س
+          {product.price > 0 ? product.price : (product.starting_price || 0)} ر.س
         </div>
 
         {!product.is_available && (

@@ -43,6 +43,25 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
       if (groupsRes.data) setGroups(groupsRes.data);
       if (itemsRes.data) setItems(itemsRes.data);
       if (ingredientsRes.data) setIngredients(ingredientsRes.data);
+
+      if (groupsRes.data && itemsRes.data) {
+        const initialSelections: CartItem['options'] = [];
+        groupsRes.data.forEach((group: OptionGroup) => {
+          if (group.min_selection > 0 && group.max_selection === 1) {
+            const firstItem = itemsRes.data.find((item: OptionItem) => item.group_id === group.id);
+            if (firstItem) {
+              initialSelections.push({
+                groupId: group.id,
+                groupName: group.name_ar,
+                itemId: firstItem.id,
+                itemName: firstItem.name_ar,
+                price: firstItem.price
+              });
+            }
+          }
+        });
+        setSelectedOptions(initialSelections);
+      }
     } catch (e) {
       console.error(e);
     } finally {

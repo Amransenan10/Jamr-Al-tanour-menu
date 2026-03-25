@@ -67,7 +67,7 @@ export default function App() {
           .order('display_order', { ascending: true }),
         supabase
           .from('products')
-          .select('*')
+          .select('*, option_groups(id, min_selection, max_selection, option_items(price))')
           .eq('is_available', true),
         supabase.from('store_settings')
           .select('status')
@@ -76,7 +76,22 @@ export default function App() {
       ]);
 
       if (catsRes.data) setCategories(catsRes.data);
-      if (prodsRes.data) setProducts(prodsRes.data);
+      if (prodsRes.data) {
+        const processedProducts = prodsRes.data.map((p: any) => {
+          if (p.price === 0 && p.option_groups && p.option_groups.length > 0) {
+            const requiredGroups = p.option_groups.filter((g: any) => g.min_selection > 0);
+            if (requiredGroups.length > 0) {
+              const firstGroup = requiredGroups[0];
+              if (firstGroup.option_items && firstGroup.option_items.length > 0) {
+                const minPrice = Math.min(...firstGroup.option_items.map((i: any) => i.price));
+                return { ...p, starting_price: minPrice };
+              }
+            }
+          }
+          return p;
+        });
+        setProducts(processedProducts);
+      }
       if (statusRes.data) setStoreStatus(statusRes.data.status);
     } catch (e) {
       console.error('Error fetching data:', e);

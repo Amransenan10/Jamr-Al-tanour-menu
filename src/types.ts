@@ -17,6 +17,7 @@ export interface Product {
   image_url: string;
   is_available: boolean;
   calories?: number;
+  starting_price?: number;
 }
 
 export interface OptionGroup {

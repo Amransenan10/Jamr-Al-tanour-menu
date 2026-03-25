@@ -412,6 +412,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                   </div>
                 )}
 
+                {step === 'checkout' && orderType === 'delivery' && totalPrice < 20 && (
+                  <div className="text-red-500 bg-red-500/10 p-2.5 rounded-xl text-xs font-bold text-center border border-red-500/20">
+                    عذراً، الحد الأدنى لطلب التوصيل هو 20 ر.س (25 ر.س شامل التوصيل)
+                  </div>
+                )}
+
                 {step === 'cart' ? (
                   <button
                     disabled={storeStatus === 'closed'}
@@ -432,11 +438,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                       رجوع
                     </button>
                     <button
-                      disabled={loading || storeStatus === 'closed'}
+                      disabled={loading || storeStatus === 'closed' || (orderType === 'delivery' && totalPrice < 20)}
                       onClick={handleSubmitOrder}
                       className={cn(
                         "flex-[2] py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all disabled:opacity-50",
-                        storeStatus === 'closed' ? "bg-red-500/50 text-white cursor-not-allowed" : "bg-primary text-white shadow-xl shadow-primary/30 hover:scale-[1.02] active:scale-95"
+                        storeStatus === 'closed' ? "bg-red-500/50 text-white cursor-not-allowed" : 
+                        (orderType === 'delivery' && totalPrice < 20) ? "bg-zinc-800 text-gray-500 cursor-not-allowed" :
+                        "bg-primary text-white shadow-xl shadow-primary/30 hover:scale-[1.02] active:scale-95"
                       )}
                     >
                       {loading ? <Loader2 className="animate-spin" /> : storeStatus === 'closed' ? 'المطعم مغلق' : 'تأكيد الطلب'}
