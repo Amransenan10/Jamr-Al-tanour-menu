@@ -115,11 +115,29 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                 {/* Items */}
                 <div className="space-y-1.5">
                     {Array.isArray((order as any).items) && (order as any).items.map((item: any, i: number) => (
-                        <div key={i} className="flex justify-between items-start text-sm">
-                            <span className="text-white font-bold">
-                                <span className="text-primary ml-1">×{item.quantity}</span> {item.name}
-                            </span>
-                            <span className="text-gray-500 text-xs">{item.totalPrice} ر.س</span>
+                        <div key={i} className="flex flex-col text-sm border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                            <div className="flex justify-between items-start">
+                                <span className="text-white font-bold">
+                                    <span className="text-primary ml-1">×{item.quantity}</span> {item.name}
+                                </span>
+                                <span className="text-gray-500 text-xs">{item.totalPrice} ر.س</span>
+                            </div>
+                            
+                            {/* Options and Additives */}
+                            {(item.options?.length > 0 || item.removedIngredients?.length > 0) && (
+                                <div className="mt-1 flex flex-wrap gap-1 pr-6">
+                                    {item.options?.map((o: any) => (
+                                        <span key={`${o.groupId}-${o.itemId}`} className="text-[10px] bg-zinc-800 text-gray-300 px-2 py-0.5 rounded-full font-bold border border-white/5">
+                                            {o.itemName}
+                                        </span>
+                                    ))}
+                                    {item.removedIngredients?.map((ing: string) => (
+                                        <span key={ing} className="text-[10px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full border border-red-500/20 font-bold">
+                                            بدون {ing}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
