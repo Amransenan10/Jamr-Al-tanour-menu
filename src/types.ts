@@ -60,8 +60,8 @@ export interface CartItem {
     price: number;
   }[];
   removedIngredients: string[];
-  notes?: string;
   totalPrice: number;
+  notes?: string;
 }
 
 export type OrderType = 'pickup' | 'delivery';

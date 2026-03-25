@@ -124,18 +124,27 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                             </div>
                             
                             {/* Options and Additives */}
-                            {(item.options?.length > 0 || item.removedIngredients?.length > 0) && (
-                                <div className="mt-1 flex flex-wrap gap-1 pr-6">
-                                    {item.options?.map((o: any) => (
-                                        <span key={`${o.groupId}-${o.itemId}`} className="text-[10px] bg-zinc-800 text-gray-300 px-2 py-0.5 rounded-full font-bold border border-white/5">
-                                            {o.itemName}
+                            {(item.options?.length > 0 || item.removedIngredients?.length > 0 || item.notes) && (
+                                <div className="mt-1 flex flex-col gap-1.5 pr-6 items-start">
+                                    {(item.options?.length > 0 || item.removedIngredients?.length > 0) && (
+                                        <div className="flex flex-wrap gap-1">
+                                            {item.options?.map((o: any) => (
+                                                <span key={`${o.groupId}-${o.itemId}`} className="text-[10px] bg-zinc-800 text-gray-300 px-2 py-0.5 rounded-full font-bold border border-white/5">
+                                                    {o.itemName}
+                                                </span>
+                                            ))}
+                                            {item.removedIngredients?.map((ing: string) => (
+                                                <span key={ing} className="text-[10px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full border border-red-500/20 font-bold">
+                                                    بدون {ing}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {item.notes && (
+                                        <span className="text-[11px] bg-yellow-500/20 text-yellow-400 px-2.5 py-1 rounded-xl border border-yellow-500/30 font-bold whitespace-pre-wrap break-words max-w-full">
+                                            📝 {item.notes}
                                         </span>
-                                    ))}
-                                    {item.removedIngredients?.map((ing: string) => (
-                                        <span key={ing} className="text-[10px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full border border-red-500/20 font-bold">
-                                            بدون {ing}
-                                        </span>
-                                    ))}
+                                    )}
                                 </div>
                             )}
                         </div>

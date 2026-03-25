@@ -19,6 +19,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
   const [selectedOptions, setSelectedOptions] = useState<CartItem['options']>([]);
   const [removedIngredients, setRemovedIngredients] = useState<string[]>([]);
   const [quantity, setQuantity] = useState(1);
+  const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
       setQuantity(1);
       setSelectedOptions([]);
       setRemovedIngredients([]);
+      setNotes('');
     }
   }, [product]);
 
@@ -165,7 +167,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
       quantity,
       options: selectedOptions,
       removedIngredients,
-      totalPrice: calculateTotal()
+      totalPrice: calculateTotal(),
+      notes: notes.trim() ? notes.trim() : undefined
     };
 
     addToCart(cartItem);
@@ -306,6 +309,17 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                         </div>
                       </div>
                     )}
+
+                    {/* Item Notes */}
+                    <div className="space-y-4">
+                      <h3 className="font-bold text-gray-900 dark:text-white">ملاحظات إضافية على هذا الصنف</h3>
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="أتي ملاحظات خاصة بهذا الصنف (مثال: بدون ملح، تقطيع، إلخ)"
+                        className="w-full p-4 bg-gray-50 dark:bg-white/5 border-none focus:ring-2 focus:ring-primary/50 text-sm outline-none rounded-2xl resize-none h-24 text-gray-900 dark:text-white"
+                      />
+                    </div>
                   </div>
                 )}
               </div>

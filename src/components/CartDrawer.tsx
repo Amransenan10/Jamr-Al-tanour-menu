@@ -214,6 +214,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                             {item.removedIngredients.map(i => (
                               <div key={i} className="text-red-400">× بدون {i}</div>
                             ))}
+                            {item.notes && (
+                              <div className="text-amber-600 dark:text-amber-400 mt-1 font-bold border-r-[3px] border-amber-500 pr-2 pt-0.5 whitespace-pre-wrap">📝 {item.notes}</div>
+                            )}
                           </div>
                           <div className="mt-3 flex items-center justify-between">
                             <div className="flex items-center bg-white dark:bg-zinc-800 rounded-xl p-0.5 border border-gray-100 dark:border-white/10">
