@@ -26,15 +26,16 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
-  const [storeStatus, setStoreStatus] = useState<'open' | 'busy' | 'closed'>('open');
+  const [storeSettings, setStoreSettings] = useState<any>(null);
+  const storeStatus = storeSettings?.status || 'open';
 
   useEffect(() => {
     const statusChannel = supabase.channel('store-status-app')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'store_settings' }, 
         (payload) => {
           const newRow = payload.new as any;
-          if (newRow && newRow.branch_name === selectedBranch && newRow.status) {
-            setStoreStatus(newRow.status);
+          if (newRow && newRow.branch_name === selectedBranch) {
+            setStoreSettings(newRow);
           }
         }
       ).subscribe();
@@ -70,7 +71,7 @@ export default function App() {
           .select('*, option_groups(id, min_selection, max_selection, option_items(price))')
           .eq('is_available', true),
         supabase.from('store_settings')
-          .select('status')
+          .select('*')
           .eq('branch_name', selectedBranch || 'السويدي الغربي')
           .single()
       ]);
@@ -92,7 +93,7 @@ export default function App() {
         });
         setProducts(processedProducts);
       }
-      if (statusRes.data) setStoreStatus(statusRes.data.status);
+      if (statusRes.data) setStoreSettings(statusRes.data);
     } catch (e) {
       console.error('Error fetching data:', e);
     } finally {
@@ -179,7 +180,7 @@ export default function App() {
             isOpen={isCartOpen}
             onClose={() => setIsCartOpen(false)}
             branch={selectedBranch || 'السويدي الغربي'}
-            storeStatus={storeStatus}
+            storeSettings={storeSettings}
           />
 
           {/* Active Order Banner */}

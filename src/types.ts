@@ -80,3 +80,10 @@ export interface Order {
   status: 'new' | 'accepted' | 'preparing' | 'ready' | 'completed' | 'cancelled';
   created_at?: string;
 }
+
+export interface StoreSettings {
+  branch_name: string;
+  status: 'open' | 'busy' | 'closed';
+  is_delivery_active: boolean;
+  is_pickup_active: boolean;
+}

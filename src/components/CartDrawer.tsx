@@ -12,10 +12,11 @@ interface CartDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   branch: Branch;
-  storeStatus?: 'open' | 'busy' | 'closed';
+  storeSettings?: any;
 }
 
-export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch, storeStatus = 'open' }) => {
+export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch, storeSettings }) => {
+  const storeStatus = storeSettings?.status || 'open';
   const { cart, removeFromCart, updateQuantity, totalPrice, clearCart } = useCart();
   const [step, setStep] = useState<'cart' | 'checkout'>('cart');
   const [orderType, setOrderType] = useState<OrderType>('pickup');
@@ -240,24 +241,30 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                 <div className="space-y-8">
                   <div className="flex p-1 bg-gray-100 dark:bg-white/5 rounded-2xl">
                     <button
+                      disabled={storeSettings?.is_pickup_active === false}
                       onClick={() => setOrderType('pickup')}
                       className={cn(
                         "flex-1 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2",
-                        orderType === 'pickup' ? "bg-white dark:bg-zinc-800 text-primary shadow-sm" : "text-gray-500"
+                        orderType === 'pickup' ? "bg-white dark:bg-zinc-800 text-primary shadow-sm" : "text-gray-500",
+                        storeSettings?.is_pickup_active === false && "opacity-50 cursor-not-allowed"
                       )}
                     >
                       <Clock size={16} />
                       استلام
+                      {storeSettings?.is_pickup_active === false && <span className="text-[10px] text-red-500 bg-red-500/10 px-1.5 rounded-full ml-1">مغلق</span>}
                     </button>
                     <button
+                      disabled={storeSettings?.is_delivery_active === false}
                       onClick={() => setOrderType('delivery')}
                       className={cn(
                         "flex-1 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2",
-                        orderType === 'delivery' ? "bg-white dark:bg-zinc-800 text-primary shadow-sm" : "text-gray-500"
+                        orderType === 'delivery' ? "bg-white dark:bg-zinc-800 text-primary shadow-sm" : "text-gray-500",
+                        storeSettings?.is_delivery_active === false && "opacity-50 cursor-not-allowed"
                       )}
                     >
                       <MapPin size={16} />
                       توصيل
+                      {storeSettings?.is_delivery_active === false && <span className="text-[10px] text-red-500 bg-red-500/10 px-1.5 rounded-full ml-1">مغلق</span>}
                     </button>
                   </div>
 

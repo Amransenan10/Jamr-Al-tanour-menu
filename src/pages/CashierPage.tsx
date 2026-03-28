@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
     Clock, CheckCircle2, Package, Loader2, Bell, RefreshCw,
     MapPin, ShoppingBag, Phone, User, Bike, Coffee, ChevronDown, LogOut, Copy, ExternalLink,
-    Settings, Volume2, X
+    Settings, Volume2, X, LayoutList
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -343,8 +343,35 @@ export const CashierPage: React.FC = () => {
     const [showSettings, setShowSettings] = useState(false);
     const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
     
-    const [storeStatus, setStoreStatus] = useState<'open' | 'busy' | 'closed'>('open');
+    const [storeSettings, setStoreSettings] = useState<any>({ status: 'open', is_delivery_active: true, is_pickup_active: true });
+    const storeStatus = storeSettings.status;
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+    const [showMenuManagement, setShowMenuManagement] = useState(false);
+    const [menuProducts, setMenuProducts] = useState<any[]>([]);
+    const [loadingMenu, setLoadingMenu] = useState(false);
+
+    // Fetch products when opening menu management
+    useEffect(() => {
+        if (showMenuManagement && menuProducts.length === 0) {
+            setLoadingMenu(true);
+            supabase.from('products').select('*').order('category_id').order('name_ar').then(({ data }) => {
+                if (data) setMenuProducts(data);
+                setLoadingMenu(false);
+            });
+        }
+    }, [showMenuManagement]);
+
+    const toggleProductAvailability = async (productId: string, currentStatus: boolean) => {
+        const nextStatus = !currentStatus;
+        // Optimistic update
+        setMenuProducts(prev => prev.map(p => p.id === productId ? { ...p, is_available: nextStatus } : p));
+        const { error } = await supabase.from('products').update({ is_available: nextStatus }).eq('id', productId);
+        if (error) {
+            toast.error('تعذر تحديث الصنف');
+            setMenuProducts(prev => prev.map(p => p.id === productId ? { ...p, is_available: currentStatus } : p));
+        }
+    };
 
     const soundPrefRef = React.useRef<SoundType>(soundPref);
     useEffect(() => {
@@ -355,8 +382,8 @@ export const CashierPage: React.FC = () => {
     useEffect(() => {
         const fetchStatus = async () => {
             if (!branch) return;
-            const { data } = await supabase.from('store_settings').select('status').eq('branch_name', branch).single();
-            if (data) setStoreStatus(data.status);
+            const { data } = await supabase.from('store_settings').select('*').eq('branch_name', branch).single();
+            if (data) setStoreSettings(data);
         };
         fetchStatus();
 
@@ -365,32 +392,34 @@ export const CashierPage: React.FC = () => {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'store_settings' }, 
                 (payload) => {
                     const newRow = payload.new as any;
-                    if (newRow && newRow.status) {
-                        setStoreStatus(newRow.status);
+                    if (newRow && newRow.branch_name === branch) {
+                        setStoreSettings(newRow);
                     }
                 }
             )
             .subscribe();
 
         return () => { supabase.removeChannel(statusChannel); };
-    }, []);
+    }, [branch]);
 
-    const toggleStoreStatus = async () => {
+    const updateStoreSetting = async (field: string, value: any, successMsg: string) => {
         if (isUpdatingStatus || !branch) return;
         setIsUpdatingStatus(true);
-        const nextStatus = storeStatus === 'open' ? 'busy' : storeStatus === 'busy' ? 'closed' : 'open';
+        // Optimistic update
+        setStoreSettings((prev: any) => ({ ...prev, [field]: value }));
         
-        const prevStatus = storeStatus;
-        setStoreStatus(nextStatus);
-        
-        const { error } = await supabase.from('store_settings').update({ status: nextStatus }).eq('branch_name', branch);
+        const { error } = await supabase.from('store_settings').update({ [field]: value }).eq('branch_name', branch);
         if (error) {
-            setStoreStatus(prevStatus);
-            toast.error('تعذر تحديث حالة المطعم');
+            toast.error('تعذر التحديث');
         } else {
-            toast.success(`حالة المطعم: ${nextStatus === 'open' ? 'مفتوح' : nextStatus === 'busy' ? 'مزدحم' : 'مغلق'}`);
+            toast.success(successMsg);
         }
         setIsUpdatingStatus(false);
+    };
+
+    const toggleStoreStatus = () => {
+        const nextStatus = storeStatus === 'open' ? 'busy' : storeStatus === 'busy' ? 'closed' : 'open';
+        updateStoreSetting('status', nextStatus, `حالة المطعم: ${nextStatus === 'open' ? 'مفتوح' : nextStatus === 'busy' ? 'مزدحم' : 'مغلق'}`);
     };
 
     // ── Load saved branch and settings ─────────────────────────────────────────
@@ -719,6 +748,29 @@ export const CashierPage: React.FC = () => {
                              storeStatus === 'busy' ? '🟠 مزدحم' : '🔴 مغلق'}
                         </button>
                         <div className="w-px h-6 bg-white/10 mx-1"></div>
+                        <button
+                            onClick={() => updateStoreSetting('is_delivery_active', !storeSettings.is_delivery_active, storeSettings.is_delivery_active ? 'تم إيقاف التوصيل' : 'تم تفعيل التوصيل')}
+                            disabled={isUpdatingStatus}
+                            className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-colors border shadow-sm",
+                                storeSettings.is_delivery_active ? "bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20" : "bg-zinc-800 text-gray-500 border-white/5 opacity-70"
+                            )}
+                            title="التوصيل"
+                        >
+                            <Bike size={12} /> {storeSettings.is_delivery_active ? 'توصيل متاح' : 'توصيل مغلق'}
+                        </button>
+                        <button
+                            onClick={() => updateStoreSetting('is_pickup_active', !storeSettings.is_pickup_active, storeSettings.is_pickup_active ? 'تم إيقاف الاستلام' : 'تم تفعيل الاستلام')}
+                            disabled={isUpdatingStatus}
+                            className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-colors border shadow-sm",
+                                storeSettings.is_pickup_active ? "bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20" : "bg-zinc-800 text-gray-500 border-white/5 opacity-70"
+                            )}
+                            title="الاستلام من الفرع"
+                        >
+                            <Coffee size={12} /> {storeSettings.is_pickup_active ? 'استلام متاح' : 'استلام مغلق'}
+                        </button>
+                        <div className="w-px h-6 bg-white/10 mx-1"></div>
                         {counts.new > 0 && (
                             <span className="flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-black px-3 py-1.5 rounded-full animate-pulse">
                                 <Bell size={12} /> {counts.new} جديد
@@ -730,6 +782,13 @@ export const CashierPage: React.FC = () => {
                             title="تحديث"
                         >
                             <RefreshCw size={16} className="text-gray-400" />
+                        </button>
+                        <button
+                            onClick={() => setShowMenuManagement(true)}
+                            className="p-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors"
+                            title="إدارة الأصناف"
+                        >
+                            <LayoutList size={16} className="text-gray-400" />
                         </button>
                         <button
                             onClick={() => setShowSettings(true)}
@@ -891,18 +950,7 @@ export const CashierPage: React.FC = () => {
                                         <button
                                             key={status.id}
                                             disabled={isUpdatingStatus}
-                                            onClick={async () => {
-                                                if (isUpdatingStatus || !branch) return;
-                                                setIsUpdatingStatus(true);
-                                                setStoreStatus(status.id as any);
-                                                const { error } = await supabase.from('store_settings').update({ status: status.id }).eq('branch_name', branch);
-                                                if (error) {
-                                                    toast.error('تعذر تحديث الحالة');
-                                                } else {
-                                                    toast.success(`تم التغيير إلى ${status.label}`);
-                                                }
-                                                setIsUpdatingStatus(false);
-                                            }}
+                                            onClick={() => updateStoreSetting('status', status.id, `تم التغيير إلى ${status.label}`)}
                                             className={cn(
                                                 "w-full flex justify-between items-center p-3.5 rounded-2xl font-bold transition-all border",
                                                 storeStatus === status.id ? status.color : "bg-zinc-800 border-transparent text-gray-400"
@@ -982,6 +1030,65 @@ export const CashierPage: React.FC = () => {
                                 <p className="text-[10px] text-gray-500 mt-4 text-center leading-relaxed">
                                     سيتم تشغيل النغمة المختارة عند وصول طلب جديد. التنبيه المستمر يكرر الصوت كل 3 ثواني. إشعارات النظام تظهر حتى لو كان المتصفح مصغراً.
                                 </p>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+            {/* Menu Management Modal */}
+            <AnimatePresence>
+                {showMenuManagement && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowMenuManagement(false)}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-zinc-900 rounded-3xl p-6 w-full max-w-2xl relative z-10 border border-white/10 shadow-2xl max-h-[90vh] flex flex-col"
+                        >
+                            <div className="flex justify-between items-center mb-6 shrink-0">
+                                <h3 className="text-xl font-black flex items-center gap-2">
+                                    <LayoutList className="text-primary" />
+                                    إدارة الأصناف (توفير / نفاذ المكونات)
+                                </h3>
+                                <button onClick={() => setShowMenuManagement(false)} className="text-gray-500 hover:text-white transition-colors">
+                                    <X size={24} />
+                                </button>
+                            </div>
+                            
+                            <div className="overflow-y-auto pr-2 custom-scrollbar flex-1 space-y-4">
+                                {loadingMenu ? (
+                                    <div className="flex justify-center py-10"><Loader2 className="animate-spin text-primary" size={32} /></div>
+                                ) : (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {menuProducts.map(product => (
+                                            <div key={product.id} className="bg-zinc-800 p-3 rounded-2xl flex items-center justify-between border border-white/5">
+                                                <div className="flex items-center gap-3">
+                                                    {product.image_url && <img src={product.image_url} alt={product.name_ar} className="w-10 h-10 rounded-xl object-cover" />}
+                                                    <div>
+                                                        <p className="font-bold text-sm text-white">{product.name_ar}</p>
+                                                        <p className="text-xs text-primary">{product.price} ر.س</p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => toggleProductAvailability(product.id, product.is_available)}
+                                                    className={cn(
+                                                        "px-3 py-1.5 rounded-xl text-xs font-bold transition-colors border shadow-sm",
+                                                        product.is_available ? "bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20" : "bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20"
+                                                    )}
+                                                >
+                                                    {product.is_available ? 'متاح' : 'غير متاح'}
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </motion.div>
                     </div>
