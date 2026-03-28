@@ -68,14 +68,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
   // Ensure final price doesn't go below 0
   const finalPrice = Math.max(0, totalPrice + deliveryFee - discountAmount);
 
-  const handleApplyPromo = async () => {
+    const handleApplyPromo = async () => {
     if (!promoCodeInput.trim()) return;
     setPromoError('');
     setPromoSuccess('');
     
     try {
       const { data, error } = await supabase
-        .from('promo_codes')
+        .from('coupons')
         .select('*')
         .eq('code', promoCodeInput.trim().toUpperCase())
         .eq('is_active', true)
@@ -87,9 +87,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
       }
       
       // Check expiry
-      if (data.expiry_date && new Date(data.expiry_date) < new Date()) {
+      if (data.expires_at && new Date(data.expires_at) < new Date()) {
         setPromoError('تم انتهاء صلاحية كود الخصم');
         return;
+      }
+
+      // Check max uses
+      if (data.max_uses && data.current_uses >= data.max_uses) {
+          setPromoError('تم الوصول للحد الأقصى لاستخدام هذا الكود');
+          return;
       }
 
       setAppliedPromo({
@@ -139,6 +145,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
 
       const { data, error } = await supabase.from('orders').insert([order]).select('id, created_at, status').single();
       if (error) throw error;
+
+      // Update coupon usage if a valid promo was applied
+      if (appliedPromo) {
+        const { data: couponData } = await supabase.from('coupons').select('current_uses').eq('code', appliedPromo.code).single();
+        if (couponData) {
+            await supabase.from('coupons').update({ current_uses: (couponData.current_uses || 0) + 1 }).eq('code', appliedPromo.code);
+        }
+      }
 
       localStorage.setItem('jamr_customer_name', formData.name);
       localStorage.setItem('jamr_customer_phone', formData.phone);

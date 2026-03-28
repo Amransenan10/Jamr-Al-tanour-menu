@@ -46,6 +46,17 @@ export interface Ingredient {
   is_removable: boolean;
 }
 
+export interface Coupon {
+  id: string;
+  code: string;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  is_active: boolean;
+  max_uses?: number | null;
+  current_uses: number;
+  expires_at?: string | null;
+}
+
 export interface CartItem {
   id: string; // unique id for cart entry
   productId: string;
