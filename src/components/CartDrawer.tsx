@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Trash2, Minus, Plus, MapPin, Phone, User, Clock, CheckCircle2, Loader2 } from 'lucide-react';
+import { X, Trash2, Minus, Plus, MapPin, Phone, User, Clock, CheckCircle2, Loader2, ShoppingBag } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Branch, OrderType, Order } from '../types';
@@ -552,5 +552,3 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
     </AnimatePresence>
   );
 };
-
-import { ShoppingBag } from 'lucide-react';
