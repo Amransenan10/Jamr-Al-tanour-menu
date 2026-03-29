@@ -48,7 +48,12 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
     order, onStatusChange, updating
 }) => {
     const status = order.status as OrderStatus;
-    const cfg = STATUS_CONFIG[status];
+    const cfg = STATUS_CONFIG[status] || {
+        label: status || 'غير معروف',
+        color: 'text-gray-400',
+        bg: 'bg-gray-500/10 border-gray-500/30',
+        icon: <Package size={14} />
+    };
     const next = NEXT_STATUS[status];
     const nextLabel = NEXT_LABEL[status];
 
@@ -125,17 +130,17 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                         <div key={i} className="flex flex-col text-sm border-b border-white/5 pb-2 last:border-0 last:pb-0">
                             <div className="flex justify-between items-start">
                                 <span className="text-white font-bold">
-                                    <span className="text-primary ml-1">×{item.quantity}</span> {item.name}
+                                    <span className="text-primary ml-1">×{item?.quantity || 1}</span> {item?.name || 'صنف غير معروف'}
                                 </span>
-                                <span className="text-gray-500 text-xs">{item.totalPrice} ر.س</span>
+                                <span className="text-gray-500 text-xs">{item?.totalPrice || 0} ر.س</span>
                             </div>
                             
                             {/* Options and Additives */}
-                            {(item.options?.length > 0 || item.removedIngredients?.length > 0 || item.notes) && (
+                            {(item?.options?.length > 0 || item?.removedIngredients?.length > 0 || item?.notes) && (
                                 <div className="mt-1 flex flex-col gap-1.5 pr-6 items-start">
-                                    {(item.options?.length > 0 || item.removedIngredients?.length > 0) && (
+                                    {(item?.options?.length > 0 || item?.removedIngredients?.length > 0) && (
                                         <div className="flex flex-wrap gap-1">
-                                            {item.options?.map((o: any) => (
+                                            {item?.options?.map((o: any) => (
                                                 <span key={`${o.groupId}-${o.itemId}`} className="text-[10px] bg-zinc-800 text-gray-300 px-2 py-0.5 rounded-full font-bold border border-white/5">
                                                     {o.itemName}
                                                 </span>
