@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { supabaseAdmin } from '../lib/supabaseAdmin';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
     LayoutDashboard, KeyRound, ShoppingBag, Settings as SettingsIcon,
@@ -127,7 +126,7 @@ const AdminOrdersView = () => {
 
     const fetchOrders = async () => {
         setLoading(true);
-        const { data } = await supabaseAdmin.from('orders').select('*').order('created_at', { ascending: false }).limit(50);
+        const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(50);
         if (data) setOrders(data);
         setLoading(false);
     };
@@ -199,8 +198,8 @@ const AdminMenuView = () => {
     const fetchData = async () => {
         setLoading(true);
         const [prodRes, catRes] = await Promise.all([
-            supabaseAdmin.from('products').select('*').order('category_id').order('name_ar'),
-            supabaseAdmin.from('categories').select('*').order('sort_order')
+            supabase.from('products').select('*').order('category_id').order('name_ar'),
+            supabase.from('categories').select('*').order('sort_order')
         ]);
         if (prodRes.data) setProducts(prodRes.data);
         if (catRes.data) {
@@ -226,8 +225,8 @@ const AdminMenuView = () => {
                 is_available: product.is_available ?? true
             });
             // Fetch product options
-            const { data: groupsData } = await supabaseAdmin.from('option_groups').select('*').eq('product_id', product.id).order('name_ar');
-            const { data: itemsData } = await supabaseAdmin.from('option_items').select('*');
+            const { data: groupsData } = await supabase.from('option_groups').select('*').eq('product_id', product.id).order('name_ar');
+            const { data: itemsData } = await supabase.from('option_items').select('*');
             if (groupsData) setOptionGroups(groupsData);
             if (itemsData) setOptionItems(itemsData);
         } else {
@@ -249,7 +248,7 @@ const AdminMenuView = () => {
     // --- Option Groups Management ---
     const handleAddOptionGroup = async () => {
         const payload = { product_id: editingProduct.id, name_ar: 'مجموعة جديدة', name_en: 'New Group', min_selection: 0, max_selection: 1 };
-        const { data, error } = await supabaseAdmin.from('option_groups').insert([payload]).select().single();
+        const { data, error } = await supabase.from('option_groups').insert([payload]).select().single();
         if (data) setOptionGroups(prev => [...prev, data]);
         else if (error) toast.error('تعذر إضافة مجموعة جديدة');
     };
@@ -260,18 +259,18 @@ const AdminMenuView = () => {
 
     const saveGroup = async (id: string) => {
         const group = optionGroups.find(g => g.id === id);
-        if (group) await supabaseAdmin.from('option_groups').update({ name_ar: group.name_ar, max_selection: group.max_selection }).eq('id', id);
+        if (group) await supabase.from('option_groups').update({ name_ar: group.name_ar, max_selection: group.max_selection }).eq('id', id);
     };
 
     const deleteGroup = async (id: string) => {
         if (!window.confirm('موافق للحديث؟')) return;
         setOptionGroups(prev => prev.filter(g => g.id !== id));
-        await supabaseAdmin.from('option_groups').delete().eq('id', id);
+        await supabase.from('option_groups').delete().eq('id', id);
     };
 
     const handleAddItem = async (groupId: string) => {
         const payload = { group_id: groupId, name_ar: 'خيار جديد', name_en: 'New Item', price: 0, is_available: true };
-        const { data } = await supabaseAdmin.from('option_items').insert([payload]).select().single();
+        const { data } = await supabase.from('option_items').insert([payload]).select().single();
         if (data) setOptionItems(prev => [...prev, data]);
     };
 
@@ -283,7 +282,7 @@ const AdminMenuView = () => {
         const item = optionItems.find(i => i.id === id);
         if (item) {
             const cleanPrice = parseFloat(item.price.toString()) || 0;
-            const { error } = await supabaseAdmin.from('option_items').update({ name_ar: item.name_ar, price: cleanPrice }).eq('id', id);
+            const { error } = await supabase.from('option_items').update({ name_ar: item.name_ar, price: cleanPrice }).eq('id', id);
             if (error) toast.error('خطأ في حفظ السعر');
             else toast.success('تم حفظ التعديل');
         }
@@ -291,7 +290,7 @@ const AdminMenuView = () => {
 
     const deleteItem = async (id: string) => {
         setOptionItems(prev => prev.filter(i => i.id !== id));
-        await supabaseAdmin.from('option_items').delete().eq('id', id);
+        await supabase.from('option_items').delete().eq('id', id);
     };
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -304,13 +303,13 @@ const AdminMenuView = () => {
             const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
             const filePath = `${fileName}`;
 
-            const { error: uploadError } = await supabaseAdmin.storage
+            const { error: uploadError } = await supabase.storage
                 .from('product-images')
                 .upload(filePath, file);
 
             if (uploadError) throw uploadError;
 
-            const { data: { publicUrl } } = supabaseAdmin.storage
+            const { data: { publicUrl } } = supabase.storage
                 .from('product-images')
                 .getPublicUrl(filePath);
 
@@ -344,11 +343,11 @@ const AdminMenuView = () => {
 
         try {
             if (editingProduct) {
-                const { error } = await supabaseAdmin.from('products').update(payload).eq('id', editingProduct.id);
+                const { error } = await supabase.from('products').update(payload).eq('id', editingProduct.id);
                 if (error) throw error;
                 toast.success('تم التعديل بنجاح');
             } else {
-                const { error } = await supabaseAdmin.from('products').insert([payload]);
+                const { error } = await supabase.from('products').insert([payload]);
                 if (error) throw error;
                 toast.success('تمت الإضافة بنجاح');
             }
@@ -364,7 +363,7 @@ const AdminMenuView = () => {
     const handleDelete = async (id: string) => {
         if (!window.confirm('هل أنت متأكد من حذف هذا الصنف نهائياً؟ لا يمكن التراجع عن هذه الخطوة.')) return;
         try {
-            const { error } = await supabaseAdmin.from('products').delete().eq('id', id);
+            const { error } = await supabase.from('products').delete().eq('id', id);
             if (error) throw error;
             toast.success('تم الحذف بنجاح');
             fetchData();
@@ -540,7 +539,7 @@ const AdminSettingsView = () => {
 
     const fetchBranches = async () => {
         setLoading(true);
-        const { data } = await supabaseAdmin.from('branch_credentials').select('*');
+        const { data } = await supabase.from('branch_credentials').select('*');
         if (data) setBranches(data.filter(b => b.branch_name !== 'admin'));
         setLoading(false);
     };
@@ -548,7 +547,7 @@ const AdminSettingsView = () => {
     const handlePasswordChange = async (branchName: string, newPassword: string) => {
         if (!newPassword) return;
         try {
-            const { error } = await supabaseAdmin.from('branch_credentials').update({ password: newPassword }).eq('branch_name', branchName);
+            const { error } = await supabase.from('branch_credentials').update({ password: newPassword }).eq('branch_name', branchName);
             if (error) throw error;
             toast.success(`تم تحديث كلمة مرور ${branchName} بنجاح`);
             fetchBranches();
@@ -609,7 +608,7 @@ const AdminCouponsView = () => {
 
     const fetchCoupons = async () => {
         setLoading(true);
-        const { data } = await supabaseAdmin.from('coupons').select('*').order('created_at', { ascending: false });
+        const { data } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
         if (data) setCoupons(data);
         setLoading(false);
     };
@@ -640,7 +639,7 @@ const AdminCouponsView = () => {
                 is_active: formData.is_active
             };
             
-            const { error } = await supabaseAdmin.from('coupons').insert([payload]);
+            const { error } = await supabase.from('coupons').insert([payload]);
             if (error) throw error;
             
             toast.success('تمت إضافة الكوبون بنجاح');
@@ -656,7 +655,7 @@ const AdminCouponsView = () => {
     const handleDelete = async (id: string) => {
         if (!window.confirm('هل أنت متأكد من حذف هذا الكوبون؟')) return;
         try {
-            const { error } = await supabaseAdmin.from('coupons').delete().eq('id', id);
+            const { error } = await supabase.from('coupons').delete().eq('id', id);
             if (error) throw error;
             toast.success('تم الحذف بنجاح');
             fetchCoupons();
@@ -667,7 +666,7 @@ const AdminCouponsView = () => {
 
     const toggleStatus = async (id: string, currentStatus: boolean) => {
         try {
-            await supabaseAdmin.from('coupons').update({ is_active: !currentStatus }).eq('id', id);
+            await supabase.from('coupons').update({ is_active: !currentStatus }).eq('id', id);
             fetchCoupons();
         } catch {}
     };
