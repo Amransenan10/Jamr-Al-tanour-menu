@@ -88,7 +88,14 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                     </div>
                     <p className="text-white font-black text-lg">{order.customer_name}</p>
                 </div>
-                <div className="text-left">
+                <div className="text-left flex flex-col items-end">
+                    {order.discount_amount && order.discount_amount > 0 ? (
+                        <div className="flex items-center gap-1 text-[10px] bg-green-500/10 text-green-400 px-2 py-0.5 rounded-full font-black mb-1 border border-green-500/20 shadow-sm">
+                            <span>خصم</span>
+                            {order.promo_code && <span className="font-mono tracking-widest">{order.promo_code}</span>}
+                            <span>({order.discount_amount} ر.س)</span>
+                        </div>
+                    ) : null}
                     <p className="text-primary font-black text-xl">{(order as any).total_price} ر.س</p>
                     <p className="text-gray-500 text-xs mt-0.5">منذ {timeAgo}</p>
                 </div>
@@ -106,9 +113,9 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                         {(order as any).order_type === 'delivery' ? 'توصيل' : 'استلام'}
                     </span>
                     {order.phone && (
-                        <span className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-zinc-800 text-gray-400">
-                            <Phone size={12} /> {order.phone}
-                        </span>
+                        <a href={`tel:${order.phone}`} className="flex items-center gap-2 text-sm font-black px-4 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 transition-colors shadow-sm" title="اتصال بالعميل">
+                            <Phone size={14} className="animate-pulse" /> <span className="tracking-widest" dir="ltr">{order.phone}</span>
+                        </a>
                     )}
                 </div>
 
@@ -529,7 +536,7 @@ export const CashierPage: React.FC = () => {
                         // System Notification
                         if (Notification.permission === 'granted' && localStorage.getItem('jamr_cashier_use_notifications') === 'true') {
                             new Notification('🔔 طلب جديد وصل!', {
-                                body: `اسم العميل: ${payload.new.customer_name}\nالقيمة: ${payload.new.total_price} ر.س`,
+                                body: `اسم العميل: ${payload.new.customer_name}\nالقيمة: ${payload.new.total_price} ر.س${payload.new.discount_amount ? `\nخصم: ${payload.new.discount_amount} ر.س` : ''}`,
                                 icon: '/assets/logo.png',
                                 tag: 'new-order',
                                 requireInteraction: true

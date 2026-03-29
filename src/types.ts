@@ -90,6 +90,8 @@ export interface Order {
   items: CartItem[];
   status: 'new' | 'accepted' | 'preparing' | 'ready' | 'completed' | 'cancelled';
   created_at?: string;
+  discount_amount?: number;
+  promo_code?: string;
 }
 
 export interface StoreSettings {
