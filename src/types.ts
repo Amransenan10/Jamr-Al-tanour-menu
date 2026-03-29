@@ -75,7 +75,7 @@ export interface CartItem {
   notes?: string;
 }
 
-export type OrderType = 'pickup' | 'delivery';
+export type OrderType = 'pickup' | 'delivery' | null;
 export type Branch = 'السويدي الغربي' | 'طويق';
 
 export interface Order {

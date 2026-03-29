@@ -39,8 +39,20 @@ export default function App() {
           }
         }
       ).subscribe();
-    return () => { supabase.removeChannel(statusChannel); }
-  }, []);
+
+    // Real-time synchronization for products and categories
+    const menuChannel = supabase.channel('menu-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'option_groups' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'option_items' }, () => fetchData())
+      .subscribe();
+
+    return () => { 
+      supabase.removeChannel(statusChannel); 
+      supabase.removeChannel(menuChannel);
+    }
+  }, [selectedBranch]);
 
   useEffect(() => {
     const savedBranch = localStorage.getItem('jamr_al_tannour_branch') as Branch;

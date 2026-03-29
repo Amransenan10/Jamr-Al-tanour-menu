@@ -280,7 +280,12 @@ const AdminMenuView = () => {
 
     const saveItem = async (id: string) => {
         const item = optionItems.find(i => i.id === id);
-        if (item) await supabase.from('option_items').update({ name_ar: item.name_ar, price: parseFloat(item.price) || 0 }).eq('id', id);
+        if (item) {
+            const cleanPrice = parseFloat(item.price.toString()) || 0;
+            const { error } = await supabase.from('option_items').update({ name_ar: item.name_ar, price: cleanPrice }).eq('id', id);
+            if (error) toast.error('خطأ في حفظ السعر');
+            else toast.success('تم حفظ التعديل');
+        }
     };
 
     const deleteItem = async (id: string) => {
@@ -328,7 +333,7 @@ const AdminMenuView = () => {
         const payload = {
             name_ar: formData.name_ar,
             name_en: formData.name_ar, // Optional fallback
-            price: parseFloat(formData.price),
+            price: parseFloat(formData.price) || 0,
             description_ar: formData.description_ar,
             description_en: formData.description_ar,
             category_id: formData.category_id,
@@ -538,6 +543,18 @@ const AdminSettingsView = () => {
         if (data) setBranches(data.filter(b => b.branch_name !== 'admin'));
         setLoading(false);
     };
+
+    const handlePasswordChange = async (branchName: string, newPassword: string) => {
+        if (!newPassword) return;
+        try {
+            const { error } = await supabase.from('branch_credentials').update({ password: newPassword }).eq('branch_name', branchName);
+            if (error) throw error;
+            toast.success(`تم تحديث كلمة مرور ${branchName} بنجاح`);
+            fetchBranches();
+        } catch {
+            toast.error('حدث خطأ أثناء التحديث');
+        }
+    };
     
     useEffect(() => { fetchBranches(); }, []);
 
@@ -552,8 +569,17 @@ const AdminSettingsView = () => {
                             <div className="space-y-2">
                                 <p className="text-sm text-gray-400">كلمة مرور لكاشير الفرع:</p>
                                 <div className="flex gap-2">
-                                    <input type="text" readOnly value={b.password} className="flex-1 bg-zinc-800 text-white rounded-lg px-3 py-2 text-sm font-mono border-none outline-none" />
-                                    <button className="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-2 rounded-lg font-bold">تغيير</button>
+                                    <input 
+                                        type="text" 
+                                        defaultValue={b.password} 
+                                        onBlur={(e) => {
+                                            if (e.target.value !== b.password) {
+                                                handlePasswordChange(b.branch_name, e.target.value);
+                                            }
+                                        }}
+                                        className="flex-1 bg-zinc-800 text-white rounded-lg px-3 py-2 text-sm font-mono border border-transparent focus:border-primary outline-none transition-colors" 
+                                    />
+                                    <div className="text-[10px] text-gray-500 self-center">تعديل مباشر</div>
                                 </div>
                             </div>
                         </div>

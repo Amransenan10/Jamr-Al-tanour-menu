@@ -19,7 +19,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
   const storeStatus = storeSettings?.status || 'open';
   const { cart, removeFromCart, updateQuantity, totalPrice, clearCart } = useCart();
   const [step, setStep] = useState<'cart' | 'checkout'>('cart');
-  const [orderType, setOrderType] = useState<OrderType>('pickup');
+  const [orderType, setOrderType] = useState<OrderType>(null);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [promoCodeInput, setPromoCodeInput] = useState('');
@@ -118,8 +118,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
   };
 
   const handleSubmitOrder = async () => {
-    if (!formData.name || !formData.phone || (orderType === 'delivery' && !formData.location)) {
-      alert('يرجى إكمال جميع البيانات المطلوبة');
+    if (!formData.name || !formData.phone || !orderType || (orderType === 'delivery' && !formData.location)) {
+      alert('يرجى اختيار نوع الطلب (توصيل/استلام) وإكمال جميع البيانات المطلوبة');
       return;
     }
 
@@ -462,16 +462,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                       رجوع
                     </button>
                     <button
-                      disabled={loading || storeStatus === 'closed' || (orderType === 'delivery' && totalPrice < 20)}
+                      disabled={loading || storeStatus === 'closed' || !orderType || (orderType === 'delivery' && totalPrice < 20)}
                       onClick={handleSubmitOrder}
                       className={cn(
                         "flex-[2] py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all disabled:opacity-50",
                         storeStatus === 'closed' ? "bg-red-500/50 text-white cursor-not-allowed" : 
+                        (!orderType) ? "bg-zinc-800 text-gray-500 cursor-not-allowed" :
                         (orderType === 'delivery' && totalPrice < 20) ? "bg-zinc-800 text-gray-500 cursor-not-allowed" :
                         "bg-primary text-white shadow-xl shadow-primary/30 hover:scale-[1.02] active:scale-95"
                       )}
                     >
-                      {loading ? <Loader2 className="animate-spin" /> : storeStatus === 'closed' ? 'المطعم مغلق' : 'تأكيد الطلب'}
+                      {loading ? <Loader2 className="animate-spin" /> : storeStatus === 'closed' ? 'المطعم مغلق' : !orderType ? 'اختر نوع الطلب' : 'تأكيد الطلب'}
                     </button>
                   </div>
                 )}
