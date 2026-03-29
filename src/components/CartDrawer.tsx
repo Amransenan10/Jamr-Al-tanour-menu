@@ -18,7 +18,7 @@ interface CartDrawerProps {
 export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch, storeSettings }) => {
   const storeStatus = storeSettings?.status || 'open';
   const { cart, removeFromCart, updateQuantity, totalPrice, clearCart } = useCart();
-  const [step, setStep] = useState<'cart' | 'checkout'>('cart');
+  const [step, setStep] = useState<'cart' | 'checkout' | 'review'>('cart');
   const [orderType, setOrderType] = useState<OrderType>(null);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -362,6 +362,53 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                   </div>
                 </div>
               )}
+
+              {step === 'review' && (
+                <div className="space-y-6">
+                  <div className="bg-primary/10 border border-primary/20 rounded-2xl p-5 text-center">
+                    <h3 className="font-black text-xl text-primary mb-1">مراجعة الطلب</h3>
+                    <p className="text-sm text-gray-500">يرجى التأكد من صحة بياناتك قبل التأكيد النهائي</p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="bg-gray-50 dark:bg-zinc-800 rounded-2xl p-4 border border-gray-100 dark:border-white/5 space-y-3">
+                      <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-white/10">
+                        <span className="text-gray-500 font-bold text-sm">الفرع</span>
+                        <span className="font-black text-gray-900 dark:text-white">{branch}</span>
+                      </div>
+                      <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-white/10">
+                        <span className="text-gray-500 font-bold text-sm">نوع الطلب</span>
+                        <span className="font-black text-gray-900 dark:text-white">{orderType === 'delivery' ? 'توصيل' : 'استلام من الفرع'}</span>
+                      </div>
+                      <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-white/10">
+                        <span className="text-gray-500 font-bold text-sm">الاسم</span>
+                        <span className="font-bold text-gray-900 dark:text-white">{formData.name}</span>
+                      </div>
+                      <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-white/10">
+                        <span className="text-gray-500 font-bold text-sm">رقم الجوال</span>
+                        <span className="font-bold text-gray-900 dark:text-white" dir="ltr">{formData.phone}</span>
+                      </div>
+                      
+                      {orderType === 'delivery' ? (
+                        <div className="flex flex-col gap-1 pb-2 border-b border-gray-200 dark:border-white/10">
+                          <span className="text-gray-500 font-bold text-sm">موقع التوصيل</span>
+                          <span className="font-bold text-gray-900 dark:text-white text-sm break-words">{formData.location}</span>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-white/10">
+                          <span className="text-gray-500 font-bold text-sm">وقت الاستلام</span>
+                          <span className="font-bold text-gray-900 dark:text-white">{formData.pickupTime || 'في أقرب وقت'}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between items-center pt-1">
+                        <span className="text-gray-500 font-bold text-sm">الأصناف</span>
+                        <span className="font-black text-primary">{cart.length} أصناف</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {cart.length > 0 && (
@@ -453,7 +500,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                   >
                     {storeStatus === 'closed' ? 'المطعم مغلق حالياً' : 'إتمام الطلب'}
                   </button>
-                ) : (
+                ) : step === 'checkout' ? (
                   <div className="flex gap-3">
                     <button
                       onClick={() => setStep('cart')}
@@ -462,17 +509,38 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                       رجوع
                     </button>
                     <button
-                      disabled={loading || storeStatus === 'closed' || !orderType || (orderType === 'delivery' && totalPrice < 20)}
-                      onClick={handleSubmitOrder}
+                      disabled={storeStatus === 'closed' || !orderType || (orderType === 'delivery' && totalPrice < 20) || !formData.name || !formData.phone || (orderType === 'delivery' && !formData.location)}
+                      onClick={() => setStep('review')}
                       className={cn(
                         "flex-[2] py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all disabled:opacity-50",
                         storeStatus === 'closed' ? "bg-red-500/50 text-white cursor-not-allowed" : 
                         (!orderType) ? "bg-zinc-800 text-gray-500 cursor-not-allowed" :
                         (orderType === 'delivery' && totalPrice < 20) ? "bg-zinc-800 text-gray-500 cursor-not-allowed" :
+                        (!formData.name || !formData.phone) ? "bg-zinc-800 text-gray-500 cursor-not-allowed cursor-pointer" :
                         "bg-primary text-white shadow-xl shadow-primary/30 hover:scale-[1.02] active:scale-95"
                       )}
                     >
-                      {loading ? <Loader2 className="animate-spin" /> : storeStatus === 'closed' ? 'المطعم مغلق' : !orderType ? 'اختر نوع الطلب' : 'تأكيد الطلب'}
+                      {storeStatus === 'closed' ? 'المطعم مغلق' : !orderType ? 'اختر نوع الطلب' : (!formData.name || !formData.phone) ? 'أكمل البيانات' : 'مراجعة الطلب'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setStep('checkout')}
+                      className="flex-1 py-4 bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 rounded-2xl font-bold"
+                    >
+                      تعديل
+                    </button>
+                    <button
+                      disabled={loading || storeStatus === 'closed'}
+                      onClick={handleSubmitOrder}
+                      className={cn(
+                        "flex-[2] py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all disabled:opacity-50",
+                        storeStatus === 'closed' ? "bg-red-500/50 text-white cursor-not-allowed" :
+                        "bg-green-500 text-white shadow-xl shadow-green-500/30 hover:scale-[1.02] active:scale-95"
+                      )}
+                    >
+                      {loading ? <Loader2 className="animate-spin" /> : 'تأكيد وإرسال الطلب'}
                     </button>
                   </div>
                 )}
