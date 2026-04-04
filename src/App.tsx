@@ -20,6 +20,7 @@ export default function App() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
@@ -29,28 +30,56 @@ export default function App() {
   const [storeSettings, setStoreSettings] = useState<any>(null);
   const storeStatus = storeSettings?.status || 'open';
 
+  // Debugging & Resilience: Anti-hang timeout
   useEffect(() => {
-    const statusChannel = supabase.channel('store-status-app')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'store_settings' }, 
-        (payload) => {
-          const newRow = payload.new as any;
-          if (newRow && newRow.branch_name === selectedBranch) {
-            setStoreSettings(newRow);
+    console.log('DEBUG: App mounted. Current state:', { selectedBranch, loading });
+    const timer = setTimeout(() => {
+      if (loading) {
+        console.warn('DEBUG: Loading taking too long (10s). Forcing loading state to false.');
+        setLoading(false);
+        setError('استغرق التحميل وقتاً طويلاً. يرجى التحقق من اتصالك بالإنترنت أو إعدادات قاعدة البيانات.');
+      }
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  useEffect(() => {
+    if (!supabase) {
+      console.error('DEBUG: Supabase client is UNDEFINED!');
+      return;
+    }
+
+    console.log('DEBUG: Initializing Real-time for branch:', selectedBranch);
+    try {
+      const statusChannel = supabase.channel('store-status-app')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'store_settings' }, 
+          (payload) => {
+            console.log('DEBUG: Store status changed:', payload);
+            const newRow = payload.new as any;
+            if (newRow && newRow.branch_name === selectedBranch) {
+              setStoreSettings(newRow);
+            }
           }
-        }
-      ).subscribe();
+        ).subscribe((status) => {
+          console.log('DEBUG: Store status subscription status:', status);
+        });
 
-    // Real-time synchronization for products and categories
-    const menuChannel = supabase.channel('menu-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'option_groups' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'option_items' }, () => fetchData())
-      .subscribe();
+      // Real-time synchronization for products and categories
+      const menuChannel = supabase.channel('menu-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
+          console.log('DEBUG: Product changed, refetching...');
+          fetchData();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => fetchData())
+        .subscribe();
 
-    return () => { 
-      supabase.removeChannel(statusChannel); 
-      supabase.removeChannel(menuChannel);
+      return () => { 
+        console.log('DEBUG: Cleaning up real-time channels');
+        supabase.removeChannel(statusChannel); 
+        supabase.removeChannel(menuChannel);
+      }
+    } catch (err) {
+      console.error('DEBUG: Real-time initialization error:', err);
     }
   }, [selectedBranch]);
 
@@ -70,8 +99,11 @@ export default function App() {
   };
 
   const fetchData = async () => {
+    console.log('DEBUG: Starting fetchData...');
     setLoading(true);
+    setError(null);
     try {
+      const startTime = Date.now();
       const [catsRes, prodsRes, statusRes] = await Promise.all([
         supabase
           .from('categories')
@@ -87,6 +119,13 @@ export default function App() {
           .eq('branch_name', selectedBranch || 'السويدي الغربي')
           .single()
       ]);
+
+      console.log(`DEBUG: fetchData completed in ${Date.now() - startTime}ms`, {
+        categories: catsRes.data?.length,
+        products: prodsRes.data?.length,
+        status: statusRes.data ? 'found' : 'missing',
+        errors: { cats: catsRes.error, prods: prodsRes.error, status: statusRes.error }
+      });
 
       if (catsRes.data) setCategories(catsRes.data);
       if (prodsRes.data) {
@@ -106,9 +145,11 @@ export default function App() {
         setProducts(processedProducts);
       }
       if (statusRes.data) setStoreSettings(statusRes.data);
-    } catch (e) {
-      console.error('Error fetching data:', e);
+    } catch (e: any) {
+      console.error('DEBUG: ERROR in fetchData:', e);
+      setError(e.message || 'حدث خطأ غير متوقع عند تحميل المنيو');
     } finally {
+      console.log('DEBUG: Setting loading to false');
       setLoading(false);
     }
   };
@@ -171,6 +212,20 @@ export default function App() {
                     />
                   ))}
                 </AnimatePresence>
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center py-32 text-center">
+                <div className="w-20 h-20 bg-red-100 dark:bg-red-500/10 rounded-full flex items-center justify-center mb-6 text-red-500">
+                  <Navigation size={40} className="rotate-45" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">تعذر الاتصال بقاعدة البيانات</h3>
+                <p className="text-gray-500 mb-4">{error}</p>
+                <button 
+                  onClick={() => fetchData()}
+                  className="px-6 py-2 bg-primary text-white rounded-full font-bold hover:bg-primary/90 transition-colors"
+                >
+                  إعادة المحاولة
+                </button>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-32 text-center">

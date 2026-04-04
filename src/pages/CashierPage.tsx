@@ -4,8 +4,8 @@ import { Branch, Order } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import {
     Clock, CheckCircle2, Package, Loader2, Bell, RefreshCw,
-    MapPin, ShoppingBag, Phone, User, Bike, Coffee, ChevronDown, LogOut, Copy, ExternalLink,
-    Settings, Volume2, X, LayoutList
+    MapPin, ShoppingBag, Phone, Bike, Coffee, ChevronDown, LogOut, Copy, ExternalLink,
+    Settings, Volume2, X, LayoutList, Sun, Moon
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -29,6 +29,9 @@ const STATUS_CONFIG: Record<OrderStatus, StatusConfig> = {
     cancelled: { label: 'ملغي', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/30', icon: <LogOut size={14} /> },
 };
 
+// Dark mode context helper
+const dm = (dark: boolean, darkCls: string, lightCls: string) => dark ? darkCls : lightCls;
+
 // Next status transitions for the cashier workflow
 const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
     new: 'accepted',
@@ -44,8 +47,8 @@ const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
 };
 
 // ─── OrderCard ──────────────────────────────────────────────────────────────
-const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; status: OrderStatus }; onStatusChange: (id: string, status: OrderStatus) => void; updating: boolean }> = ({
-    order, onStatusChange, updating
+const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; status: OrderStatus }; onStatusChange: (id: string, status: OrderStatus) => void; updating: boolean; isDark: boolean }> = ({
+    order, onStatusChange, updating, isDark
 }) => {
     const status = order.status as OrderStatus;
     const cfg = STATUS_CONFIG[status] || {
@@ -71,17 +74,18 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             className={cn(
-                'bg-zinc-900 rounded-[2rem] border overflow-hidden flex flex-col transition-all',
+                'rounded-[2rem] border overflow-hidden flex flex-col transition-all',
+                isDark ? 'bg-zinc-900' : 'bg-white shadow-sm',
                 status === 'new' && 'border-blue-500/50 shadow-lg shadow-blue-500/10 ring-1 ring-blue-500/20',
-                status === 'accepted' && 'border-purple-500/30',
-                status === 'preparing' && 'border-amber-500/30',
+                status === 'accepted' && (isDark ? 'border-purple-500/30' : 'border-purple-400/40'),
+                status === 'preparing' && (isDark ? 'border-amber-500/30' : 'border-amber-400/40'),
                 status === 'ready' && 'border-green-500/50 shadow-lg shadow-green-500/10 ring-1 ring-green-500/20',
-                status === 'completed' && 'border-white/5 opacity-60',
-                status === 'cancelled' && 'border-red-500/20 opacity-50',
+                status === 'completed' && (isDark ? 'border-white/5 opacity-60' : 'border-gray-200 opacity-60'),
+                status === 'cancelled' && (isDark ? 'border-red-500/20 opacity-50' : 'border-red-300/40 opacity-50'),
             )}
         >
             {/* Header */}
-            <div className="p-5 flex items-start justify-between gap-3 border-b border-white/5">
+            <div className={cn("p-5 flex items-start justify-between gap-3 border-b", isDark ? 'border-white/5' : 'border-gray-100')}>
                 <div>
                     <div className="flex items-center gap-2 mb-1">
                         <span className={cn('flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border', cfg.bg, cfg.color)}>
@@ -91,7 +95,7 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                             <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
                         )}
                     </div>
-                    <p className="text-white font-black text-lg">{order.customer_name}</p>
+                    <p className={cn("font-black text-lg", isDark ? 'text-white' : 'text-gray-900')}>{order.customer_name}</p>
                 </div>
                 <div className="text-left flex flex-col items-end">
                     {order.discount_amount && order.discount_amount > 0 ? (
@@ -112,7 +116,7 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                     <span className={cn('flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl font-bold',
                         (order as any).order_type === 'delivery'
                             ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
-                            : 'bg-zinc-800 text-gray-400'
+                            : isDark ? 'bg-zinc-800 text-gray-400' : 'bg-gray-100 text-gray-500'
                     )}>
                         {(order as any).order_type === 'delivery' ? <Bike size={12} /> : <Coffee size={12} />}
                         {(order as any).order_type === 'delivery' ? 'توصيل' : 'استلام'}
@@ -127,9 +131,9 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                 {/* Items */}
                 <div className="space-y-1.5">
                     {Array.isArray((order as any).items) && (order as any).items.map((item: any, i: number) => (
-                        <div key={i} className="flex flex-col text-sm border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                        <div key={i} className={cn("flex flex-col text-sm border-b pb-2 last:border-0 last:pb-0", isDark ? 'border-white/5' : 'border-gray-100')}>
                             <div className="flex justify-between items-start">
-                                <span className="text-white font-bold">
+                                <span className={cn("font-bold", isDark ? 'text-white' : 'text-gray-900')}>
                                     <span className="text-primary ml-1">×{item?.quantity || 1}</span> {item?.name || 'صنف غير معروف'}
                                 </span>
                                 <span className="text-gray-500 text-xs">{item?.totalPrice || 0} ر.س</span>
@@ -141,7 +145,7 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                                     {(item?.options?.length > 0 || item?.removedIngredients?.length > 0) && (
                                         <div className="flex flex-wrap gap-1">
                                             {item?.options?.map((o: any) => (
-                                                <span key={`${o.groupId}-${o.itemId}`} className="text-[10px] bg-zinc-800 text-gray-300 px-2 py-0.5 rounded-full font-bold border border-white/5">
+                                                <span key={`${o.groupId}-${o.itemId}`} className={cn("text-[10px] px-2 py-0.5 rounded-full font-bold", isDark ? 'bg-zinc-800 text-gray-300 border border-white/5' : 'bg-gray-100 text-gray-600')}>
                                                     {o.itemName}
                                                 </span>
                                             ))}
@@ -205,7 +209,7 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                                                 navigator.clipboard.writeText(mapUrl);
                                                 toast.success('تم نسخ موقع العميل', { position: 'top-center' });
                                             }}
-                                            className="flex items-center gap-2 px-3 py-2 bg-zinc-800 text-gray-400 hover:text-white rounded-xl transition-colors shrink-0 tooltip text-sm font-bold"
+                                            className={cn("flex items-center gap-2 px-3 py-2 rounded-xl transition-colors shrink-0 text-sm font-bold", isDark ? 'bg-zinc-800 text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-900')}
                                             title="نسخ موقع العميل"
                                         >
                                             <Copy size={16} />
@@ -216,7 +220,7 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                             }
 
                             return (
-                                <div className="flex items-center gap-2 text-xs text-gray-500 bg-zinc-800/50 p-3 rounded-xl">
+                                <div className={cn("flex items-center gap-2 text-xs text-gray-500 p-3 rounded-xl", isDark ? 'bg-zinc-800/50' : 'bg-gray-50')}>
                                     <MapPin size={14} className="text-primary shrink-0" />
                                     <span className="flex-1 break-words">{locStr}</span>
                                     <button
@@ -354,6 +358,7 @@ export const CashierPage: React.FC = () => {
     const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
     const [showSettings, setShowSettings] = useState(false);
     const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
+    const [isDark, setIsDark] = useState(() => localStorage.getItem('jamr_cashier_theme') !== 'light');
     
     const [storeSettings, setStoreSettings] = useState<any>({ status: 'open', is_delivery_active: true, is_pickup_active: true });
     const storeStatus = storeSettings.status;
@@ -362,6 +367,14 @@ export const CashierPage: React.FC = () => {
     const [showMenuManagement, setShowMenuManagement] = useState(false);
     const [menuProducts, setMenuProducts] = useState<any[]>([]);
     const [loadingMenu, setLoadingMenu] = useState(false);
+
+    const toggleTheme = () => {
+        setIsDark(prev => {
+            const next = !prev;
+            localStorage.setItem('jamr_cashier_theme', next ? 'dark' : 'light');
+            return next;
+        });
+    };
 
     // Fetch products when opening menu management
     useEffect(() => {
@@ -596,12 +609,12 @@ export const CashierPage: React.FC = () => {
     // ── Branch login screen ───────────────────────────────────────────────────
     if (!isAuthenticated) {
         return (
-            <div className="min-h-screen bg-charcoal flex items-center justify-center p-6">
+            <div className={cn("min-h-screen flex items-center justify-center p-6", isDark ? 'bg-charcoal' : 'bg-gray-50')}>
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 pointer-events-none" />
                 <motion.div
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    className="w-full max-w-md bg-zinc-900 rounded-[3rem] p-10 shadow-2xl border border-white/5 relative"
+                    className={cn("w-full max-w-md rounded-[3rem] p-10 shadow-2xl relative", isDark ? 'bg-zinc-900 border border-white/5' : 'bg-white border border-gray-100')}
                 >
                     <div className="absolute -top-16 -right-16 w-48 h-48 bg-primary/10 rounded-full blur-3xl" />
                     <div className="text-center space-y-8 relative">
@@ -609,7 +622,7 @@ export const CashierPage: React.FC = () => {
                             <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center shadow-2xl shadow-primary/30 mx-auto mb-5 overflow-hidden p-2 border border-white/10">
                                 <img src="/assets/logo.png" alt="جمر التنور" className="w-full h-full object-contain" />
                             </div>
-                            <h1 className="text-3xl font-black text-white">لوحة الكاشير</h1>
+                            <h1 className={cn("text-3xl font-black", isDark ? 'text-white' : 'text-gray-900')}>لوحة الكاشير</h1>
                             <p className="text-gray-500 mt-2 text-sm">
                                 {loginBranch ? `تسجيل الدخول لفرع ${loginBranch}` : 'اختر الفرع لبدء استقبال الطلبات'}
                             </p>
@@ -621,7 +634,7 @@ export const CashierPage: React.FC = () => {
                                     <button
                                         key={b}
                                         onClick={() => setLoginBranch(b)}
-                                        className="group w-full flex items-center justify-between p-5 bg-zinc-800 hover:bg-primary rounded-2xl transition-all duration-300 hover:scale-[1.02] active:scale-95"
+                                        className={cn("group w-full flex items-center justify-between p-5 hover:bg-primary rounded-2xl transition-all duration-300 hover:scale-[1.02] active:scale-95", isDark ? 'bg-zinc-800' : 'bg-gray-100')}
                                     >
                                         <div className="flex items-center gap-3">
                                             <MapPin size={20} className="text-primary group-hover:text-white" />
@@ -640,7 +653,7 @@ export const CashierPage: React.FC = () => {
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         autoFocus
-                                        className="w-full bg-zinc-800 text-white border-0 rounded-2xl p-4 text-center font-bold text-lg focus:ring-2 focus:ring-primary outline-none transition-all placeholder:text-gray-500"
+                                        className={cn("w-full border-0 rounded-2xl p-4 text-center font-bold text-lg focus:ring-2 focus:ring-primary outline-none transition-all placeholder:text-gray-500", isDark ? 'bg-zinc-800 text-white' : 'bg-gray-100 text-gray-900')}
                                     />
                                     {loginError && (
                                         <p className="text-red-400 text-sm font-bold text-center mt-2">{loginError}</p>
@@ -677,7 +690,7 @@ export const CashierPage: React.FC = () => {
     // ── Cashier Audio Unlock Overlay ──────────────────────────────────────────
     if (isAuthenticated && !isAudioUnlocked) {
         return (
-            <div className="min-h-screen bg-charcoal flex items-center justify-center p-6 cursor-pointer" onClick={() => {
+            <div className={cn("min-h-screen flex items-center justify-center p-6 cursor-pointer", isDark ? 'bg-charcoal' : 'bg-gray-50')} onClick={() => {
                 const ctx = getAudioContext();
                 if (ctx && ctx.state === 'suspended') ctx.resume();
                 playNotificationSound('soft');
@@ -691,7 +704,7 @@ export const CashierPage: React.FC = () => {
                     <div className="w-24 h-24 bg-primary rounded-full flex items-center justify-center animate-pulse shadow-2xl shadow-primary/50">
                         <Volume2 size={40} className="text-white" />
                     </div>
-                    <h2 className="text-3xl font-black text-white leading-tight">جاهز لاستقبال الطلبات؟</h2>
+                    <h2 className={cn("text-3xl font-black leading-tight", isDark ? 'text-white' : 'text-gray-900')}>جاهز لاستقبال الطلبات؟</h2>
                     <p className="text-gray-400">إضغط في أي مكان على الشاشة لتفعيل الرنين الصوتي للطلبات الجديدة</p>
                     <button className="px-8 py-4 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/30 mt-4 pointer-events-none">
                         بدء العمل وتفعيل الصوت
@@ -703,7 +716,7 @@ export const CashierPage: React.FC = () => {
 
     // ── Main cashier view ─────────────────────────────────────────────────────
     return (
-        <div className="min-h-screen bg-charcoal text-white">
+        <div className={cn("min-h-screen transition-colors duration-300", isDark ? 'bg-charcoal text-white' : 'bg-gray-50 text-gray-900')}>
             {/* New order alert banner */}
             <AnimatePresence>
                 {newOrderAlert && (
@@ -728,14 +741,14 @@ export const CashierPage: React.FC = () => {
             </AnimatePresence>
 
             {/* Header */}
-            <div className="sticky top-0 z-40 bg-charcoal/90 backdrop-blur-md border-b border-white/5 px-4 py-4">
+            <div className={cn("sticky top-0 z-40 backdrop-blur-md border-b px-4 py-4", isDark ? 'bg-charcoal/90 border-white/5' : 'bg-white/90 border-gray-200')}>
                 <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 overflow-hidden p-1 border border-white/10">
                             <img src="/assets/logo.png" alt="جمر التنور" className="w-full h-full object-contain" />
                         </div>
                         <div>
-                            <h1 className="font-black text-white text-lg leading-none">كاشير جمر التنور</h1>
+                            <h1 className={cn("font-black text-lg leading-none", isDark ? 'text-white' : 'text-gray-900')}>كاشير جمر التنور</h1>
                             <div className="flex items-center gap-1.5 mt-0.5">
                                 <MapPin size={11} className="text-primary" />
                                 <span className="text-xs text-gray-400">فرع {branch}</span>
@@ -759,7 +772,7 @@ export const CashierPage: React.FC = () => {
                              storeStatus === 'open' ? '🟢 مفتوح' : 
                              storeStatus === 'busy' ? '🟠 مزدحم' : '🔴 مغلق'}
                         </button>
-                        <div className="w-px h-6 bg-white/10 mx-1"></div>
+                        <div className={cn("w-px h-6 mx-1", isDark ? 'bg-white/10' : 'bg-gray-200')}></div>
                         <button
                             onClick={() => updateStoreSetting('is_delivery_active', !storeSettings.is_delivery_active, storeSettings.is_delivery_active ? 'تم إيقاف التوصيل' : 'تم تفعيل التوصيل')}
                             disabled={isUpdatingStatus}
@@ -782,36 +795,43 @@ export const CashierPage: React.FC = () => {
                         >
                             <Coffee size={12} /> {storeSettings.is_pickup_active ? 'استلام متاح' : 'استلام مغلق'}
                         </button>
-                        <div className="w-px h-6 bg-white/10 mx-1"></div>
+                        <div className={cn("w-px h-6 mx-1", isDark ? 'bg-white/10' : 'bg-gray-200')}></div>
                         {counts.new > 0 && (
                             <span className="flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-black px-3 py-1.5 rounded-full animate-pulse">
                                 <Bell size={12} /> {counts.new} جديد
                             </span>
                         )}
                         <button
+                            onClick={toggleTheme}
+                            className={cn("p-2.5 rounded-xl transition-colors", isDark ? 'bg-zinc-800 hover:bg-zinc-700' : 'bg-gray-100 hover:bg-gray-200')}
+                            title={isDark ? 'الوضع النهاري' : 'الوضع الليلي'}
+                        >
+                            {isDark ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} className="text-gray-600" />}
+                        </button>
+                        <button
                             onClick={fetchOrders}
-                            className="p-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors"
+                            className={cn("p-2.5 rounded-xl transition-colors", isDark ? 'bg-zinc-800 hover:bg-zinc-700' : 'bg-gray-100 hover:bg-gray-200')}
                             title="تحديث"
                         >
                             <RefreshCw size={16} className="text-gray-400" />
                         </button>
                         <button
                             onClick={() => setShowMenuManagement(true)}
-                            className="p-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors"
+                            className={cn("p-2.5 rounded-xl transition-colors", isDark ? 'bg-zinc-800 hover:bg-zinc-700' : 'bg-gray-100 hover:bg-gray-200')}
                             title="إدارة الأصناف"
                         >
                             <LayoutList size={16} className="text-gray-400" />
                         </button>
                         <button
                             onClick={() => setShowSettings(true)}
-                            className="p-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors"
+                            className={cn("p-2.5 rounded-xl transition-colors", isDark ? 'bg-zinc-800 hover:bg-zinc-700' : 'bg-gray-100 hover:bg-gray-200')}
                             title="الإعدادات"
                         >
                             <Settings size={16} className="text-gray-400" />
                         </button>
                         <button
                             onClick={() => { setBranch(null); localStorage.removeItem('jamr_cashier_branch'); setIsAuthenticated(false); localStorage.removeItem('jamr_cashier_auth'); }}
-                            className="p-2.5 bg-zinc-800 hover:bg-red-500/20 hover:text-red-400 rounded-xl transition-colors"
+                            className={cn("p-2.5 rounded-xl transition-colors hover:bg-red-500/20 hover:text-red-400", isDark ? 'bg-zinc-800' : 'bg-gray-100')}
                             title="تسجيل الخروج"
                         >
                             <LogOut size={16} className="text-gray-400" />
@@ -828,7 +848,7 @@ export const CashierPage: React.FC = () => {
                     { label: 'تحضير', value: orders.filter(o => o.status === 'preparing').length, color: 'text-amber-400' },
                     { label: 'جاهزة', value: orders.filter(o => o.status === 'ready').length, color: 'text-green-400' },
                 ].map(stat => (
-                    <div key={stat.label} className="bg-zinc-900 rounded-2xl p-3 text-center border border-white/5">
+                    <div key={stat.label} className={cn("rounded-2xl p-3 text-center border", isDark ? 'bg-zinc-900 border-white/5' : 'bg-white border-gray-100 shadow-sm')}>
                         <p className={cn('font-black text-2xl', stat.color)}>{stat.value}</p>
                         <p className="text-gray-500 text-xs mt-0.5">{stat.label}</p>
                     </div>
@@ -846,7 +866,7 @@ export const CashierPage: React.FC = () => {
                                 'whitespace-nowrap px-4 py-2 rounded-2xl text-sm font-bold transition-all',
                                 filter === s
                                     ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                                    : 'bg-zinc-900 text-gray-400 hover:bg-zinc-800 border border-white/5'
+                                    : isDark ? 'bg-zinc-900 text-gray-400 hover:bg-zinc-800 border border-white/5' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-200 shadow-sm'
                             )}
                         >
                             {FILTER_LABELS[s]}
@@ -871,8 +891,8 @@ export const CashierPage: React.FC = () => {
                         animate={{ opacity: 1 }}
                         className="flex flex-col items-center justify-center py-32 text-center"
                     >
-                        <div className="w-20 h-20 bg-zinc-900 rounded-full flex items-center justify-center mb-4">
-                            <ShoppingBag size={36} className="text-gray-700" />
+                        <div className={cn("w-20 h-20 rounded-full flex items-center justify-center mb-4", isDark ? 'bg-zinc-900' : 'bg-gray-100')}>
+                            <ShoppingBag size={36} className="text-gray-400" />
                         </div>
                         <p className="text-gray-500 font-bold text-lg">لا توجد طلبات</p>
                         <p className="text-gray-600 text-sm mt-1">ستظهر الطلبات هنا تلقائياً عند وصولها</p>
@@ -886,6 +906,7 @@ export const CashierPage: React.FC = () => {
                                     order={order}
                                     onStatusChange={handleStatusChange}
                                     updating={updatingId === order.id}
+                                    isDark={isDark}
                                 />
                             ))}
                         </div>
@@ -908,10 +929,10 @@ export const CashierPage: React.FC = () => {
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
-                            className="bg-zinc-900 rounded-3xl p-6 w-full max-w-sm relative z-10 border border-white/10 shadow-2xl max-h-[90vh] flex flex-col"
+                            className={cn("rounded-3xl p-6 w-full max-w-sm relative z-10 shadow-2xl max-h-[90vh] flex flex-col", isDark ? 'bg-zinc-900 border border-white/10' : 'bg-white border border-gray-100')}
                         >
                             <div className="flex justify-between items-center mb-6 shrink-0">
-                                <h3 className="text-xl font-black flex items-center gap-2">
+                                <h3 className={cn("text-xl font-black flex items-center gap-2", isDark ? 'text-white' : 'text-gray-900')}>
                                     <Volume2 className="text-primary" />
                                     إعدادات الصوت
                                 </h3>
@@ -943,7 +964,7 @@ export const CashierPage: React.FC = () => {
                                                 "w-full flex justify-between items-center p-3.5 rounded-2xl font-bold transition-all",
                                                 soundPref === sound.id
                                                     ? "bg-primary text-white shadow-lg shadow-primary/20"
-                                                    : "bg-zinc-800 text-gray-300 hover:bg-zinc-700"
+                                                    : isDark ? "bg-zinc-800 text-gray-300 hover:bg-zinc-700" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                                             )}
                                         >
                                             <span className="text-sm">{sound.label}</span>
@@ -952,7 +973,7 @@ export const CashierPage: React.FC = () => {
                                     ))}
                                 </div>
 
-                                <div className="pt-6 border-t border-white/5 space-y-3">
+                                <div className={cn("pt-6 border-t space-y-3", isDark ? 'border-white/5' : 'border-gray-100')}>
                                     <h4 className="text-xs font-bold text-gray-500 mb-2 mr-1">حالة المتجر</h4>
                                     {[
                                         { id: 'open', label: '🟢 مفتوح', color: 'bg-green-500/10 text-green-400 border-green-500/20' },
@@ -965,7 +986,7 @@ export const CashierPage: React.FC = () => {
                                             onClick={() => updateStoreSetting('status', status.id, `تم التغيير إلى ${status.label}`)}
                                             className={cn(
                                                 "w-full flex justify-between items-center p-3.5 rounded-2xl font-bold transition-all border",
-                                                storeStatus === status.id ? status.color : "bg-zinc-800 border-transparent text-gray-400"
+                                                storeStatus === status.id ? status.color : isDark ? "bg-zinc-800 border-transparent text-gray-400" : "bg-gray-100 border-transparent text-gray-400"
                                             )}
                                         >
                                             <span className="text-sm">{status.label}</span>
@@ -974,7 +995,7 @@ export const CashierPage: React.FC = () => {
                                     ))}
                                 </div>
 
-                                <div className="pt-6 border-t border-white/5 space-y-3">
+                                <div className={cn("pt-6 border-t space-y-3", isDark ? 'border-white/5' : 'border-gray-100')}>
                                     <h4 className="text-xs font-bold text-gray-500 mb-2 mr-1">تنبيه الطلبات الجديدة</h4>
                                     <button
                                         onClick={() => {
@@ -987,7 +1008,7 @@ export const CashierPage: React.FC = () => {
                                             "w-full flex justify-between items-center p-4 rounded-2xl font-bold transition-all border",
                                             isPersistentSound 
                                                 ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
-                                                : "bg-zinc-800 border-transparent text-gray-400 opacity-60"
+                                                : isDark ? "bg-zinc-800 border-transparent text-gray-400 opacity-60" : "bg-gray-100 border-transparent text-gray-400 opacity-60"
                                         )}
                                     >
                                         <div className="flex items-center gap-3 text-sm">
@@ -1020,7 +1041,7 @@ export const CashierPage: React.FC = () => {
                                             "w-full flex justify-between items-center p-4 rounded-2xl font-bold transition-all border",
                                             (useNotifications && notificationPermission === 'granted')
                                                 ? "bg-blue-500/10 border-blue-500/30 text-blue-400"
-                                                : "bg-zinc-800 border-transparent text-gray-400 opacity-60"
+                                                : isDark ? "bg-zinc-800 border-transparent text-gray-400 opacity-60" : "bg-gray-100 border-transparent text-gray-400 opacity-60"
                                         )}
                                     >
                                         <div className="flex items-center gap-3 text-sm flex-1">
@@ -1062,10 +1083,10 @@ export const CashierPage: React.FC = () => {
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
-                            className="bg-zinc-900 rounded-3xl p-6 w-full max-w-2xl relative z-10 border border-white/10 shadow-2xl max-h-[90vh] flex flex-col"
+                            className={cn("rounded-3xl p-6 w-full max-w-2xl relative z-10 shadow-2xl max-h-[90vh] flex flex-col", isDark ? 'bg-zinc-900 border border-white/10' : 'bg-white border border-gray-100')}
                         >
                             <div className="flex justify-between items-center mb-6 shrink-0">
-                                <h3 className="text-xl font-black flex items-center gap-2">
+                                <h3 className={cn("text-xl font-black flex items-center gap-2", isDark ? 'text-white' : 'text-gray-900')}>
                                     <LayoutList className="text-primary" />
                                     إدارة الأصناف (توفير / نفاذ المكونات)
                                 </h3>
@@ -1080,11 +1101,11 @@ export const CashierPage: React.FC = () => {
                                 ) : (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         {menuProducts.map(product => (
-                                            <div key={product.id} className="bg-zinc-800 p-3 rounded-2xl flex items-center justify-between border border-white/5">
+                                            <div key={product.id} className={cn("p-3 rounded-2xl flex items-center justify-between border", isDark ? 'bg-zinc-800 border-white/5' : 'bg-gray-50 border-gray-100')}>
                                                 <div className="flex items-center gap-3">
                                                     {product.image_url && <img src={product.image_url} alt={product.name_ar} className="w-10 h-10 rounded-xl object-cover" />}
                                                     <div>
-                                                        <p className="font-bold text-sm text-white">{product.name_ar}</p>
+                                                        <p className={cn("font-bold text-sm", isDark ? 'text-white' : 'text-gray-900')}>{product.name_ar}</p>
                                                         <p className="text-xs text-primary">{product.price} ر.س</p>
                                                     </div>
                                                 </div>

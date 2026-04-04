@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
 import { Branch } from '../types';
 import { motion } from 'motion/react';
+import { cn } from '../lib/utils';
 
 interface HeaderProps {
   selectedBranch: Branch | null;
@@ -124,5 +125,3 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
-
-import { cn } from '../lib/utils';

@@ -9,6 +9,8 @@ interface BranchSelectorModalProps {
 }
 
 export const BranchSelectorModal: React.FC<BranchSelectorModalProps> = ({ onSelect, isOpen }) => {
+  console.log('DEBUG: BranchSelectorModal render, isOpen:', isOpen);
+  
   return (
     <AnimatePresence>
       {isOpen && (
@@ -16,7 +18,7 @@ export const BranchSelectorModal: React.FC<BranchSelectorModalProps> = ({ onSele
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-charcoal p-4 sm:p-6"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-charcoal/80 backdrop-blur-sm p-4 sm:p-6"
         >
           <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 via-transparent to-primary/5 pointer-events-none" />
           
