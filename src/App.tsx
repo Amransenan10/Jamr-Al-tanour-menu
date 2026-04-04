@@ -90,15 +90,30 @@ export default function App() {
     const savedOrderId = localStorage.getItem('jamr_active_order');
     if (savedOrderId) setActiveOrderId(savedOrderId);
 
-    fetchData();
+    // Stale-While-Revalidate: Load cache first for instant display
+    const cachedCats = localStorage.getItem('jamr_cats_cache');
+    const cachedProds = localStorage.getItem('jamr_prods_cache');
+    if (cachedCats && cachedProds) {
+      try {
+        setCategories(JSON.parse(cachedCats));
+        setProducts(JSON.parse(cachedProds));
+        setLoading(false);
+      } catch (e) { console.error('Cache parsing error', e); }
+    }
+
+    fetchData(savedBranch || 'السويدي الغربي');
   }, []);
 
-  const handleBranchSelect = (branch: Branch) => {
+  const handleBranchSelect = async (branch: Branch) => {
     setSelectedBranch(branch);
     localStorage.setItem('jamr_al_tannour_branch', branch);
+    
+    // Refetch the selected branch store_settings to fix branch interference bug
+    const { data } = await supabase.from('store_settings').select('*').eq('branch_name', branch).single();
+    if (data) setStoreSettings(data);
   };
 
-  const fetchData = async () => {
+  const fetchData = async (overrideBranch?: string) => {
     console.log('DEBUG: Starting fetchData...');
     setLoading(true);
     setError(null);
@@ -116,7 +131,7 @@ export default function App() {
           .eq('is_available', true),
         supabase.from('store_settings')
           .select('*')
-          .eq('branch_name', selectedBranch || 'السويدي الغربي')
+          .eq('branch_name', overrideBranch || selectedBranch || 'السويدي الغربي')
           .single()
       ]);
 
@@ -127,7 +142,10 @@ export default function App() {
         errors: { cats: catsRes.error, prods: prodsRes.error, status: statusRes.error }
       });
 
-      if (catsRes.data) setCategories(catsRes.data);
+      if (catsRes.data) {
+        setCategories(catsRes.data);
+        localStorage.setItem('jamr_cats_cache', JSON.stringify(catsRes.data));
+      }
       if (prodsRes.data) {
         const processedProducts = prodsRes.data.map((p: any) => {
           if (p.price === 0 && p.option_groups && p.option_groups.length > 0) {
@@ -143,6 +161,7 @@ export default function App() {
           return p;
         });
         setProducts(processedProducts);
+        localStorage.setItem('jamr_prods_cache', JSON.stringify(processedProducts));
       }
       if (statusRes.data) setStoreSettings(statusRes.data);
     } catch (e: any) {

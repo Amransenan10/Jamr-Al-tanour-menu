@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { supabaseAdmin } from '../lib/supabaseAdmin';
 import { Branch, Order } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -391,7 +392,7 @@ export const CashierPage: React.FC = () => {
         const nextStatus = !currentStatus;
         // Optimistic update
         setMenuProducts(prev => prev.map(p => p.id === productId ? { ...p, is_available: nextStatus } : p));
-        const { error } = await supabase.from('products').update({ is_available: nextStatus }).eq('id', productId);
+        const { error } = await supabaseAdmin.from('products').update({ is_available: nextStatus }).eq('id', productId);
         if (error) {
             toast.error('تعذر تحديث الصنف');
             setMenuProducts(prev => prev.map(p => p.id === productId ? { ...p, is_available: currentStatus } : p));
@@ -433,7 +434,7 @@ export const CashierPage: React.FC = () => {
         // Optimistic update
         setStoreSettings((prev: any) => ({ ...prev, [field]: value }));
         
-        const { error } = await supabase.from('store_settings').update({ [field]: value }).eq('branch_name', branch);
+        const { error } = await supabaseAdmin.from('store_settings').update({ [field]: value }).eq('branch_name', branch);
         if (error) {
             toast.error('تعذر التحديث');
         } else {
@@ -577,7 +578,7 @@ export const CashierPage: React.FC = () => {
     // ── Update status ─────────────────────────────────────────────────────────
     const handleStatusChange = async (id: string, newStatus: OrderStatus) => {
         setUpdatingId(id);
-        await supabase.from('orders').update({ status: newStatus }).eq('id', id);
+        await supabaseAdmin.from('orders').update({ status: newStatus }).eq('id', id);
         setUpdatingId(null);
     };
 
