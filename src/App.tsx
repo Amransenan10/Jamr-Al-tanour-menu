@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Loader2, UtensilsCrossed, Navigation } from 'lucide-react';
 import { BranchSelectorModal } from './components/BranchSelectorModal';
 import { FloatingCartButton } from './components/FloatingCartButton';
+import { useBackButton } from './hooks/useBackButton';
 import { Link } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
@@ -30,6 +31,10 @@ export default function App() {
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [storeSettings, setStoreSettings] = useState<any>(null);
   const storeStatus = storeSettings?.status || 'open';
+
+  // Hardware Back Button Handlers
+  useBackButton(isCartOpen, () => setIsCartOpen(false), 'cart');
+  useBackButton(selectedProduct !== null, () => setSelectedProduct(null), 'product');
 
   // Debugging & Resilience: Anti-hang timeout
   useEffect(() => {

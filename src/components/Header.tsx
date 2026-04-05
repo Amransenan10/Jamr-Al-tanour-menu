@@ -57,18 +57,6 @@ export const Header: React.FC<HeaderProps> = ({
             >
               {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </button>
-
-            <button
-              onClick={onCartOpen}
-              className="relative p-2.5 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
-            >
-              <ShoppingCart size={20} />
-              {totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-white text-primary text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-primary">
-                  {totalItems}
-                </span>
-              )}
-            </button>
           </div>
         </div>
 
