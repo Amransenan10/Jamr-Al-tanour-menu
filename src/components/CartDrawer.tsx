@@ -482,6 +482,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                     ملاحظة: نواجه ضغطاً حالياً، قد يتأخر تحضير طلبك قليلاً
                   </div>
                 )}
+                {storeStatus === 'prayer' && (
+                  <div className="text-indigo-500 bg-indigo-500/10 p-2.5 rounded-xl text-xs font-bold text-center border border-indigo-500/20">
+                    ملاحظة: طاقم المطعم في وقت صلاة. سيتم تجهيز الطلب بعد الصلاة مباشرة 🕌
+                  </div>
+                )}
 
                 {step === 'checkout' && orderType === 'delivery' && totalPrice < 20 && (
                   <div className="text-red-500 bg-red-500/10 p-2.5 rounded-xl text-xs font-bold text-center border border-red-500/20">

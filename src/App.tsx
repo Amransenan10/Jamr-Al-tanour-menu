@@ -202,6 +202,11 @@ export default function App() {
                   🟠 نواجه ضغطاً في الطلبات حالياً. قد يتأخر تحضير طلبك قليلاً، شكراً لتفهمك!
               </div>
           )}
+          {storeStatus === 'prayer' && (
+              <div className="bg-indigo-500/10 border-b border-indigo-500/20 text-indigo-600 dark:text-indigo-400 py-3 px-4 text-center text-sm font-bold flex items-center justify-center gap-2">
+                  🕌 طاقم المطعم في وقت صلاة. يمكنك إتمام طلبك وسنبدأ بالتحضير فوراً بعد الصلاة.
+              </div>
+          )}
 
           <BranchSelectorModal
             isOpen={selectedBranch === null}

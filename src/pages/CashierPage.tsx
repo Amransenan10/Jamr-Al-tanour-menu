@@ -444,8 +444,8 @@ export const CashierPage: React.FC = () => {
     };
 
     const toggleStoreStatus = () => {
-        const nextStatus = storeStatus === 'open' ? 'busy' : storeStatus === 'busy' ? 'closed' : 'open';
-        updateStoreSetting('status', nextStatus, `حالة المطعم: ${nextStatus === 'open' ? 'مفتوح' : nextStatus === 'busy' ? 'مزدحم' : 'مغلق'}`);
+        const nextStatus = storeStatus === 'open' ? 'busy' : storeStatus === 'busy' ? 'prayer' : storeStatus === 'prayer' ? 'closed' : 'open';
+        updateStoreSetting('status', nextStatus, `حالة المطعم: ${nextStatus === 'open' ? 'مفتوح' : nextStatus === 'busy' ? 'مزدحم' : nextStatus === 'prayer' ? 'مشغول (صلاة)' : 'مغلق'}`);
     };
 
     // ── Load saved branch and settings ─────────────────────────────────────────
@@ -771,7 +771,8 @@ export const CashierPage: React.FC = () => {
                         >
                             {isUpdatingStatus ? <Loader2 size={12} className="animate-spin" /> : 
                              storeStatus === 'open' ? '🟢 مفتوح' : 
-                             storeStatus === 'busy' ? '🟠 مزدحم' : '🔴 مغلق'}
+                             storeStatus === 'busy' ? '🟠 مزدحم' : 
+                             storeStatus === 'prayer' ? '🕌 مشغول (صلاة)' : '🔴 مغلق'}
                         </button>
                         <div className={cn("w-px h-6 mx-1", isDark ? 'bg-white/10' : 'bg-gray-200')}></div>
                         <button
@@ -979,6 +980,7 @@ export const CashierPage: React.FC = () => {
                                     {[
                                         { id: 'open', label: '🟢 مفتوح', color: 'bg-green-500/10 text-green-400 border-green-500/20' },
                                         { id: 'busy', label: '🟠 مزدحم', color: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
+                                        { id: 'prayer', label: '🕌 مشغول (صلاة)', color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' },
                                         { id: 'closed', label: '🔴 مغلق', color: 'bg-red-500/10 text-red-400 border-red-500/20' }
                                     ].map(status => (
                                         <button

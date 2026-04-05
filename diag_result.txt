@@ -1,0 +1,18 @@
+URL: OK
+ANON: OK
+
+=== ANON (كيف يراها الموقع) ===
+OK   categories: 1 rows
+OK   products: 1 rows
+FAIL menu_items: Could not find the table 'public.menu_items' in the schema cache
+OK   store_settings: 1 rows
+OK   option_groups: 1 rows
+OK   option_items: 1 rows
+
+=== ADMIN ===
+OK   categories: 1 rows
+OK   products: 1 rows
+FAIL menu_items: Could not find the table 'public.menu_items' in the schema cache
+OK   store_settings: 1 rows
+OK   option_groups: 1 rows
+OK   option_items: 1 rows
