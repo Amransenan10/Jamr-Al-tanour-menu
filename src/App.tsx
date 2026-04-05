@@ -13,6 +13,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader2, UtensilsCrossed, Navigation } from 'lucide-react';
 import { BranchSelectorModal } from './components/BranchSelectorModal';
+import { FloatingCartButton } from './components/FloatingCartButton';
 import { Link } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
@@ -204,7 +205,7 @@ export default function App() {
           )}
           {storeStatus === 'prayer' && (
               <div className="bg-indigo-500/10 border-b border-indigo-500/20 text-indigo-600 dark:text-indigo-400 py-3 px-4 text-center text-sm font-bold flex items-center justify-center gap-2">
-                  🕌 طاقم المطعم في وقت صلاة. يمكنك إتمام طلبك وسنبدأ بالتحضير فوراً بعد الصلاة.
+                  🕌 عذراً مغلق للصلاة. يمكنك إرسال طلبك وسيتم تحضيره بعد الصلاة.
               </div>
           )}
 
@@ -300,6 +301,12 @@ export default function App() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          <FloatingCartButton 
+            storeStatus={storeStatus} 
+            onClick={() => setIsCartOpen(true)} 
+            hasActiveOrder={!!activeOrderId} 
+          />
 
           <InstallPWA />
         </div>
