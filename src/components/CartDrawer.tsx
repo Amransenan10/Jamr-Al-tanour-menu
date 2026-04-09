@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Branch, OrderType, Order } from '../types';
 import { supabase } from '../lib/supabaseClient';
+import { supabaseLoyalty } from '../lib/loyaltySupabase';
 import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { saveOrderLocally } from '../utils/orderStorage';
@@ -22,6 +23,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
   const [orderType, setOrderType] = useState<OrderType>(null);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{code: string; type: 'fixed' | 'percentage'; value: number} | null>(null);
   const [promoError, setPromoError] = useState('');
@@ -39,16 +41,72 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
     };
   });
 
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+  const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+  const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
+
+  React.useEffect(() => {
+    const checkLoyalty = async () => {
+      setUseLoyaltyPoints(false);
+      
+      if (!formData.phone || formData.phone.length < 10) {
+        setLoyaltyPoints(0);
+        return;
+      }
+
+      if (!supabaseLoyalty) return; // Silent if not configured
+
+      setLoyaltyLoading(true);
+      try {
+        const { data, error } = await supabaseLoyalty
+          .from('customers')
+          .select('points_balance')
+          .eq('phone_number', formData.phone)
+          .single();
+          
+        if (!error && data) {
+          setLoyaltyPoints(data.points_balance || 0);
+        } else {
+          setLoyaltyPoints(0);
+        }
+      } catch (e) {
+        console.error('Loyalty fetch error', e);
+        setLoyaltyPoints(0);
+      } finally {
+        setLoyaltyLoading(false);
+      }
+    };
+
+    const timeout = setTimeout(checkLoyalty, 600);
+    return () => clearTimeout(timeout);
+  }, [formData.phone]);
+
   const handleLocationClick = () => {
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        setFormData(prev => ({
-          ...prev,
-          location: `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`
-        }));
-      }, (err) => {
-        alert('تعذر تحديد الموقع تلقائياً، يرجى تفعيل إعدادات الموقع أو إدخاله يدوياً');
-      });
+      setLocationLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLocationLoading(false);
+          setFormData(prev => ({
+            ...prev,
+            location: `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`
+          }));
+        }, 
+        (err) => {
+          setLocationLoading(false);
+          console.error("Geolocation error:", err);
+          let errorMessage = 'تعذر تحديد الموقع تلقائياً، يرجى تفعيل إعدادات الموقع من متصفحك أو إدخاله يدوياً';
+          if (err.code === 1) { // PERMISSION_DENIED
+            errorMessage = 'عذراً، تم رفض صلاحية الوصول للموقع. يرجى السماح للمتصفح (مثل Safari أو Chrome) بمعرفة موقعك من إعدادات جهازك لتتمكن من استخدام هذه الميزة، أو قم بإدخال العنوان يدوياً.';
+          } else if (err.code === 2) { // POSITION_UNAVAILABLE
+            errorMessage = 'معلومات الموقع غير متوفرة حالياً. حاول التحرك لمكان مكشوف، تأكد من تشغيل الـ GPS، أو أدخل الموقع يدوياً.';
+          } else if (err.code === 3) { // TIMEOUT
+            errorMessage = 'انتهى وقت المحاولة للحصول على الموقع. يرجى التحقق من اتصالك وإعدادات الموقع، أو إدخاله يدوياً.';
+          }
+          alert(errorMessage);
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+      );
     } else {
       alert('المتصفح الخاص بك لا يدعم تحديد الموقع');
     }
@@ -64,9 +122,21 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
       discountAmount = (totalPrice * appliedPromo.value) / 100;
     }
   }
+
+  // Loyalty Discount Calculation
+  let maxLoyaltyDiscount = Math.floor(loyaltyPoints / 5);
+  let loyaltyDiscountAmount = 0;
+  let pointsToDeduct = 0;
+
+  if (useLoyaltyPoints && maxLoyaltyDiscount > 0) {
+    const remainingTotal = totalPrice + deliveryFee - discountAmount;
+    loyaltyDiscountAmount = Math.min(maxLoyaltyDiscount, remainingTotal);
+    pointsToDeduct = loyaltyDiscountAmount * 5;
+  }
   
   // Ensure final price doesn't go below 0
-  const finalPrice = Math.max(0, totalPrice + deliveryFee - discountAmount);
+  const finalPrice = Math.max(0, totalPrice + deliveryFee - discountAmount - loyaltyDiscountAmount);
+  const loyaltyPointsEarned = Math.floor(finalPrice / 10);
 
     const handleApplyPromo = async () => {
     if (!promoCodeInput.trim()) return;
@@ -74,6 +144,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
     setPromoSuccess('');
     
     try {
+      // Check local storage first for quick feedback
+      const usedPromos = JSON.parse(localStorage.getItem('jamr_used_promos') || '[]');
+      if (usedPromos.includes(promoCodeInput.trim().toUpperCase())) {
+        setPromoError('لقد قمت باستخدام كود الخصم هذا مسبقاً');
+        return;
+      }
+
       const { data, error } = await supabase
         .from('coupons')
         .select('*')
@@ -96,6 +173,21 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
       if (data.max_uses && data.current_uses >= data.max_uses) {
           setPromoError('تم الوصول للحد الأقصى لاستخدام هذا الكود');
           return;
+      }
+
+      // If phone is entered, check if the user previously used this code
+      if (formData.phone) {
+        const { data: previousOrders } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('phone', formData.phone)
+          .eq('promo_code', data.code)
+          .limit(1);
+          
+        if (previousOrders && previousOrders.length > 0) {
+          setPromoError('لقد قمت باستخدام كود الخصم هذا مسبقاً برقم الجوال المدخل');
+          return;
+        }
       }
 
       setAppliedPromo({
@@ -125,20 +217,43 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
 
     setLoading(true);
     try {
+      // Re-verify promo with phone one more time to prevent bypasses when user enters phone AFTER applying promo
+      if (appliedPromo && formData.phone) {
+          const { data: previousOrders } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('phone', formData.phone)
+          .eq('promo_code', appliedPromo.code)
+          .limit(1);
+          
+        if (previousOrders && previousOrders.length > 0) {
+          alert('لقد قمت باستخدام كود الخصم هذا مسبقاً برقم الجوال المدخل');
+          setLoading(false);
+          setAppliedPromo(null);
+          return;
+        }
+      }
+
+      const orderNotes = [
+        formData.notes,
+        pointsToDeduct > 0 ? `[LOYALTY_USED:${pointsToDeduct}]` : '',
+        loyaltyPointsEarned > 0 ? `[LOYALTY_EARNED:${loyaltyPointsEarned}]` : ''
+      ].filter(Boolean).join('\n');
+
       const order: Order = {
         branch,
         order_type: orderType,
         customer_name: formData.name,
         phone: formData.phone,
         location: orderType === 'delivery' ? formData.location : undefined,
-        notes: formData.notes,
+        notes: orderNotes,
         total_price: finalPrice,
         items: cart,
         status: 'new',
         // Typecasting below to bypass strict type checking temporarily, assuming the 'orders' table supports these columns per our recent migration
         ...({
           delivery_fee: deliveryFee,
-          discount_amount: discountAmount,
+          discount_amount: discountAmount + loyaltyDiscountAmount, // merge both discounts visually in total/subtotal
           promo_code: appliedPromo?.code || null
         } as any)
       };
@@ -151,6 +266,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         const { data: couponData } = await supabase.from('coupons').select('current_uses').eq('code', appliedPromo.code).single();
         if (couponData) {
             await supabase.from('coupons').update({ current_uses: (couponData.current_uses || 0) + 1 }).eq('code', appliedPromo.code);
+        }
+        
+        // Save to local storage to prevent reuse on same device
+        const usedPromos = JSON.parse(localStorage.getItem('jamr_used_promos') || '[]');
+        if (!usedPromos.includes(appliedPromo.code)) {
+            usedPromos.push(appliedPromo.code);
+            localStorage.setItem('jamr_used_promos', JSON.stringify(usedPromos));
         }
       }
 
@@ -318,13 +440,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                           <button
                             type="button"
                             onClick={handleLocationClick}
-                            className="w-full py-6 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-300 dark:border-white/20 rounded-2xl bg-gray-50/50 dark:bg-white/5 text-gray-500 hover:bg-primary/5 hover:border-primary/50 hover:text-primary transition-all group"
+                            disabled={locationLoading}
+                            className="w-full py-6 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-300 dark:border-white/20 rounded-2xl bg-gray-50/50 dark:bg-white/5 text-gray-500 hover:bg-primary/5 hover:border-primary/50 hover:text-primary transition-all group disabled:opacity-70 disabled:cursor-wait"
                           >
                             <div className="w-12 h-12 bg-white dark:bg-zinc-800 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                              <MapPin size={24} className="text-primary" />
+                              {locationLoading ? <Loader2 size={24} className="text-primary animate-spin" /> : <MapPin size={24} className="text-primary" />}
                             </div>
-                            <span className="font-bold text-sm">اضغط هنا لإضافة موقعك التلقائي</span>
-                            <span className="text-[10px] opacity-70">لتسهيل وصول المندوب إليك</span>
+                            <span className="font-bold text-sm">
+                              {locationLoading ? "جاري تحديد الموقع..." : "اضغط هنا لإضافة موقعك التلقائي"}
+                            </span>
+                            {!locationLoading && <span className="text-[10px] opacity-70">لتسهيل وصول المندوب إليك</span>}
                           </button>
                         ) : (
                           <div className="space-y-2">
@@ -332,9 +457,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                                 <button
                                     type="button"
                                     onClick={handleLocationClick}
-                                    className="text-[11px] font-bold text-primary flex items-center gap-1 hover:opacity-80 transition-opacity bg-primary/10 px-2 py-1 rounded-lg"
+                                    disabled={locationLoading}
+                                    className="text-[11px] font-bold text-primary flex items-center gap-1 hover:opacity-80 transition-opacity bg-primary/10 px-2 py-1 rounded-lg disabled:opacity-50"
                                 >
-                                    <MapPin size={12} /> تحديث موقعي
+                                    {locationLoading ? <Loader2 size={12} className="animate-spin" /> : <MapPin size={12} />} 
+                                    {locationLoading ? "جاري التحديث..." : "تحديث موقعي"}
                                 </button>
                             </div>
                             <div className="relative">
@@ -416,6 +543,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                         </div>
                       )}
                       
+                      {loyaltyPointsEarned > 0 && (
+                        <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-white/10">
+                          <span className="text-amber-500 font-bold text-sm">نقاط ستكسبها 🌟</span>
+                          <span className="font-bold text-amber-600 dark:text-amber-400">+{loyaltyPointsEarned} نقطة</span>
+                        </div>
+                      )}
+                      
                       <div className="flex justify-between items-center pt-1">
                         <span className="text-gray-500 font-bold text-sm">الأصناف</span>
                         <span className="font-black text-primary">{cart.length} أصناف</span>
@@ -465,6 +599,30 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                     {promoSuccess && <p className="text-xs text-green-600 dark:text-green-400 font-bold">{promoSuccess}</p>}
                   </div>
                 )}
+                
+                {/* Loyalty Points Section */}
+                {step === 'checkout' && loyaltyPoints >= 5 && (
+                  <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-500/10 p-3 rounded-xl border border-amber-200 dark:border-amber-500/20">
+                    <div>
+                      <div className="text-sm font-bold text-amber-700 dark:text-amber-400">
+                        لديك {loyaltyPoints} نقطة ولاء 🌟
+                      </div>
+                      <div className="text-xs text-amber-600/80 dark:text-amber-400/80">
+                        تساوي خصم {Math.floor(loyaltyPoints / 5)} ر.س
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={useLoyaltyPoints}
+                        onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                      <span className="mr-2 text-xs font-bold text-gray-500 dark:text-gray-400">استخدام</span>
+                    </label>
+                  </div>
+                )}
 
                 <div className="flex flex-col gap-2">
                   <div className="flex justify-between items-center text-sm">
@@ -481,8 +639,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
 
                   {discountAmount > 0 && step === 'checkout' && (
                     <div className="flex justify-between items-center text-sm text-green-600 dark:text-green-400">
-                      <span className="font-bold">خصم ({appliedPromo?.code})</span>
+                      <span className="font-bold">خصم كود ({appliedPromo?.code})</span>
                       <span className="font-bold">-{discountAmount.toFixed(2)} ر.س</span>
+                    </div>
+                  )}
+
+                  {loyaltyDiscountAmount > 0 && step === 'checkout' && (
+                    <div className="flex justify-between items-center text-sm text-amber-600 dark:text-amber-400">
+                      <span className="font-bold">خصم النقاط ({pointsToDeduct} نقطة)</span>
+                      <span className="font-bold">-{loyaltyDiscountAmount.toFixed(2)} ر.س</span>
                     </div>
                   )}
 

@@ -186,6 +186,10 @@ export default function App() {
     return matchesCategory && matchesSearch;
   });
 
+  const displayProducts = (activeCategoryId === null && !searchQuery)
+    ? filteredProducts.slice(0, 8)
+    : filteredProducts;
+
   return (
     <ThemeProvider>
       <CartProvider>
@@ -231,14 +235,15 @@ export default function App() {
                 <Loader2 size={48} className="text-primary animate-spin" />
                 <p className="text-gray-500 font-medium">جاري تحضير المنيو...</p>
               </div>
-            ) : filteredProducts.length > 0 ? (
+            ) : displayProducts.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-8">
                 <AnimatePresence mode="popLayout">
-                  {filteredProducts.map((product) => (
+                  {displayProducts.map((product) => (
                     <ProductCard
                       key={product.id}
                       product={product}
                       onSelect={setSelectedProduct}
+                      isPopular={products.findIndex(p => p.id === product.id) < 8}
                     />
                   ))}
                 </AnimatePresence>

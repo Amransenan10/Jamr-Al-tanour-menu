@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { supabaseAdmin } from '../lib/supabaseAdmin';
+import { supabaseLoyaltyAdmin } from '../lib/loyaltySupabase';
 import { Branch, Order } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -578,6 +579,46 @@ export const CashierPage: React.FC = () => {
     // ── Update status ─────────────────────────────────────────────────────────
     const handleStatusChange = async (id: string, newStatus: OrderStatus) => {
         setUpdatingId(id);
+
+        const order = orders.find(o => o.id === id);
+        
+        // Handle Loyalty Sync when order is successfully completed
+        if (newStatus === 'completed' && order && order.status !== 'completed' && order.phone && supabaseLoyaltyAdmin) {
+            const usedMatch = order.notes?.match(/\[LOYALTY_USED:(\d+)\]/);
+            const earnedMatch = order.notes?.match(/\[LOYALTY_EARNED:(\d+)\]/);
+            
+            const usedPoints = usedMatch ? parseInt(usedMatch[1]) || 0 : 0;
+            const earnedPoints = earnedMatch ? parseInt(earnedMatch[1]) || 0 : 0;
+            const diff = earnedPoints - usedPoints;
+            
+            if (diff !== 0 || usedPoints > 0) {
+                try {
+                    const { data: customer } = await supabaseLoyaltyAdmin
+                        .from('customers')
+                        .select('points_balance')
+                        .eq('phone_number', order.phone)
+                        .single();
+                        
+                    if (customer) {
+                        await supabaseLoyaltyAdmin
+                            .from('customers')
+                            .update({ points_balance: Math.max(0, customer.points_balance + diff) })
+                            .eq('phone_number', order.phone);
+                    } else if (diff > 0) {
+                        await supabaseLoyaltyAdmin
+                            .from('customers')
+                            .insert([{
+                                phone_number: order.phone,
+                                full_name: order.customer_name || 'عميل المنيو',
+                                points_balance: diff
+                            }]);
+                    }
+                } catch (e) {
+                    console.error('Failed to sync loyalty points:', e);
+                }
+            }
+        }
+
         await supabaseAdmin.from('orders').update({ status: newStatus }).eq('id', id);
         setUpdatingId(null);
     };

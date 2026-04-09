@@ -1,14 +1,15 @@
 import React from 'react';
 import { Product } from '../types';
-import { ShoppingBag, UtensilsCrossed } from 'lucide-react';
+import { ShoppingBag, UtensilsCrossed, Star } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface ProductCardProps {
   product: Product;
   onSelect: (product: Product) => void;
+  isPopular?: boolean;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect, isPopular }) => {
   return (
     <motion.div
       layout
@@ -35,6 +36,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) =
         <div className="absolute top-2 right-2 sm:top-4 sm:right-4 bg-primary text-white backdrop-blur-md px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-sm shadow-lg shadow-primary/20">
           {product.price > 0 ? product.price : (product.starting_price || 0)} ر.س
         </div>
+
+        {/* Popular Star Tag */}
+        {isPopular && (
+          <div className="absolute top-2 left-2 sm:top-4 sm:left-4 bg-amber-400 text-white backdrop-blur-md px-2 py-1.5 sm:px-3 sm:py-2 rounded-xl sm:rounded-2xl shadow-lg shadow-amber-400/30 flex items-center justify-center">
+            <Star size={14} className="fill-white sm:w-5 sm:h-5 w-4 h-4" />
+          </div>
+        )}
 
         {!product.is_available && (
           <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center">
