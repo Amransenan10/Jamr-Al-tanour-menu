@@ -610,6 +610,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                       <div className="text-xs text-amber-600/80 dark:text-amber-400/80">
                         {loyaltyPoints >= 5 ? `تساوي خصم ${Math.floor(loyaltyPoints / 5)} ر.س` : (loyaltyPoints > 0 ? 'تحتاج 5 نقاط للاستفادة من الخصم' : 'اجمع النقاط مع هذا الطلب لخصومات مستقبلية')}
                       </div>
+                      {!supabaseLoyalty && (
+                        <div className="text-red-500 text-[10px] mt-1 font-black">
+                          ⚠️ خطأ: مفاتيح الربط (URL/Key) مفقودة من Vercel!
+                        </div>
+                      )}
                     </div>
                     {loyaltyPoints >= 5 && (
                       <label className="relative inline-flex items-center cursor-pointer">
