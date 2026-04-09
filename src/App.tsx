@@ -186,8 +186,12 @@ export default function App() {
     return matchesCategory && matchesSearch;
   });
 
+  const top8PopularProducts = [...products]
+    .sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
+    .slice(0, 8);
+
   const displayProducts = (activeCategoryId === null && !searchQuery)
-    ? filteredProducts.slice(0, 8)
+    ? top8PopularProducts
     : filteredProducts;
 
   return (
@@ -243,7 +247,7 @@ export default function App() {
                       key={product.id}
                       product={product}
                       onSelect={setSelectedProduct}
-                      isPopular={products.findIndex(p => p.id === product.id) < 8}
+                      isPopular={top8PopularProducts.some(p => p.id === product.id)}
                     />
                   ))}
                 </AnimatePresence>

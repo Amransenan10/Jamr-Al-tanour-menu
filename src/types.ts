@@ -18,6 +18,7 @@ export interface Product {
   is_available: boolean;
   calories?: number;
   starting_price?: number;
+  sales_count?: number;
 }
 
 export interface OptionGroup {

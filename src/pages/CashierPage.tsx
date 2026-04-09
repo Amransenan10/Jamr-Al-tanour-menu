@@ -582,6 +582,21 @@ export const CashierPage: React.FC = () => {
 
         const order = orders.find(o => o.id === id);
         
+        // Handle Sales Count Increment
+        if (newStatus === 'completed' && order && order.status !== 'completed') {
+            try {
+                const updates = order.items.map(async (item) => {
+                    const { data: prod } = await supabaseAdmin.from('products').select('sales_count').eq('id', item.productId).single();
+                    if (prod) {
+                        await supabaseAdmin.from('products').update({ sales_count: (prod.sales_count || 0) + item.quantity }).eq('id', item.productId);
+                    }
+                });
+                await Promise.all(updates);
+            } catch (e) {
+                console.error('Failed to increment sales_count:', e);
+            }
+        }
+
         // Handle Loyalty Sync when order is successfully completed
         if (newStatus === 'completed' && order && order.status !== 'completed' && order.phone && supabaseLoyaltyAdmin) {
             const usedMatch = order.notes?.match(/\[LOYALTY_USED:(\d+)\]/);
