@@ -295,9 +295,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
       clearCart();
       onClose();
       navigate(`/track/${data.id}`);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert('حدث خطأ أثناء إرسال الطلب، يرجى المحاولة مرة أخرى');
+      alert('حدث خطأ أثناء إرسال الطلب: ' + (e?.message || e?.details || JSON.stringify(e)));
     } finally {
       setLoading(false);
     }
