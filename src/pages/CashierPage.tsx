@@ -644,6 +644,7 @@ export const CashierPage: React.FC = () => {
         }
 
         await supabaseAdmin.from('orders').update({ status: newStatus }).eq('id', id);
+        setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
         setUpdatingId(null);
     };
 
