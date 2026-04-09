@@ -601,7 +601,7 @@ export const CashierPage: React.FC = () => {
         }
 
         // Handle Loyalty Sync when order is successfully completed
-        if (newStatus === 'completed' && order && order.status !== 'completed' && order.phone && supabaseLoyaltyAdmin) {
+        if (newStatus === 'completed' && order && order.status !== 'completed' && order.phone) {
             const usedMatch = order.notes?.match(/\[LOYALTY_USED:(\d+)\]/);
             const earnedMatch = order.notes?.match(/\[LOYALTY_EARNED:(\d+)\]/);
             
@@ -610,8 +610,11 @@ export const CashierPage: React.FC = () => {
             const diff = earnedPoints - usedPoints;
             
             if (diff !== 0 || usedPoints > 0) {
-                try {
-                    const { data: customer } = await supabaseLoyaltyAdmin
+                if (!supabaseLoyaltyAdmin) {
+                    toast.error('تحذير: لم يتم إضافة نقاط العميل لأن مفتاح ربط الولاء (Service Key) مفقود في إعدادات النظام!');
+                } else {
+                    try {
+                        const { data: customer } = await supabaseLoyaltyAdmin
                         .from('customers')
                         .select('points_balance')
                         .eq('phone_number', order.phone)
@@ -631,10 +634,13 @@ export const CashierPage: React.FC = () => {
                                 points_balance: diff
                             }]);
                     }
+                    toast.success('تمت مزامنة نقاط الولاء للعميل بنجاح');
                 } catch (e) {
                     console.error('Failed to sync loyalty points:', e);
+                    toast.error('حدث خطأ أثناء مزامنة نقاط الولاء');
                 }
             }
+          }
         }
 
         await supabaseAdmin.from('orders').update({ status: newStatus }).eq('id', id);
