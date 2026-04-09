@@ -170,11 +170,14 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                 </div>
 
                 {/* Notes */}
-                {order.notes && (
-                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
-                        <p className="text-amber-400 text-xs font-bold">ملاحظة: {order.notes}</p>
-                    </div>
-                )}
+                {(() => {
+                    const cleanNotes = order.notes?.replace(/\[LOYALTY_(USED|EARNED):\d+\]/g, '').trim();
+                    return cleanNotes ? (
+                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mt-3">
+                            <p className="text-amber-600 dark:text-amber-400 text-xs font-bold leading-relaxed whitespace-pre-wrap">ملاحظات: {cleanNotes}</p>
+                        </div>
+                    ) : null;
+                })()}
 
                 {/* Location */}
                 {(order as any).location && (

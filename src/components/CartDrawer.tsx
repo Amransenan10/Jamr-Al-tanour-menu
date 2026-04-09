@@ -601,26 +601,28 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                 )}
                 
                 {/* Loyalty Points Section */}
-                {step === 'checkout' && loyaltyPoints >= 5 && (
+                {step === 'checkout' && formData.phone.length >= 9 && (
                   <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-500/10 p-3 rounded-xl border border-amber-200 dark:border-amber-500/20">
                     <div>
                       <div className="text-sm font-bold text-amber-700 dark:text-amber-400">
-                        لديك {loyaltyPoints} نقطة ولاء 🌟
+                        {loyaltyPoints > 0 ? `لديك ${loyaltyPoints} نقطة ولاء 🌟` : 'نظام الولاء: 0 نقطة'}
                       </div>
                       <div className="text-xs text-amber-600/80 dark:text-amber-400/80">
-                        تساوي خصم {Math.floor(loyaltyPoints / 5)} ر.س
+                        {loyaltyPoints >= 5 ? `تساوي خصم ${Math.floor(loyaltyPoints / 5)} ر.س` : (loyaltyPoints > 0 ? 'تحتاج 5 نقاط للاستفادة من الخصم' : 'اجمع النقاط مع هذا الطلب لخصومات مستقبلية')}
                       </div>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        className="sr-only peer" 
-                        checked={useLoyaltyPoints}
-                        onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
-                      <span className="mr-2 text-xs font-bold text-gray-500 dark:text-gray-400">استخدام</span>
-                    </label>
+                    {loyaltyPoints >= 5 && (
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="sr-only peer" 
+                          checked={useLoyaltyPoints}
+                          onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                        <span className="mr-2 text-xs font-bold text-gray-500 dark:text-gray-400">استخدام</span>
+                      </label>
+                    )}
                   </div>
                 )}
 
