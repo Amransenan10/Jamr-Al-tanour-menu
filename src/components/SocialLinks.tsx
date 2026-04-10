@@ -26,7 +26,7 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({ instagram, snapchat, t
   if (links.length === 0) return null;
 
   return (
-    <div className="py-8 flex flex-col items-center justify-center border-t border-gray-100 dark:border-white/5 mt-8 max-w-lg mx-auto w-full px-4">
+    <div className="pt-8 pb-32 flex flex-col items-center justify-center border-t border-gray-100 dark:border-white/5 mt-8 max-w-lg mx-auto w-full px-4">
       <h3 className="text-sm font-bold text-gray-500 mb-5 relative flex items-center justify-center w-full">
         <span className="bg-gray-100 dark:bg-zinc-800 h-[1px] flex-1"></span>
         <span className="px-4">تواصل معنا وتابع أحدث عروضنا</span>
