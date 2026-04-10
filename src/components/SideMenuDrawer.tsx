@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, FileText, MessageCircle, Star, Instagram, Twitter, Navigation } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabaseLoyalty } from '../lib/loyaltySupabase';
 
 interface SideMenuDrawerProps {
@@ -14,6 +14,7 @@ export const SideMenuDrawer: React.FC<SideMenuDrawerProps> = ({ isOpen, onClose,
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loadingPoints, setLoadingPoints] = useState(false);
   const [pointsResult, setPointsResult] = useState<{ points?: number, error?: string } | null>(null);
+  const navigate = useNavigate();
 
   const handleCheckPoints = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,9 +30,9 @@ export const SideMenuDrawer: React.FC<SideMenuDrawerProps> = ({ isOpen, onClose,
     try {
       const cleanPhone = phoneNumber.replace(/\D/g, '');
       const { data, error } = await supabaseLoyalty
-        .from('customer_points')
-        .select('points')
-        .eq('phone', cleanPhone)
+        .from('customers')
+        .select('points_balance')
+        .eq('phone_number', cleanPhone)
         .single();
         
       if (error && error.code !== 'PGRST116') {
@@ -39,12 +40,12 @@ export const SideMenuDrawer: React.FC<SideMenuDrawerProps> = ({ isOpen, onClose,
       }
       
       if (data) {
-        setPointsResult({ points: data.points });
+        setPointsResult({ points: data.points_balance });
       } else {
         setPointsResult({ points: 0 }); // New customer
       }
     } catch (err: any) {
-      setPointsResult({ error: 'حدث خطأ أثناء البحث. حاول مرة أخرى.' });
+      setPointsResult({ error: 'عذراً لا توجد مسجل بهذا الرقم.' });
     } finally {
       setLoadingPoints(false);
     }
@@ -91,9 +92,11 @@ export const SideMenuDrawer: React.FC<SideMenuDrawerProps> = ({ isOpen, onClose,
               
               {/* Group 1: Navigation */}
               <div className="space-y-2">
-                <Link 
-                  onClick={onClose}
-                  to="/my-orders"
+                <button 
+                  onClick={() => {
+                    onClose();
+                    setTimeout(() => navigate('/my-orders'), 150);
+                  }}
                   className="w-full flex items-center gap-3 p-3 rounded-2xl bg-gray-50 dark:bg-zinc-900/50 border border-gray-100 dark:border-zinc-800 hover:border-primary/50 transition-colors text-right"
                 >
                   <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shrink-0">
@@ -103,7 +106,7 @@ export const SideMenuDrawer: React.FC<SideMenuDrawerProps> = ({ isOpen, onClose,
                     <h3 className="font-bold text-sm text-gray-900 dark:text-white">طلباتي السابقة</h3>
                     <p className="text-xs text-gray-500">تتبع طلباتك وتاريخها</p>
                   </div>
-                </Link>
+                </button>
               </div>
 
               {/* Group 2: Points Component */}
