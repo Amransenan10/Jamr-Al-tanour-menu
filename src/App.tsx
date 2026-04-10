@@ -8,6 +8,7 @@ import { CartDrawer } from './components/CartDrawer';
 import { InstallPWA } from './components/InstallPWA';
 import { AnnouncementBanner } from './components/AnnouncementBanner';
 import { SocialLinks } from './components/SocialLinks';
+import { SideMenuDrawer } from './components/SideMenuDrawer';
 import { Category, Product, Branch } from './types';
 import { supabase } from './lib/supabaseClient';
 import { CartProvider } from './context/CartContext';
@@ -30,6 +31,7 @@ export default function App() {
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [storeSettings, setStoreSettings] = useState<any>(null);
   const [appSettings, setAppSettings] = useState<any>(null);
@@ -37,6 +39,7 @@ export default function App() {
 
   // Hardware Back Button Handlers
   useBackButton(isCartOpen, () => setIsCartOpen(false), 'cart');
+  useBackButton(isSideMenuOpen, () => setIsSideMenuOpen(false), 'menu');
   useBackButton(selectedProduct !== null, () => setSelectedProduct(null), 'product');
 
   // Debugging & Resilience: Anti-hang timeout
@@ -220,6 +223,7 @@ export default function App() {
             onBranchChange={handleBranchSelect}
             onCartOpen={() => setIsCartOpen(true)}
             onSearch={setSearchQuery}
+            onSideMenuOpen={() => setIsSideMenuOpen(true)}
           />
 
           {storeStatus === 'closed' && (
@@ -311,6 +315,12 @@ export default function App() {
             onClose={() => setIsCartOpen(false)}
             branch={selectedBranch || 'السويدي الغربي'}
             storeSettings={storeSettings}
+          />
+
+          <SideMenuDrawer
+            isOpen={isSideMenuOpen}
+            onClose={() => setIsSideMenuOpen(false)}
+            appSettings={appSettings}
           />
 
           {/* Active Order Banner */}

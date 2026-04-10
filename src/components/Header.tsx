@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Moon, Sun, MapPin, ShoppingCart, ChevronDown, User, FileText } from 'lucide-react';
+import { Search, Moon, Sun, MapPin, ShoppingCart, ChevronDown, User, FileText, Menu } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
@@ -12,6 +12,7 @@ interface HeaderProps {
   onBranchChange: (branch: Branch) => void;
   onCartOpen: () => void;
   onSearch: (query: string) => void;
+  onSideMenuOpen: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -19,6 +20,7 @@ export const Header: React.FC<HeaderProps> = ({
   onBranchChange,
   onCartOpen,
   onSearch,
+  onSideMenuOpen,
 }) => {
   const { theme, toggleTheme } = useTheme();
   const { totalItems } = useCart();
@@ -29,11 +31,11 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-4">
           {/* Logo & Name */}
-          <div className="flex items-center gap-3">
-            <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 overflow-hidden border border-gray-100 dark:border-white/10 p-1">
+          <div className="flex items-center gap-3 w-1/2">
+            <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 overflow-hidden border border-gray-100 dark:border-white/10 p-1 shrink-0">
               <img src="/assets/logo.png" alt="جمر التنور" className="w-full h-full object-contain" />
             </div>
-            <div>
+            <div className="hidden sm:block">
               <h1 className="text-xl font-extrabold text-primary leading-tight">جمر التنور</h1>
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
@@ -43,14 +45,14 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2">
-            <Link
-              to="/my-orders"
-              title="طلباتي السابقة"
-              className="p-2.5 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
+          <div className="flex items-center justify-end gap-2 w-1/2">
+            <button
+              onClick={onSideMenuOpen}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
             >
-              <FileText size={20} />
-            </Link>
+              <Menu size={20} />
+              <span className="text-sm font-bold">القائمة</span>
+            </button>
             <button
               onClick={toggleTheme}
               className="p-2.5 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
