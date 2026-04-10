@@ -441,47 +441,25 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
 
                     {orderType === 'delivery' ? (
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-gray-400 mr-2">عنوان التوصيل</label>
-                        {!formData.location ? (
+                        <label className="text-xs font-bold text-gray-400 mr-2">عنوان التوصيل (موقعك أو العنوان يدوياً)</label>
+                        <div className="relative">
                           <button
                             type="button"
                             onClick={handleLocationClick}
                             disabled={locationLoading}
-                            className="w-full py-6 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-300 dark:border-white/20 rounded-2xl bg-gray-50/50 dark:bg-white/5 text-gray-500 hover:bg-primary/5 hover:border-primary/50 hover:text-primary transition-all group disabled:opacity-70 disabled:cursor-wait"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-zinc-800 text-primary rounded-xl hover:bg-primary hover:text-white transition-colors disabled:opacity-50"
+                            title="تحديد موقعي التلقائي 📍"
                           >
-                            <div className="w-12 h-12 bg-white dark:bg-zinc-800 rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                              {locationLoading ? <Loader2 size={24} className="text-primary animate-spin" /> : <MapPin size={24} className="text-primary" />}
-                            </div>
-                            <span className="font-bold text-sm">
-                              {locationLoading ? "جاري تحديد الموقع..." : "اضغط هنا لإضافة موقعك التلقائي"}
-                            </span>
-                            {!locationLoading && <span className="text-[10px] opacity-70">لتسهيل وصول المندوب إليك</span>}
+                            {locationLoading ? <Loader2 size={18} className="animate-spin" /> : <MapPin size={18} />}
                           </button>
-                        ) : (
-                          <div className="space-y-2">
-                            <div className="flex justify-end p-0 m-0">
-                                <button
-                                    type="button"
-                                    onClick={handleLocationClick}
-                                    disabled={locationLoading}
-                                    className="text-[11px] font-bold text-primary flex items-center gap-1 hover:opacity-80 transition-opacity bg-primary/10 px-2 py-1 rounded-lg disabled:opacity-50"
-                                >
-                                    {locationLoading ? <Loader2 size={12} className="animate-spin" /> : <MapPin size={12} />} 
-                                    {locationLoading ? "جاري التحديث..." : "تحديث موقعي"}
-                                </button>
-                            </div>
-                            <div className="relative">
-                              <MapPin className="absolute right-4 top-1/2 -translate-y-1/2 text-primary" size={18} />
-                              <input
-                                type="text"
-                                value={formData.location}
-                                onChange={e => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                                placeholder="حي، شارع، منزل (يمكنك تعديل الرابط أو إضافة تفاصيل)"
-                                className="w-full pr-12 pl-4 py-3.5 bg-gray-50 dark:bg-white/5 rounded-2xl border-none focus:ring-2 focus:ring-primary/50 outline-none text-sm text-primary font-medium"
-                              />
-                            </div>
-                          </div>
-                        )}
+                          <input
+                            type="text"
+                            value={formData.location}
+                            onChange={e => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                            placeholder="اكتب الحي/الشارع يدوياً، أو اضغط الدبوس للوصول التلقائي 👈"
+                            className="w-full pr-14 pl-4 py-3.5 bg-gray-50 dark:bg-white/5 rounded-2xl border-none focus:ring-2 focus:ring-primary/50 outline-none text-sm font-medium"
+                          />
+                        </div>
                       </div>
                     ) : (
                       <div className="space-y-1.5">
