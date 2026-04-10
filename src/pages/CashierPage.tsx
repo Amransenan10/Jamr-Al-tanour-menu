@@ -527,20 +527,52 @@ export const CashierPage: React.FC = () => {
     };
 
     // ── Fetch orders ──────────────────────────────────────────────────────────
-    const fetchOrders = useCallback(async () => {
+    const fetchOrders = useCallback(async (isSilent = false) => {
         if (!branch || !isAuthenticated) return;
-        setLoading(true);
+        if (!isSilent) setLoading(true);
         const { data } = await supabase
             .from('orders')
             .select('*')
             .eq('branch', branch)
             .order('created_at', { ascending: false });
-        if (data) setOrders(data);
-        setLoading(false);
-    }, [branch]);
+            
+        if (data) {
+            setOrders(prev => {
+                if (isSilent && prev.length > 0) {
+                    const existingIds = new Set(prev.map(p => p.id));
+                    const newIncomingOrders = data.filter(d => !existingIds.has(d.id));
+                    if (newIncomingOrders.some(n => n.status === 'new')) {
+                        setNewOrderAlert(true);
+                        // Trigger sound and notifications exactly like realtime
+                        playNotificationSound(soundPrefRef.current || 'standard');
+                        if (Notification.permission === 'granted' && localStorage.getItem('jamr_cashier_use_notifications') === 'true') {
+                            const newOrder = newIncomingOrders.find(n => n.status === 'new');
+                            new Notification('🔔 طلب جديد وصل!', {
+                                body: `اسم العميل: ${newOrder?.customer_name || 'غير معروف'}\nالقيمة: ${newOrder?.total_price || 0} ر.س`,
+                                icon: '/assets/logo.png',
+                                tag: 'new-order',
+                                requireInteraction: true
+                            });
+                        }
+                        setTimeout(() => setNewOrderAlert(false), 8000);
+                    }
+                }
+                return data;
+            });
+        }
+        if (!isSilent) setLoading(false);
+    }, [branch, isAuthenticated]);
 
     useEffect(() => {
         fetchOrders();
+        
+        // Fallback robust polling every 10 seconds to guarantee orders appear instantly
+        // even if Supabase Realtime WebSocket sleeps on background tabs or mobile devices.
+        const pollInterval = setInterval(() => {
+            fetchOrders(true);
+        }, 10000);
+        
+        return () => clearInterval(pollInterval);
     }, [fetchOrders]);
 
     // ── Realtime subscription ─────────────────────────────────────────────────

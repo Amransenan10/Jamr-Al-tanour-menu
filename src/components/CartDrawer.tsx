@@ -175,6 +175,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
           return;
       }
 
+      // Check min order value
+      if (data.min_order_value && totalPrice < data.min_order_value) {
+          setPromoError(`الحد الأدنى للطلب لاستخدام هذا الكود هو ${data.min_order_value} ر.س`);
+          return;
+      }
+
       // If phone is entered, check if the user previously used this code
       if (formData.phone) {
         const { data: previousOrders } = await supabase

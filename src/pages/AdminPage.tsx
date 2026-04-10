@@ -537,11 +537,38 @@ const AdminMenuView = () => {
 const AdminSettingsView = () => {
     const [branches, setBranches] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    
+    // App settings state
+    const [appSettings, setAppSettings] = useState({
+        announcement_text: '',
+        announcement_active: false,
+        social_instagram: '',
+        social_snapchat: '',
+        social_tiktok: '',
+        social_twitter: '',
+        social_whatsapp: ''
+    });
+    const [isSavingApp, setIsSavingApp] = useState(false);
 
-    const fetchBranches = async () => {
+    const fetchSettings = async () => {
         setLoading(true);
-        const { data } = await supabase.from('branch_credentials').select('*');
-        if (data) setBranches(data.filter(b => b.branch_name !== 'admin'));
+        const [branchesRes, appRes] = await Promise.all([
+            supabase.from('branch_credentials').select('*'),
+            supabase.from('app_settings').select('*').eq('id', 1).single()
+        ]);
+        
+        if (branchesRes.data) setBranches(branchesRes.data.filter(b => b.branch_name !== 'admin'));
+        if (appRes.data) {
+            setAppSettings({
+                announcement_text: appRes.data.announcement_text || '',
+                announcement_active: appRes.data.announcement_active || false,
+                social_instagram: appRes.data.social_instagram || '',
+                social_snapchat: appRes.data.social_snapchat || '',
+                social_tiktok: appRes.data.social_tiktok || '',
+                social_twitter: appRes.data.social_twitter || '',
+                social_whatsapp: appRes.data.social_whatsapp || ''
+            });
+        }
         setLoading(false);
     };
 
@@ -551,41 +578,116 @@ const AdminSettingsView = () => {
             const { error } = await supabaseAdmin.from('branch_credentials').update({ password: newPassword }).eq('branch_name', branchName);
             if (error) throw error;
             toast.success(`تم تحديث كلمة مرور ${branchName} بنجاح`);
-            fetchBranches();
+            fetchSettings();
         } catch {
             toast.error('حدث خطأ أثناء التحديث');
         }
     };
     
-    useEffect(() => { fetchBranches(); }, []);
+    const handleSaveAppSettings = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSavingApp(true);
+        try {
+            const { error } = await supabaseAdmin.from('app_settings').update(appSettings).eq('id', 1);
+            if (error) throw error;
+            toast.success('تم حفظ الإعدادات العامة بنجاح');
+        } catch (err) {
+            toast.error('حدث خطأ أثناء حفظ الإعدادات');
+        } finally {
+            setIsSavingApp(false);
+        }
+    };
+    
+    useEffect(() => { fetchSettings(); }, []);
 
     return (
-        <div className="space-y-6">
-            <h2 className="text-xl font-bold">إعدادات الفروع وحسابات الكاشير</h2>
+        <div className="space-y-8">
+            <h2 className="text-xl font-bold">الإعدادات الشاملة</h2>
             {loading ? <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" size={32} /></div> : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {branches.map(b => (
-                        <div key={b.branch_name} className="bg-zinc-900 border border-white/5 rounded-2xl p-5 space-y-4">
-                            <h3 className="text-lg font-black flex items-center gap-2"><Store className="text-primary"/> {b.branch_name}</h3>
-                            <div className="space-y-2">
-                                <p className="text-sm text-gray-400">كلمة مرور لكاشير الفرع:</p>
-                                <div className="flex gap-2">
-                                    <input 
-                                        type="text" 
-                                        defaultValue={b.password} 
-                                        onBlur={(e) => {
-                                            if (e.target.value !== b.password) {
-                                                handlePasswordChange(b.branch_name, e.target.value);
-                                            }
-                                        }}
-                                        className="flex-1 bg-zinc-800 text-white rounded-lg px-3 py-2 text-sm font-mono border border-transparent focus:border-primary outline-none transition-colors" 
-                                    />
-                                    <div className="text-[10px] text-gray-500 self-center">تعديل مباشر</div>
+                <>
+                {/* Global App Settings Section */}
+                <div className="bg-zinc-900 border border-white/5 rounded-2xl p-6">
+                    <h3 className="text-lg font-black mb-6 text-primary flex items-center gap-2">🌐 إعدادات التطبيق العامة (تظهر لجميع الفروع)</h3>
+                    <form onSubmit={handleSaveAppSettings} className="space-y-6">
+                        
+                        {/* Announcement Settings */}
+                        <div className="space-y-4 p-4 border border-white/10 rounded-xl bg-zinc-800/30">
+                            <h4 className="font-bold flex items-center justify-between">
+                                شريط الإعلانات (يظهر أعلى المنيو)
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" className="sr-only peer" checked={appSettings.announcement_active} onChange={e => setAppSettings({...appSettings, announcement_active: e.target.checked})} />
+                                    <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                    <span className="mr-3 text-sm font-bold text-gray-400">تفعيل الإعلان</span>
+                                </label>
+                            </h4>
+                            <div className="space-y-1.5">
+                                <input type="text" placeholder="اكتب نص الإعلان هنا (مثال: خصم 20% بمناسبة الافتتاح استخدم كود WELCOME)" value={appSettings.announcement_text} onChange={e => setAppSettings({...appSettings, announcement_text: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none text-sm" />
+                            </div>
+                        </div>
+
+                        {/* Social Links Settings */}
+                        <div className="space-y-4 p-4 border border-white/10 rounded-xl bg-zinc-800/30">
+                            <h4 className="font-bold">حسابات التواصل الاجتماعي (تظهر أسفل المنيو)</h4>
+                            <p className="text-xs text-gray-500">اترك الحقل فارغاً إذا كنت لا ترغب بعرضه</p>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-gray-400">واتساب الدعم (بدون فواصل، مثال: 966500000000)</label>
+                                    <input type="text" placeholder="9665..." value={appSettings.social_whatsapp} onChange={e => setAppSettings({...appSettings, social_whatsapp: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm focus:border-primary/50 outline-none border border-transparent" dir="ltr" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-gray-400">رابط انستجرام</label>
+                                    <input type="text" placeholder="https://instagram.com/..." value={appSettings.social_instagram} onChange={e => setAppSettings({...appSettings, social_instagram: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm focus:border-primary/50 outline-none border border-transparent" dir="ltr" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-gray-400">رابط تيك توك</label>
+                                    <input type="text" placeholder="https://tiktok.com/@..." value={appSettings.social_tiktok} onChange={e => setAppSettings({...appSettings, social_tiktok: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm focus:border-primary/50 outline-none border border-transparent" dir="ltr" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-gray-400">رابط سناب شات</label>
+                                    <input type="text" placeholder="https://snapchat.com/add/..." value={appSettings.social_snapchat} onChange={e => setAppSettings({...appSettings, social_snapchat: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm focus:border-primary/50 outline-none border border-transparent" dir="ltr" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-gray-400">رابط إكس (تويتر)</label>
+                                    <input type="text" placeholder="https://twitter.com/..." value={appSettings.social_twitter} onChange={e => setAppSettings({...appSettings, social_twitter: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm focus:border-primary/50 outline-none border border-transparent" dir="ltr" />
                                 </div>
                             </div>
                         </div>
-                    ))}
+
+                        <button type="submit" disabled={isSavingApp} className="w-full bg-primary text-white font-black py-4 rounded-xl hover:bg-primary/90 flex items-center justify-center gap-2 transition-colors">
+                            {isSavingApp ? <Loader2 size={18} className="animate-spin" /> : 'حفظ الإعدادات العامة'}
+                        </button>
+                    </form>
                 </div>
+
+                {/* Branches Settings */}
+                <div className="bg-zinc-900 border border-white/5 rounded-2xl p-6">
+                    <h3 className="text-lg font-black mb-6 flex items-center gap-2"><Store className="text-gray-400"/> إعدادات الفروع وحسابات الكاشير</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {branches.map(b => (
+                            <div key={b.branch_name} className="bg-zinc-800/50 border border-white/5 rounded-xl p-5 space-y-4">
+                                <h4 className="text-base font-bold flex items-center gap-2">{b.branch_name}</h4>
+                                <div className="space-y-2">
+                                    <p className="text-sm text-gray-400">كلمة مرور لكاشير الفرع:</p>
+                                    <div className="flex gap-2">
+                                        <input 
+                                            type="text" 
+                                            defaultValue={b.password} 
+                                            onBlur={(e) => {
+                                                if (e.target.value !== b.password) {
+                                                    handlePasswordChange(b.branch_name, e.target.value);
+                                                }
+                                            }}
+                                            className="flex-1 bg-zinc-800 text-white rounded-lg px-3 py-2 text-sm font-mono border border-transparent focus:border-primary outline-none transition-colors" 
+                                        />
+                                        <div className="text-[10px] text-gray-500 self-center">تعديل مباشر</div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                </>
             )}
         </div>
     );
@@ -604,6 +706,7 @@ const AdminCouponsView = () => {
         discount_type: 'percentage',
         discount_value: '',
         max_uses: '',
+        min_order_value: '',
         is_active: true
     });
 
@@ -622,6 +725,7 @@ const AdminCouponsView = () => {
             discount_type: 'percentage',
             discount_value: '',
             max_uses: '',
+            min_order_value: '',
             is_active: true
         });
         setIsModalOpen(true);
@@ -637,6 +741,7 @@ const AdminCouponsView = () => {
                 discount_type: formData.discount_type,
                 discount_value: parseFloat(formData.discount_value),
                 max_uses: formData.max_uses ? parseInt(formData.max_uses) : null,
+                min_order_value: formData.min_order_value ? parseFloat(formData.min_order_value) : 0,
                 is_active: formData.is_active
             };
             
@@ -692,6 +797,7 @@ const AdminCouponsView = () => {
                                 <th className="p-4 font-bold">الكود</th>
                                 <th className="p-4 font-bold">الخصم</th>
                                 <th className="p-4 font-bold">الاستخدامات</th>
+                                <th className="p-4 font-bold">الحد الأدنى</th>
                                 <th className="p-4 font-bold">الحالة</th>
                                 <th className="p-4 font-bold text-center">إجراء</th>
                             </tr>
@@ -706,6 +812,9 @@ const AdminCouponsView = () => {
                                     <td className="p-4 text-gray-400">
                                         <span className="text-white font-bold">{coupon.current_uses}</span> 
                                         {coupon.max_uses ? ` / ${coupon.max_uses}` : ' (غير محدود)'}
+                                    </td>
+                                    <td className="p-4 text-gray-400">
+                                        {coupon.min_order_value ? `${coupon.min_order_value} ر.س` : 'لا يوجد'}
                                     </td>
                                     <td className="p-4">
                                         <button onClick={() => toggleStatus(coupon.id, coupon.is_active)} className={cn("px-3 py-1 rounded-lg text-xs font-bold transition-colors", coupon.is_active ? "bg-green-500/10 text-green-400 hover:bg-green-500/20" : "bg-zinc-800 text-gray-400 hover:bg-zinc-700")}>
@@ -752,9 +861,15 @@ const AdminCouponsView = () => {
                                     </div>
                                 </div>
 
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-bold text-gray-400">الحد الأقصى للاستخدام (اختياري)</label>
-                                    <input type="number" placeholder="اتركه فارغاً للاستخدام اللامحدود" value={formData.max_uses} onChange={e => setFormData({...formData, max_uses: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none" />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-bold text-gray-400">الحد الأقصى للاستخدام (اختياري)</label>
+                                        <input type="number" placeholder="لامحدود إذا تركته فارغاً" value={formData.max_uses} onChange={e => setFormData({...formData, max_uses: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none" />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-bold text-gray-400">الحد الأدنى للطلب (اختياري)</label>
+                                        <input type="number" step="0.01" placeholder="مثال: 30" value={formData.min_order_value} onChange={e => setFormData({...formData, min_order_value: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none" />
+                                    </div>
                                 </div>
 
                                 <div className="pt-4 mt-6 border-t border-white/5">

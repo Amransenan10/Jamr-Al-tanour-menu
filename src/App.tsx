@@ -6,6 +6,8 @@ import { ProductCard } from './components/ProductCard';
 import { ProductModal } from './components/ProductModal';
 import { CartDrawer } from './components/CartDrawer';
 import { InstallPWA } from './components/InstallPWA';
+import { AnnouncementBanner } from './components/AnnouncementBanner';
+import { SocialLinks } from './components/SocialLinks';
 import { Category, Product, Branch } from './types';
 import { supabase } from './lib/supabaseClient';
 import { CartProvider } from './context/CartContext';
@@ -30,6 +32,7 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [storeSettings, setStoreSettings] = useState<any>(null);
+  const [appSettings, setAppSettings] = useState<any>(null);
   const storeStatus = storeSettings?.status || 'open';
 
   // Hardware Back Button Handlers
@@ -79,10 +82,19 @@ export default function App() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => fetchData())
         .subscribe();
 
+      const settingsChannel = supabase.channel('app-settings-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, 
+          (payload) => {
+            console.log('DEBUG: App settings changed:', payload);
+            setAppSettings(payload.new);
+          }
+        ).subscribe();
+
       return () => { 
         console.log('DEBUG: Cleaning up real-time channels');
         supabase.removeChannel(statusChannel); 
         supabase.removeChannel(menuChannel);
+        supabase.removeChannel(settingsChannel);
       }
     } catch (err) {
       console.error('DEBUG: Real-time initialization error:', err);
@@ -125,7 +137,7 @@ export default function App() {
     setError(null);
     try {
       const startTime = Date.now();
-      const [catsRes, prodsRes, statusRes] = await Promise.all([
+      const [catsRes, prodsRes, statusRes, appSettingsRes] = await Promise.all([
         supabase
           .from('categories')
           .select('*')
@@ -138,7 +150,8 @@ export default function App() {
         supabase.from('store_settings')
           .select('*')
           .eq('branch_name', overrideBranch || selectedBranch || 'السويدي الغربي')
-          .single()
+          .single(),
+        supabase.from('app_settings').select('*').single()
       ]);
 
       console.log(`DEBUG: fetchData completed in ${Date.now() - startTime}ms`, {
@@ -170,6 +183,7 @@ export default function App() {
         localStorage.setItem('jamr_prods_cache', JSON.stringify(processedProducts));
       }
       if (statusRes.data) setStoreSettings(statusRes.data);
+      if (appSettingsRes.data) setAppSettings(appSettingsRes.data);
     } catch (e: any) {
       console.error('DEBUG: ERROR in fetchData:', e);
       setError(e.message || 'حدث خطأ غير متوقع عند تحميل المنيو');
@@ -199,6 +213,8 @@ export default function App() {
       <CartProvider>
         <div className="min-h-screen pb-20">
           <Toaster />
+          <AnnouncementBanner text={appSettings?.announcement_text} isActive={appSettings?.announcement_active} />
+          
           <Header
             selectedBranch={selectedBranch}
             onBranchChange={handleBranchSelect}
@@ -276,6 +292,14 @@ export default function App() {
               </div>
             )}
           </main>
+
+          <SocialLinks 
+            instagram={appSettings?.social_instagram}
+            snapchat={appSettings?.social_snapchat}
+            twitter={appSettings?.social_twitter}
+            tiktok={appSettings?.social_tiktok}
+            whatsapp={appSettings?.social_whatsapp}
+          />
 
           <ProductModal
             product={selectedProduct}
