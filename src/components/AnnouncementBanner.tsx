@@ -21,16 +21,16 @@ export const AnnouncementBanner: React.FC<AnnouncementBannerProps> = ({ text, is
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: -50, opacity: 0 }}
-        className="bg-gradient-to-r from-primary to-orange-500 text-white shadow-md relative z-[60]"
+        className="bg-zinc-950 border-b-2 border-primary/50 text-white shadow-xl relative z-[60]"
       >
-        <div className="container mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
+        <div className="container mx-auto px-4 py-3.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 flex-1 overflow-hidden">
-            <div className="bg-white/20 p-1.5 rounded-full shrink-0">
-              <Megaphone size={16} className="text-white animate-pulse" />
+            <div className="bg-primary/20 p-2 rounded-full shrink-0 shadow-[0_0_15px_rgba(255,98,0,0.3)]">
+              <Megaphone size={18} className="text-primary animate-pulse" />
             </div>
             
             <div className="flex-1">
-               <p className="font-bold text-sm leading-snug">
+               <p className="font-black text-[15px] md:text-base leading-snug text-white tracking-wide">
                   {text}
                </p>
             </div>
@@ -38,9 +38,9 @@ export const AnnouncementBanner: React.FC<AnnouncementBannerProps> = ({ text, is
           
           <button 
             onClick={() => setIsVisible(false)}
-            className="p-1 hover:bg-white/20 rounded-full transition-colors shrink-0"
+            className="p-1.5 hover:bg-white/10 text-gray-400 hover:text-white rounded-full transition-colors shrink-0"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
       </motion.div>
