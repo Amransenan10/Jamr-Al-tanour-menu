@@ -547,11 +547,24 @@ export const CashierPage: React.FC = () => {
                         playNotificationSound(soundPrefRef.current || 'standard');
                         if (Notification.permission === 'granted' && localStorage.getItem('jamr_cashier_use_notifications') === 'true') {
                             const newOrder = newIncomingOrders.find(n => n.status === 'new');
-                            new Notification('🔔 طلب جديد وصل!', {
-                                body: `اسم العميل: ${newOrder?.customer_name || 'غير معروف'}\nالقيمة: ${newOrder?.total_price || 0} ر.س`,
-                                icon: '/assets/logo.png',
-                                tag: 'new-order',
-                                requireInteraction: true
+                            navigator.serviceWorker.ready.then(registration => {
+                                registration.showNotification('🔔 طلب جديد وصل!', {
+                                    body: `اسم العميل: ${newOrder?.customer_name || 'غير معروف'}\nالقيمة: ${newOrder?.total_price || 0} ر.س`,
+                                    icon: '/assets/logo.png',
+                                    tag: 'new-order',
+                                    requireInteraction: true
+                                });
+                            }).catch(err => {
+                                try {
+                                    new window.Notification('🔔 طلب جديد وصل!', {
+                                        body: `اسم العميل: ${newOrder?.customer_name || 'غير معروف'}\nالقيمة: ${newOrder?.total_price || 0} ر.س`,
+                                        icon: '/assets/logo.png',
+                                        tag: 'new-order',
+                                        requireInteraction: true
+                                    });
+                                } catch (e) {
+                                    console.error('Notification error:', e);
+                                }
                             });
                         }
                         setTimeout(() => setNewOrderAlert(false), 8000);
@@ -588,13 +601,25 @@ export const CashierPage: React.FC = () => {
                         setOrders(prev => [payload.new, ...prev]);
                         setNewOrderAlert(true);
                         
-                        // System Notification
                         if (Notification.permission === 'granted' && localStorage.getItem('jamr_cashier_use_notifications') === 'true') {
-                            new Notification('🔔 طلب جديد وصل!', {
-                                body: `اسم العميل: ${payload.new.customer_name}\nالقيمة: ${payload.new.total_price} ر.س${payload.new.discount_amount ? `\nخصم: ${payload.new.discount_amount} ر.س` : ''}`,
-                                icon: '/assets/logo.png',
-                                tag: 'new-order',
-                                requireInteraction: true
+                            navigator.serviceWorker.ready.then(registration => {
+                                registration.showNotification('🔔 طلب جديد وصل!', {
+                                    body: `اسم العميل: ${payload.new.customer_name}\nالقيمة: ${payload.new.total_price} ر.س${payload.new.discount_amount ? `\nخصم: ${payload.new.discount_amount} ر.س` : ''}`,
+                                    icon: '/assets/logo.png',
+                                    tag: 'new-order',
+                                    requireInteraction: true
+                                });
+                            }).catch(err => {
+                                try {
+                                    new window.Notification('🔔 طلب جديد وصل!', {
+                                        body: `اسم العميل: ${payload.new.customer_name}\nالقيمة: ${payload.new.total_price} ر.س${payload.new.discount_amount ? `\nخصم: ${payload.new.discount_amount} ر.س` : ''}`,
+                                        icon: '/assets/logo.png',
+                                        tag: 'new-order',
+                                        requireInteraction: true
+                                    });
+                                } catch (e) {
+                                    console.error('Notification error:', e);
+                                }
                             });
                         }
 

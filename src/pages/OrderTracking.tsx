@@ -84,9 +84,20 @@ export const OrderTracking: React.FC = () => {
           });
           
           if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('تحديث في طلب الجمر التنور', {
-              body: `حالة طلبك الآن: ${stepMsg}`,
-              icon: '/vite.svg'
+            navigator.serviceWorker.ready.then(registration => {
+              registration.showNotification('تحديث في طلب الجمر التنور', {
+                body: `حالة طلبك الآن: ${stepMsg}`,
+                icon: '/vite.svg'
+              });
+            }).catch(err => {
+              try {
+                new window.Notification('تحديث في طلب الجمر التنور', {
+                  body: `حالة طلبك الآن: ${stepMsg}`,
+                  icon: '/vite.svg'
+                });
+              } catch (e) {
+                console.error('Notification error:', e);
+              }
             });
           }
         }
