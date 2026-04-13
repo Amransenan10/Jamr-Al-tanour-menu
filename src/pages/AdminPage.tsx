@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
     LayoutDashboard, KeyRound, ShoppingBag, Settings as SettingsIcon,
     UtensilsCrossed, LogOut, Loader2, Plus, Edit2, Trash2, CheckCircle2,
-    X, Store, Clock, RefreshCw, Upload, TicketPercent
+    X, Store, Clock, RefreshCw, Upload, TicketPercent, Image as ImageIcon
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -14,7 +14,7 @@ export const AdminPage: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState('');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
-    const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'settings' | 'coupons'>('orders');
+    const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'settings' | 'coupons' | 'stories'>('orders');
 
     useEffect(() => {
         if (localStorage.getItem('jamr_admin_auth') === 'true') {
@@ -99,6 +99,7 @@ export const AdminPage: React.FC = () => {
                     {[
                         { id: 'orders', label: 'الطلبات', icon: <ShoppingBag size={16} /> },
                         { id: 'menu', label: 'لائحة الطعام', icon: <UtensilsCrossed size={16} /> },
+                        { id: 'stories', label: 'القصص والعروض', icon: <ImageIcon size={16} /> },
                         { id: 'coupons', label: 'كوبونات الخصم', icon: <TicketPercent size={16} /> },
                         { id: 'settings', label: 'الفروع والإعدادات', icon: <SettingsIcon size={16} /> }
                     ].map(tab => (
@@ -112,6 +113,7 @@ export const AdminPage: React.FC = () => {
             <main className="max-w-7xl mx-auto px-4 py-8">
                 {activeTab === 'orders' && <AdminOrdersView />}
                 {activeTab === 'menu' && <AdminMenuView />}
+                {activeTab === 'stories' && <AdminStoriesView />}
                 {activeTab === 'coupons' && <AdminCouponsView />}
                 {activeTab === 'settings' && <AdminSettingsView />}
             </main>
@@ -190,7 +192,8 @@ const AdminMenuView = () => {
         description_ar: '',
         category_id: '',
         image_url: '',
-        is_available: true
+        is_available: true,
+        is_hidden: false
     });
 
     const [optionGroups, setOptionGroups] = useState<any[]>([]);
@@ -223,7 +226,8 @@ const AdminMenuView = () => {
                 description_ar: product.description_ar || '',
                 category_id: product.category_id,
                 image_url: product.image_url || '',
-                is_available: product.is_available ?? true
+                is_available: product.is_available ?? true,
+                is_hidden: product.is_hidden ?? false
             });
             // Fetch product options
             const { data: groupsData } = await supabase.from('option_groups').select('*').eq('product_id', product.id).order('name_ar');
@@ -238,7 +242,8 @@ const AdminMenuView = () => {
                 description_ar: '',
                 category_id: categories.length > 0 ? categories[0].id : '',
                 image_url: '',
-                is_available: true
+                is_available: true,
+                is_hidden: false
             });
             setOptionGroups([]);
             setOptionItems([]);
@@ -339,7 +344,8 @@ const AdminMenuView = () => {
             description_en: formData.description_ar,
             category_id: formData.category_id,
             image_url: formData.image_url,
-            is_available: formData.is_available
+            is_available: formData.is_available,
+            is_hidden: formData.is_hidden
         };
 
         try {
@@ -394,7 +400,10 @@ const AdminMenuView = () => {
                                 <div className="flex-1">
                                     <h3 className="font-bold flex items-center justify-between">
                                         {p.name_ar}
-                                        {!p.is_available && <span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">نَفَد</span>}
+                                        <div className="flex items-center gap-1">
+                                            {p.is_hidden && <span className="text-[10px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded-full">مخفي (للعروض)</span>}
+                                            {!p.is_available && <span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">نَفَد</span>}
+                                        </div>
                                     </h3>
                                     <p className="text-primary font-bold text-sm mt-1">{p.price} ر.س</p>
                                     <p className="text-xs text-gray-500 mt-1 line-clamp-2">{p.description_ar}</p>
@@ -471,8 +480,16 @@ const AdminMenuView = () => {
                                     <div className={cn("w-5 h-5 rounded-md flex items-center justify-center border", formData.is_available ? "bg-primary border-primary" : "bg-zinc-900 border-white/20")}>
                                         {formData.is_available && <CheckCircle2 size={14} className="text-white" />}
                                     </div>
-                                    <span className="text-sm font-bold">هذا الصنف متوفر حالياً لطلبات العملاء</span>
+                                    <span className="text-sm font-bold flex-1">الصنف متوفر لطلبات العملاء</span>
                                     <input type="checkbox" className="hidden" checked={formData.is_available} onChange={e => setFormData({...formData, is_available: e.target.checked})} />
+                                </label>
+
+                                <label className="flex items-center gap-3 p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl cursor-pointer hover:bg-purple-500/20 transition-colors mt-2">
+                                    <div className={cn("w-5 h-5 rounded-md flex items-center justify-center border", formData.is_hidden ? "bg-purple-500 border-purple-500" : "bg-zinc-900 border-white/20")}>
+                                        {formData.is_hidden && <CheckCircle2 size={14} className="text-white" />}
+                                    </div>
+                                    <span className="text-sm font-bold text-purple-300 flex-1">إخفاء من المنيو الأساسي (يُستخدم للقصص والعروض فقط)</span>
+                                    <input type="checkbox" className="hidden" checked={formData.is_hidden} onChange={e => setFormData({...formData, is_hidden: e.target.checked})} />
                                 </label>
 
                                 {editingProduct ? (
@@ -885,4 +902,174 @@ const AdminCouponsView = () => {
         </div>
     );
 };
+
+const AdminStoriesView = () => {
+    const [stories, setStories] = useState<any[]>([]);
+    const [products, setProducts] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [formData, setFormData] = useState({
+        image_url: '',
+        product_id: '',
+        is_active: true
+    });
+
+    const fetchData = async () => {
+        setLoading(true);
+        const [{ data: storiesData }, { data: productsData }] = await Promise.all([
+            supabaseAdmin.from('stories').select('*, product:products(name_ar)').order('created_at', { ascending: false }),
+            supabaseAdmin.from('products').select('id, name_ar, is_hidden')
+        ]);
+        if (storiesData) setStories(storiesData);
+        if (productsData) setProducts(productsData);
+        setLoading(false);
+    };
+
+    useEffect(() => { fetchData(); }, []);
+
+    const handleOpenModal = () => {
+        setFormData({ image_url: '', product_id: '', is_active: true });
+        setIsModalOpen(true);
+    };
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            const payload = {
+                image_url: formData.image_url,
+                product_id: formData.product_id || null, // null if no product linked
+                is_active: formData.is_active
+            };
+            const { error } = await supabaseAdmin.from('stories').insert([payload]);
+            if (error) throw error;
+            toast.success('تم إضافة القصة بنجاح');
+            setIsModalOpen(false);
+            fetchData();
+        } catch (error: any) {
+            toast.error(error.message || 'حدث خطأ');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm('موافق على حذف هذه القصة؟')) return;
+        try {
+            const { error } = await supabaseAdmin.from('stories').delete().eq('id', id);
+            if (error) throw error;
+            toast.success('تم الحذف');
+            fetchData();
+        } catch {
+            toast.error('حدث خطأ');
+        }
+    };
+
+    const toggleStatus = async (id: string, currentStatus: boolean) => {
+        try {
+            await supabaseAdmin.from('stories').update({ is_active: !currentStatus }).eq('id', id);
+            fetchData();
+        } catch {}
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold">القصص والعروض</h2>
+                <button onClick={handleOpenModal} className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-primary/90 transition-colors">
+                    <Plus size={18} /> قصة جديدة
+                </button>
+            </div>
+
+            {loading ? <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" size={32} /></div> : (
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {stories.map(story => (
+                        <div key={story.id} className="bg-zinc-900 border border-white/5 rounded-2xl overflow-hidden relative group">
+                            <div className="aspect-[9/16] relative bg-zinc-800">
+                                <img src={story.image_url} alt="Story" className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+                                
+                                {/* Status Toggle */}
+                                <div className="absolute top-2 right-2 flex gap-2">
+                                    <button onClick={() => toggleStatus(story.id, story.is_active)} className={cn("px-2 py-1 rounded-lg text-[10px] font-bold", story.is_active ? "bg-green-500 text-white" : "bg-red-500 text-white")}>
+                                        {story.is_active ? 'نشط' : 'مخفي'}
+                                    </button>
+                                </div>
+
+                                {/* Delete Button */}
+                                <button onClick={() => handleDelete(story.id)} className="absolute top-2 left-2 p-1.5 bg-red-500/80 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Trash2 size={14} />
+                                </button>
+
+                                {/* Linked Product Label */}
+                                <div className="absolute bottom-3 left-3 right-3 text-center">
+                                    <p className="text-xs text-white/70">مرتبط بـ:</p>
+                                    <p className="font-bold text-white text-sm truncate">{story.product?.name_ar || 'بدون منتج'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                    {stories.length === 0 && (
+                        <div className="col-span-full text-center py-12 text-gray-500 bg-zinc-900 border border-white/5 rounded-2xl">لا توجد قصص، أضف أول قصتك لجذب العملاء 🔥</div>
+                    )}
+                </div>
+            )}
+
+            <AnimatePresence>
+                {isModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-zinc-900 rounded-3xl p-6 w-full max-w-sm relative z-10 border border-white/10 shadow-2xl">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-black">إضافة قصة جديدة</h3>
+                                <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-white"><X size={24} /></button>
+                            </div>
+                            
+                            <form onSubmit={handleSave} className="space-y-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-bold text-gray-400">رابط صورة القصة (تصميم طولي) <span className="text-red-500">*</span></label>
+                                    <input required type="url" placeholder="https://..." value={formData.image_url} onChange={e => setFormData({...formData, image_url: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none" />
+                                </div>
+                                
+                                <div className="space-y-1.5">
+                                    <label className="text-sm font-bold text-gray-400">المنتج المرتبط (اختياري)</label>
+                                    <select value={formData.product_id} onChange={e => setFormData({...formData, product_id: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none">
+                                        <option value="">بدون منتج</option>
+                                        <optgroup label="منتجات العروض (مخفية)">
+                                            {products.filter(p => p.is_hidden).map(p => (
+                                                <option key={p.id} value={p.id}>🔥 {p.name_ar}</option>
+                                            ))}
+                                        </optgroup>
+                                        <optgroup label="المنتجات العادية">
+                                            {products.filter(p => !p.is_hidden).map(p => (
+                                                <option key={p.id} value={p.id}>{p.name_ar}</option>
+                                            ))}
+                                        </optgroup>
+                                    </select>
+                                    <p className="text-[10px] text-gray-500 mt-1">عند ربط منتج، سيظهر زر 'اطلب الآن' في القصة</p>
+                                </div>
+
+                                <label className="flex items-center gap-3 p-4 bg-zinc-800 rounded-xl cursor-pointer hover:bg-zinc-700 transition-colors mt-2">
+                                    <div className={cn("w-5 h-5 rounded-md flex items-center justify-center border", formData.is_active ? "bg-primary border-primary" : "bg-zinc-900 border-white/20")}>
+                                        {formData.is_active && <CheckCircle2 size={14} className="text-white" />}
+                                    </div>
+                                    <span className="text-sm font-bold flex-1">نشط ومتاح للعملاء الآن</span>
+                                    <input type="checkbox" className="hidden" checked={formData.is_active} onChange={e => setFormData({...formData, is_active: e.target.checked})} />
+                                </label>
+
+                                <div className="pt-4 mt-6 border-t border-white/5">
+                                    <button type="submit" disabled={isSaving} className="w-full bg-primary text-white font-black py-3.5 rounded-xl hover:bg-primary/90 flex items-center justify-center gap-2 transition-colors">
+                                        {isSaving ? <Loader2 size={18} className="animate-spin" /> : 'حفظ القصة'}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
 export default AdminPage;

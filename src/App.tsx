@@ -9,7 +9,9 @@ import { InstallPWA } from './components/InstallPWA';
 import { AnnouncementBanner } from './components/AnnouncementBanner';
 import { SocialLinks } from './components/SocialLinks';
 import { SideMenuDrawer } from './components/SideMenuDrawer';
-import { Category, Product, Branch } from './types';
+import { StoriesStrip } from './components/StoriesStrip';
+import { StoryViewerModal } from './components/StoryViewerModal';
+import { Category, Product, Branch, Story } from './types';
 import { supabase } from './lib/supabaseClient';
 import { CartProvider } from './context/CartContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -24,6 +26,8 @@ import { Toaster } from 'react-hot-toast';
 export default function App() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [stories, setStories] = useState<Story[]>([]);
+  const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
@@ -41,6 +45,7 @@ export default function App() {
   useBackButton(isCartOpen, () => setIsCartOpen(false), 'cart');
   useBackButton(isSideMenuOpen, () => setIsSideMenuOpen(false), 'menu');
   useBackButton(selectedProduct !== null, () => setSelectedProduct(null), 'product');
+  useBackButton(activeStoryIndex !== null, () => setActiveStoryIndex(null), 'story');
 
   // Debugging & Resilience: Anti-hang timeout
   useEffect(() => {
@@ -114,10 +119,12 @@ export default function App() {
     // Stale-While-Revalidate: Load cache first for instant display
     const cachedCats = localStorage.getItem('jamr_cats_cache');
     const cachedProds = localStorage.getItem('jamr_prods_cache');
+    const cachedStories = localStorage.getItem('jamr_stories_cache');
     if (cachedCats && cachedProds) {
       try {
         setCategories(JSON.parse(cachedCats));
         setProducts(JSON.parse(cachedProds));
+        if (cachedStories) setStories(JSON.parse(cachedStories));
         setLoading(false);
       } catch (e) { console.error('Cache parsing error', e); }
     }
@@ -140,7 +147,7 @@ export default function App() {
     setError(null);
     try {
       const startTime = Date.now();
-      const [catsRes, prodsRes, statusRes, appSettingsRes] = await Promise.all([
+      const [catsRes, prodsRes, statusRes, appSettingsRes, storiesRes] = await Promise.all([
         supabase
           .from('categories')
           .select('*')
@@ -154,12 +161,14 @@ export default function App() {
           .select('*')
           .eq('branch_name', overrideBranch || selectedBranch || 'السويدي الغربي')
           .single(),
-        supabase.from('app_settings').select('*').single()
+        supabase.from('app_settings').select('*').single(),
+        supabase.from('stories').select('*').eq('is_active', true).order('created_at', { ascending: false }).catch(() => ({ data: [], error: null }))
       ]);
 
       console.log(`DEBUG: fetchData completed in ${Date.now() - startTime}ms`, {
         categories: catsRes.data?.length,
         products: prodsRes.data?.length,
+        stories: storiesRes.data?.length,
         status: statusRes.data ? 'found' : 'missing',
         errors: { cats: catsRes.error, prods: prodsRes.error, status: statusRes.error }
       });
@@ -187,6 +196,10 @@ export default function App() {
       }
       if (statusRes.data) setStoreSettings(statusRes.data);
       if (appSettingsRes.data) setAppSettings(appSettingsRes.data);
+      if (storiesRes.data) {
+        setStories(storiesRes.data);
+        localStorage.setItem('jamr_stories_cache', JSON.stringify(storiesRes.data));
+      }
     } catch (e: any) {
       console.error('DEBUG: ERROR in fetchData:', e);
       setError(e.message || 'حدث خطأ غير متوقع عند تحميل المنيو');
@@ -197,6 +210,7 @@ export default function App() {
   };
 
   const filteredProducts = products.filter((p) => {
+    if (p.is_hidden) return false;
     const matchesCategory = activeCategoryId ? p.category_id === activeCategoryId : true;
     const matchesSearch = p.name_ar.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.name_en.toLowerCase().includes(searchQuery.toLowerCase());
@@ -204,6 +218,7 @@ export default function App() {
   });
 
   const top8PopularProducts = [...products]
+    .filter(p => !p.is_hidden)
     .sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
     .slice(0, 8);
 
@@ -245,6 +260,11 @@ export default function App() {
           <BranchSelectorModal
             isOpen={selectedBranch === null}
             onSelect={handleBranchSelect}
+          />
+
+          <StoriesStrip 
+            stories={stories} 
+            onStoryClick={(index) => setActiveStoryIndex(index)} 
           />
 
           <CategoryBar
@@ -322,6 +342,19 @@ export default function App() {
             onClose={() => setIsSideMenuOpen(false)}
             appSettings={appSettings}
           />
+
+          {activeStoryIndex !== null && (
+            <StoryViewerModal
+              stories={stories}
+              initialIndex={activeStoryIndex}
+              onClose={() => setActiveStoryIndex(null)}
+              products={products}
+              onProductSelect={(productId) => {
+                const p = products.find(prod => prod.id === productId);
+                if (p) setSelectedProduct(p);
+              }}
+            />
+          )}
 
           {/* Active Order Banner */}
           <AnimatePresence>

@@ -19,6 +19,16 @@ export interface Product {
   calories?: number;
   starting_price?: number;
   sales_count?: number;
+  is_hidden?: boolean;
+}
+
+export interface Story {
+  id: string;
+  image_url: string;
+  product_id?: string;
+  is_active: boolean;
+  created_at?: string;
+  expires_at?: string;
 }
 
 export interface OptionGroup {
