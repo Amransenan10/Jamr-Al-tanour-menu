@@ -485,6 +485,72 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                         className="w-full p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border-none focus:ring-2 focus:ring-primary/50 outline-none text-sm h-24 resize-none"
                       />
                     </div>
+
+                    {/* Promo Code Section */}
+                    <div className="space-y-2 border-t border-gray-100 dark:border-white/5 pt-4 mt-2">
+                      {!appliedPromo ? (
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={promoCodeInput}
+                            onChange={e => setPromoCodeInput(e.target.value)}
+                            placeholder="لديك كود خصم؟"
+                            className="flex-1 px-4 py-3 bg-gray-50 dark:bg-white/5 rounded-xl border-none focus:ring-2 focus:ring-primary/50 outline-none text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleApplyPromo}
+                            className="px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-sm font-bold disabled:opacity-50 transition-opacity"
+                            disabled={!promoCodeInput.trim()}
+                          >
+                            تطبيق
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between bg-green-50 dark:bg-green-500/10 p-3 rounded-xl border border-green-200 dark:border-green-500/20">
+                          <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                            <CheckCircle2 size={16} />
+                            <span className="text-sm font-bold">تم تطبيق كود ({appliedPromo.code})</span>
+                          </div>
+                          <button type="button" onClick={handleRemovePromo} className="text-gray-400 hover:text-red-500 transition-colors">
+                            <X size={16} />
+                          </button>
+                        </div>
+                      )}
+                      {promoError && <p className="text-xs text-red-500 font-bold">{promoError}</p>}
+                      {promoSuccess && <p className="text-xs text-green-600 dark:text-green-400 font-bold">{promoSuccess}</p>}
+                    </div>
+                    
+                    {/* Loyalty Points Section */}
+                    {formData.phone.length >= 9 && (
+                      <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-500/10 p-3 rounded-xl border border-amber-200 dark:border-amber-500/20">
+                        <div>
+                          <div className="text-sm font-bold text-amber-700 dark:text-amber-400">
+                            {loyaltyPoints > 0 ? `لديك ${loyaltyPoints} نقطة ولاء 🌟` : 'نظام الولاء: 0 نقطة'}
+                          </div>
+                          <div className="text-xs text-amber-600/80 dark:text-amber-400/80">
+                            {loyaltyPoints >= 5 ? `تساوي خصم ${Math.floor(loyaltyPoints / 5)} ر.س` : (loyaltyPoints > 0 ? 'تحتاج 5 نقاط للاستفادة من الخصم' : 'اجمع النقاط مع هذا الطلب لخصومات مستقبلية')}
+                          </div>
+                          {!supabaseLoyalty && (
+                            <div className="text-red-500 text-[10px] mt-1 font-black">
+                              ⚠️ خطأ: مفاتيح الربط (URL/Key) مفقودة من Vercel!
+                            </div>
+                          )}
+                        </div>
+                        {loyaltyPoints >= 5 && (
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              className="sr-only peer" 
+                              checked={useLoyaltyPoints}
+                              onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
+                            />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                            <span className="mr-2 text-xs font-bold text-gray-500 dark:text-gray-400">استخدام</span>
+                          </label>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -547,73 +613,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
             {cart.length > 0 && (
               <div className="p-6 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-white/5 space-y-4">
                 
-                {/* Promo Code Section */}
-                {step === 'checkout' && (
-                  <div className="space-y-2 border-b border-gray-100 dark:border-white/5 pb-4">
-                    {!appliedPromo ? (
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={promoCodeInput}
-                          onChange={e => setPromoCodeInput(e.target.value)}
-                          placeholder="لديك كود خصم؟"
-                          className="flex-1 px-4 py-2 bg-gray-50 dark:bg-white/5 rounded-xl border-none focus:ring-2 focus:ring-primary/50 outline-none text-sm"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleApplyPromo}
-                          className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-sm font-bold disabled:opacity-50 transition-opacity"
-                          disabled={!promoCodeInput.trim()}
-                        >
-                          تطبيق
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between bg-green-50 dark:bg-green-500/10 p-3 rounded-xl border border-green-200 dark:border-green-500/20">
-                        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                          <CheckCircle2 size={16} />
-                          <span className="text-sm font-bold">تم تطبيق كود ({appliedPromo.code})</span>
-                        </div>
-                        <button onClick={handleRemovePromo} className="text-gray-400 hover:text-red-500 transition-colors">
-                          <X size={16} />
-                        </button>
-                      </div>
-                    )}
-                    {promoError && <p className="text-xs text-red-500 font-bold">{promoError}</p>}
-                    {promoSuccess && <p className="text-xs text-green-600 dark:text-green-400 font-bold">{promoSuccess}</p>}
-                  </div>
-                )}
-                
-                {/* Loyalty Points Section */}
-                {step === 'checkout' && formData.phone.length >= 9 && (
-                  <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-500/10 p-3 rounded-xl border border-amber-200 dark:border-amber-500/20">
-                    <div>
-                      <div className="text-sm font-bold text-amber-700 dark:text-amber-400">
-                        {loyaltyPoints > 0 ? `لديك ${loyaltyPoints} نقطة ولاء 🌟` : 'نظام الولاء: 0 نقطة'}
-                      </div>
-                      <div className="text-xs text-amber-600/80 dark:text-amber-400/80">
-                        {loyaltyPoints >= 5 ? `تساوي خصم ${Math.floor(loyaltyPoints / 5)} ر.س` : (loyaltyPoints > 0 ? 'تحتاج 5 نقاط للاستفادة من الخصم' : 'اجمع النقاط مع هذا الطلب لخصومات مستقبلية')}
-                      </div>
-                      {!supabaseLoyalty && (
-                        <div className="text-red-500 text-[10px] mt-1 font-black">
-                          ⚠️ خطأ: مفاتيح الربط (URL/Key) مفقودة من Vercel!
-                        </div>
-                      )}
-                    </div>
-                    {loyaltyPoints >= 5 && (
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          className="sr-only peer" 
-                          checked={useLoyaltyPoints}
-                          onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
-                        />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
-                        <span className="mr-2 text-xs font-bold text-gray-500 dark:text-gray-400">استخدام</span>
-                      </label>
-                    )}
-                  </div>
-                )}
+
 
                 <div className="flex flex-col gap-2">
                   <div className="flex justify-between items-center text-sm">
