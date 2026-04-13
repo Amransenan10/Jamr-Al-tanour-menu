@@ -162,7 +162,14 @@ export default function App() {
           .eq('branch_name', overrideBranch || selectedBranch || 'السويدي الغربي')
           .single(),
         supabase.from('app_settings').select('*').single(),
-        supabase.from('stories').select('*').eq('is_active', true).order('created_at', { ascending: false }).catch(() => ({ data: [], error: null }))
+        (async () => {
+          try {
+            const res = await supabase.from('stories').select('*').eq('is_active', true).order('created_at', { ascending: false });
+            return res;
+          } catch (e) {
+            return { data: [], error: null };
+          }
+        })()
       ]);
 
       console.log(`DEBUG: fetchData completed in ${Date.now() - startTime}ms`, {
