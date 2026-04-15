@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
     LayoutDashboard, KeyRound, ShoppingBag, Settings as SettingsIcon,
     UtensilsCrossed, LogOut, Loader2, Plus, Edit2, Trash2, CheckCircle2,
-    X, Store, Clock, RefreshCw, Upload, TicketPercent, Image as ImageIcon
+    X, Store, Clock, RefreshCw, Upload, TicketPercent, Image as ImageIcon,
+    Camera
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -185,6 +186,7 @@ const AdminMenuView = () => {
     const [editingProduct, setEditingProduct] = useState<any>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [quickUploadingId, setQuickUploadingId] = useState<string | null>(null);
 
     const [formData, setFormData] = useState({
         name_ar: '',
@@ -328,6 +330,42 @@ const AdminMenuView = () => {
         }
     };
 
+    const handleQuickImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, productId: string) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setQuickUploadingId(productId);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `quick_${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('product-images')
+                .upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('product-images')
+                .getPublicUrl(fileName);
+
+            const { error: updateError } = await supabaseAdmin
+                .from('products')
+                .update({ image_url: publicUrl })
+                .eq('id', productId);
+
+            if (updateError) throw updateError;
+
+            toast.success('تم تحديث الصورة فوراً');
+            fetchData();
+        } catch (error) {
+            console.error('Quick Upload Error:', error);
+            toast.error('لم نتمكن من تحديث الصورة');
+        } finally {
+            setQuickUploadingId(null);
+        }
+    };
+
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.name_ar || !formData.price || !formData.category_id) {
@@ -394,9 +432,21 @@ const AdminMenuView = () => {
             {loading ? <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" size={32} /></div> : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {products.map(p => (
-                        <div key={p.id} className="bg-zinc-900 border border-white/5 rounded-2xl p-4 flex flex-col gap-3 transition-transform hover:-translate-y-1 hover:border-white/10">
+                        <div key={p.id} className="bg-zinc-900 border border-white/5 rounded-2xl p-4 flex flex-col gap-3 transition-transform hover:-translate-y-1 hover:border-white/10 relative group">
                             <div className="flex gap-3">
-                                <img src={p.image_url || '/placeholder.png'} className="w-20 h-20 rounded-xl object-cover bg-zinc-800 shrink-0" />
+                                <div className="relative shrink-0">
+                                    <img src={p.image_url || '/placeholder.png'} className={cn("w-20 h-20 rounded-xl object-cover bg-zinc-800", quickUploadingId === p.id && "opacity-50 blur-[2px]")} />
+                                    {quickUploadingId === p.id ? (
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <Loader2 size={24} className="animate-spin text-primary" />
+                                        </div>
+                                    ) : (
+                                        <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl cursor-pointer">
+                                            <Camera size={24} className="text-white" />
+                                            <input type="file" className="hidden" accept="image/*" onChange={(e) => handleQuickImageUpload(e, p.id)} />
+                                        </label>
+                                    )}
+                                </div>
                                 <div className="flex-1">
                                     <h3 className="font-bold flex items-center justify-between">
                                         {p.name_ar}

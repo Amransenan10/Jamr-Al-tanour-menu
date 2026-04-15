@@ -33,7 +33,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Logo & Name */}
           <div className="flex items-center gap-3 w-1/2">
             <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 overflow-hidden border border-gray-100 dark:border-white/10 p-1 shrink-0">
-              <img src="/assets/logo.png" alt="جمر التنور" className="w-full h-full object-contain" />
+              <img src="/assets/logo.png?v=2" alt="جمر التنور" className="w-full h-full object-contain" />
             </div>
             <div className="hidden sm:block">
               <h1 className="text-xl font-extrabold text-primary leading-tight">جمر التنور</h1>
