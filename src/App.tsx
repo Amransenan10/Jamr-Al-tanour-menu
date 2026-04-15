@@ -246,6 +246,7 @@ export default function App() {
             onCartOpen={() => setIsCartOpen(true)}
             onSearch={setSearchQuery}
             onSideMenuOpen={() => setIsSideMenuOpen(true)}
+            logoUrl={appSettings?.logo_url || ''}
           />
 
           {storeStatus === 'closed' && (

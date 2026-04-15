@@ -13,6 +13,7 @@ interface HeaderProps {
   onCartOpen: () => void;
   onSearch: (query: string) => void;
   onSideMenuOpen: () => void;
+  logoUrl?: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -21,6 +22,7 @@ export const Header: React.FC<HeaderProps> = ({
   onCartOpen,
   onSearch,
   onSideMenuOpen,
+  logoUrl,
 }) => {
   const { theme, toggleTheme } = useTheme();
   const { totalItems } = useCart();
@@ -32,8 +34,12 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center justify-between gap-4">
           {/* Logo & Name */}
           <div className="flex items-center gap-3 w-1/2">
-            <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 overflow-hidden border border-gray-100 dark:border-white/10 p-1 shrink-0">
-              <img src="/assets/logo.png?v=2" alt="جمر التنور" className="w-full h-full object-contain" />
+            <div className="w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center shrink-0">
+              <img
+                src={logoUrl || '/assets/logo.png'}
+                alt="جمر التنور"
+                className="w-full h-full object-cover"
+              />
             </div>
             <div className="hidden sm:block">
               <h1 className="text-xl font-extrabold text-primary leading-tight">جمر التنور</h1>

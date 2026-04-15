@@ -613,9 +613,12 @@ const AdminSettingsView = () => {
         social_snapchat: '',
         social_tiktok: '',
         social_twitter: '',
-        social_whatsapp: ''
+        social_whatsapp: '',
+        logo_url: '',
+        working_hours: ''
     });
     const [isSavingApp, setIsSavingApp] = useState(false);
+    const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
     const fetchSettings = async () => {
         setLoading(true);
@@ -633,7 +636,9 @@ const AdminSettingsView = () => {
                 social_snapchat: appRes.data.social_snapchat || '',
                 social_tiktok: appRes.data.social_tiktok || '',
                 social_twitter: appRes.data.social_twitter || '',
-                social_whatsapp: appRes.data.social_whatsapp || ''
+                social_whatsapp: appRes.data.social_whatsapp || '',
+                logo_url: appRes.data.logo_url || '',
+                working_hours: appRes.data.working_hours || ''
             });
         }
         setLoading(false);
@@ -664,6 +669,33 @@ const AdminSettingsView = () => {
             setIsSavingApp(false);
         }
     };
+
+    const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsUploadingLogo(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `logo_${Date.now()}.${fileExt}`;
+            const { error: uploadError } = await supabase.storage
+                .from('product-images')
+                .upload(fileName, file, { upsert: true });
+            if (uploadError) throw uploadError;
+            const { data: { publicUrl } } = supabase.storage
+                .from('product-images')
+                .getPublicUrl(fileName);
+            const newSettings = { ...appSettings, logo_url: publicUrl };
+            setAppSettings(newSettings);
+            const { error } = await supabaseAdmin.from('app_settings').update({ logo_url: publicUrl }).eq('id', 1);
+            if (error) throw error;
+            toast.success('تم تحديث اللوجو بنجاح لجميع المستخدمين فوراً');
+        } catch (err) {
+            console.error(err);
+            toast.error('حدث خطأ أثناء رفع اللوجو');
+        } finally {
+            setIsUploadingLogo(false);
+        }
+    };
     
     useEffect(() => { fetchSettings(); }, []);
 
@@ -692,7 +724,53 @@ const AdminSettingsView = () => {
                             </div>
                         </div>
 
-                        {/* Social Links Settings */}
+                        {/* Logo Upload */}
+                        <div className="space-y-4 p-4 border border-white/10 rounded-xl bg-zinc-800/30">
+                            <h4 className="font-bold flex items-center gap-2">
+                                <ImageIcon size={16} className="text-primary" /> شعار المتجر (اللوجو)
+                            </h4>
+                            <div className="flex items-center gap-4">
+                                <div className="w-20 h-20 rounded-2xl overflow-hidden bg-zinc-900 border border-white/10 flex items-center justify-center shrink-0">
+                                    {appSettings.logo_url ? (
+                                        <img src={appSettings.logo_url} alt="لوجو المتجر" className="w-full h-full object-contain" />
+                                    ) : (
+                                        <img src="/assets/logo.png" alt="لوجو المتجر" className="w-full h-full object-contain" />
+                                    )}
+                                </div>
+                                <div className="flex-1">
+                                    <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-white/10 hover:border-primary/50 rounded-xl cursor-pointer bg-zinc-900/50 group transition-colors">
+                                        {isUploadingLogo ? (
+                                            <div className="flex items-center gap-2 text-primary">
+                                                <Loader2 size={18} className="animate-spin" />
+                                                <span className="text-sm font-bold">جاري الرفع...</span>
+                                            </div>
+                                        ) : (
+                                            <span className="flex items-center gap-2 text-sm font-bold text-gray-400 group-hover:text-primary transition-colors">
+                                                <Upload size={16} /> رفع لوجو جديد
+                                            </span>
+                                        )}
+                                        <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} disabled={isUploadingLogo} />
+                                    </label>
+                                    <p className="text-[10px] text-gray-500 mt-1.5">يتحدث اللوجو فوراً لجميع الزوار. المقاس المثالي: 512×512 بكسل بدون هوامش.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Working Hours */}
+                        <div className="space-y-3 p-4 border border-white/10 rounded-xl bg-zinc-800/30">
+                            <h4 className="font-bold flex items-center gap-2">
+                                <Clock size={16} className="text-primary" /> أوقات الدوام (تظهر في الإعلان العلوي)
+                            </h4>
+                            <textarea
+                                placeholder="مثال: نفتح ٦ مساءً - ١٢ منتصف الليل | السبت: مغلق"
+                                value={appSettings.working_hours}
+                                onChange={e => setAppSettings({...appSettings, working_hours: e.target.value})}
+                                className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none text-sm resize-none h-16"
+                            />
+                            <p className="text-[10px] text-gray-500">يمكنك كتابة أوقات الدوام هنا ليتم عرضها في شريط الإعلان إذا كان مفعلاً.</p>
+                        </div>
+
+
                         <div className="space-y-4 p-4 border border-white/10 rounded-xl bg-zinc-800/30">
                             <h4 className="font-bold">حسابات التواصل الاجتماعي (تظهر أسفل المنيو)</h4>
                             <p className="text-xs text-gray-500">اترك الحقل فارغاً إذا كنت لا ترغب بعرضه</p>
