@@ -909,9 +909,12 @@ const AdminStoriesView = () => {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const [formData, setFormData] = useState({
         image_url: '',
         product_id: '',
+        offer_name: '',
+        offer_price: '',
         is_active: true
     });
 
@@ -929,17 +932,53 @@ const AdminStoriesView = () => {
     useEffect(() => { fetchData(); }, []);
 
     const handleOpenModal = () => {
-        setFormData({ image_url: '', product_id: '', is_active: true });
+        setFormData({ image_url: '', product_id: '', offer_name: '', offer_price: '', is_active: true });
         setIsModalOpen(true);
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `story_${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('product-images')
+                .upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('product-images')
+                .getPublicUrl(fileName);
+
+            setFormData(prev => ({ ...prev, image_url: publicUrl }));
+            toast.success('تم رفع الصورة بنجاح');
+        } catch (error) {
+            console.error('Upload Error:', error);
+            toast.error('حدث خطأ أثناء رفع الصورة');
+        } finally {
+            setIsUploading(false);
+        }
     };
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!formData.image_url) {
+            toast.error('الرجاء رفع صورة للقصة أولاً');
+            return;
+        }
+
         setIsSaving(true);
         try {
             const payload = {
                 image_url: formData.image_url,
                 product_id: formData.product_id || null, // null if no product linked
+                offer_name: formData.offer_name || null,
+                offer_price: formData.offer_price ? parseFloat(formData.offer_price) : null,
                 is_active: formData.is_active
             };
             const { error } = await supabaseAdmin.from('stories').insert([payload]);
@@ -1002,10 +1041,22 @@ const AdminStoriesView = () => {
                                     <Trash2 size={14} />
                                 </button>
 
-                                {/* Linked Product Label */}
-                                <div className="absolute bottom-3 left-3 right-3 text-center">
-                                    <p className="text-xs text-white/70">مرتبط بـ:</p>
-                                    <p className="font-bold text-white text-sm truncate">{story.product?.name_ar || 'بدون منتج'}</p>
+                                {/* Linked Product / Offer Label */}
+                                <div className="absolute bottom-0 left-0 right-0 p-3 pt-6 bg-gradient-to-t from-black/90 to-transparent text-center">
+                                    {story.product ? (
+                                        <>
+                                            <p className="text-[10px] text-white/70">مرتبط بمنتج:</p>
+                                            <p className="font-bold text-white text-sm truncate">{story.product.name_ar}</p>
+                                        </>
+                                    ) : story.offer_name ? (
+                                        <>
+                                            <p className="text-[10px] text-primary/90">عرض مباشر:</p>
+                                            <p className="font-bold text-primary text-sm truncate">{story.offer_name}</p>
+                                            <p className="text-xs text-white">{story.offer_price} ر.س</p>
+                                        </>
+                                    ) : (
+                                        <p className="text-xs text-gray-400">صورة فقط</p>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -1028,13 +1079,47 @@ const AdminStoriesView = () => {
                             
                             <form onSubmit={handleSave} className="space-y-4">
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-bold text-gray-400">رابط صورة القصة (تصميم طولي) <span className="text-red-500">*</span></label>
-                                    <input required type="url" placeholder="https://..." value={formData.image_url} onChange={e => setFormData({...formData, image_url: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none" />
+                                    <label className="text-sm font-bold text-gray-400 flex items-center justify-between">
+                                        <span>صورة القصة (تصميم طولي) <span className="text-red-500">*</span></span>
+                                        {isUploading && <Loader2 size={14} className="animate-spin text-primary" />}
+                                    </label>
+                                    <div className="flex gap-3 items-center">
+                                        {formData.image_url ? (
+                                            <img src={formData.image_url} alt="Preview" className="w-16 h-24 rounded-xl object-cover bg-zinc-800 shrink-0 border border-white/10" />
+                                        ) : (
+                                            <div className="w-16 h-24 rounded-xl bg-zinc-800 border-2 border-dashed border-white/10 flex items-center justify-center shrink-0">
+                                                <ImageIcon size={20} className="text-gray-500" />
+                                            </div>
+                                        )}
+                                        <label className="flex-1 border-2 border-dashed border-white/10 hover:border-primary/50 transition-colors h-24 rounded-xl flex items-center justify-center cursor-pointer bg-zinc-800/50 group">
+                                            <span className="text-sm font-bold text-gray-400 group-hover:text-primary transition-colors flex items-center gap-2">
+                                                <Upload size={16} /> رفع صورة الاستوري
+                                            </span>
+                                            <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={isUploading} />
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 rounded-xl bg-zinc-800/30 border border-white/5 space-y-4">
+                                    <h4 className="font-bold text-primary text-sm flex items-center gap-2">
+                                        <ShoppingBag size={16} /> عرض مباشر من الاستوري (مستقل)
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-gray-400">اسم العرض</label>
+                                            <input type="text" placeholder="مثال: عرض الغداء" value={formData.offer_name} onChange={e => setFormData({...formData, offer_name: e.target.value, product_id: ''})} className="w-full bg-zinc-900 text-white rounded-lg p-2.5 text-sm border-none focus:ring-1 focus:ring-primary outline-none" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-bold text-gray-400">السعر</label>
+                                            <input type="number" step="0.01" placeholder="مثال: 50" value={formData.offer_price} onChange={e => setFormData({...formData, offer_price: e.target.value})} className="w-full bg-zinc-900 text-white rounded-lg p-2.5 text-sm border-none focus:ring-1 focus:ring-primary outline-none" />
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] text-gray-500">في حال كتابة العرض هنا، بضغطة زر سيتم إضافته فوراً للسلة وبدون ربطه بمنتج محدد.</p>
                                 </div>
                                 
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-bold text-gray-400">المنتج المرتبط (اختياري)</label>
-                                    <select value={formData.product_id} onChange={e => setFormData({...formData, product_id: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none">
+                                    <label className="text-sm font-bold text-gray-400">أو ربط القصة بمنتج موجود من المنيو بدل العرض المستقل (اختياري)</label>
+                                    <select value={formData.product_id} onChange={e => setFormData({...formData, product_id: e.target.value, offer_name: '', offer_price: ''})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none text-sm">
                                         <option value="">بدون منتج</option>
                                         <optgroup label="منتجات العروض (مخفية)">
                                             {products.filter(p => p.is_hidden).map(p => (
@@ -1047,7 +1132,7 @@ const AdminStoriesView = () => {
                                             ))}
                                         </optgroup>
                                     </select>
-                                    <p className="text-[10px] text-gray-500 mt-1">عند ربط منتج، سيظهر زر 'اطلب الآن' في القصة</p>
+                                    <p className="text-[10px] text-gray-500 mt-1">عند ربط منتج، تفتح نافذة تفاصيل المنتج بدلاً من إضافته تلقائياً.</p>
                                 </div>
 
                                 <label className="flex items-center gap-3 p-4 bg-zinc-800 rounded-xl cursor-pointer hover:bg-zinc-700 transition-colors mt-2">

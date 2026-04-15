@@ -26,6 +26,8 @@ export interface Story {
   id: string;
   image_url: string;
   product_id?: string;
+  offer_name?: string;
+  offer_price?: number;
   is_active: boolean;
   created_at?: string;
   expires_at?: string;

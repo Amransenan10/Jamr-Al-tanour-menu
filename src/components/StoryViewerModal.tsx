@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Story, Product } from '../types';
 import { X, ChevronRight, ChevronLeft, ShoppingCart } from 'lucide-react';
+import { useCart } from '../context/CartContext';
+import toast from 'react-hot-toast';
 
 interface StoryViewerModalProps {
     stories: Story[];
@@ -14,6 +16,7 @@ interface StoryViewerModalProps {
 export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({ 
     stories, initialIndex, onClose, onProductSelect, products 
 }) => {
+    const { addToCart } = useCart();
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [progress, setProgress] = useState(0);
     const STORY_DURATION = 5000; // 5 seconds per story
@@ -61,7 +64,21 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
 
     const handleOrderClick = (e: React.MouseEvent) => {
         e.stopPropagation(); // prevent navigation
-        if (linkedProduct) {
+        if (currentStory.offer_name && currentStory.offer_price) {
+            addToCart({
+                id: Math.random().toString(36).substr(2, 9),
+                productId: `story_offer_${currentStory.id}`,
+                name: currentStory.offer_name,
+                price: currentStory.offer_price,
+                quantity: 1,
+                options: [],
+                removedIngredients: [],
+                totalPrice: currentStory.offer_price,
+                notes: 'من عروض الاستوري'
+            });
+            toast.success(`تم إضافة ${currentStory.offer_name} للسلة`);
+            onClose();
+        } else if (linkedProduct) {
             onClose();
             onProductSelect(linkedProduct.id);
         }
@@ -119,7 +136,7 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
                 </div>
 
                 {/* Footer Action */}
-                {linkedProduct && (
+                {(currentStory.offer_name || linkedProduct) && (
                     <div className="absolute bottom-0 left-0 right-0 z-20 p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex justify-center pb-8">
                         <button 
                             onClick={handleOrderClick}
@@ -127,7 +144,12 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
                             style={{ animationDuration: '2s' }}
                         >
                             <ShoppingCart size={24} />
-                            <span>اطلب الآن - {linkedProduct.price} ر.س</span>
+                            <span>
+                                {currentStory.offer_name 
+                                    ? `اطلب الآن - ${currentStory.offer_price} ر.س`
+                                    : `اطلب الآن - ${linkedProduct?.price} ر.س`
+                                }
+                            </span>
                         </button>
                     </div>
                 )}
