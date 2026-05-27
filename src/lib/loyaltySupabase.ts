@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-const loyaltyUrl = import.meta.env.VITE_LOYALTY_SUPABASE_URL;
-const loyaltyAnonKey = import.meta.env.VITE_LOYALTY_SUPABASE_ANON_KEY;
-const loyaltyServiceKey = import.meta.env.VITE_LOYALTY_SUPABASE_SERVICE_KEY;
+const loyaltyUrl = import.meta.env.VITE_SUPABASE_URL;
+const loyaltyAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const loyaltyServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
 // For public queries from the Menu (read points only)
 export const supabaseLoyalty = (loyaltyUrl && loyaltyAnonKey) 

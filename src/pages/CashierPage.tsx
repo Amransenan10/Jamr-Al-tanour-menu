@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
     Clock, CheckCircle2, Package, Loader2, Bell, RefreshCw,
     MapPin, ShoppingBag, Phone, Bike, Coffee, ChevronDown, LogOut, Copy, ExternalLink,
-    Settings, Volume2, X, LayoutList, Sun, Moon
+    Settings, Volume2, X, LayoutList, Sun, Moon, Star, UserPlus, Search
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -370,6 +370,11 @@ export const CashierPage: React.FC = () => {
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
     const [showMenuManagement, setShowMenuManagement] = useState(false);
+    const [showLoyaltyModal, setShowLoyaltyModal] = useState(false);
+    const [loyaltySearchPhone, setLoyaltySearchPhone] = useState('');
+    const [loyaltyCustomer, setLoyaltyCustomer] = useState<any>(null);
+    const [loyaltyPointsToModify, setLoyaltyPointsToModify] = useState<string>('');
+    const [isLoyaltyProcessing, setIsLoyaltyProcessing] = useState(false);
     const [menuProducts, setMenuProducts] = useState<any[]>([]);
     const [loadingMenu, setLoadingMenu] = useState(false);
 
@@ -948,6 +953,13 @@ export const CashierPage: React.FC = () => {
                             <LayoutList size={16} className="text-gray-400" />
                         </button>
                         <button
+                            onClick={() => setShowLoyaltyModal(true)}
+                            className={cn("p-2.5 rounded-xl transition-colors", isDark ? 'bg-zinc-800 hover:bg-zinc-700' : 'bg-gray-100 hover:bg-gray-200')}
+                            title="إدارة الولاء والعملاء"
+                        >
+                            <Star size={16} className="text-amber-400" />
+                        </button>
+                        <button
                             onClick={() => setShowSettings(true)}
                             className={cn("p-2.5 rounded-xl transition-colors", isDark ? 'bg-zinc-800 hover:bg-zinc-700' : 'bg-gray-100 hover:bg-gray-200')}
                             title="الإعدادات"
@@ -1247,6 +1259,157 @@ export const CashierPage: React.FC = () => {
                                             </div>
                                         ))}
                                     </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Loyalty Management Modal */}
+            <AnimatePresence>
+                {showLoyaltyModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => {
+                                setShowLoyaltyModal(false);
+                                setLoyaltyCustomer(null);
+                                setLoyaltySearchPhone('');
+                            }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className={cn("rounded-3xl p-6 w-full max-w-md relative z-10 shadow-2xl flex flex-col", isDark ? 'bg-zinc-900 border border-white/10' : 'bg-white border border-gray-100')}
+                        >
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className={cn("text-xl font-black flex items-center gap-2", isDark ? 'text-white' : 'text-gray-900')}>
+                                    <Star className="text-amber-400" fill="currentColor" />
+                                    إدارة نقاط الولاء
+                                </h3>
+                                <button onClick={() => setShowLoyaltyModal(false)} className="text-gray-500">
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-6">
+                                {/* Search Section */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-gray-500 mr-1">بحث برقم الجوال</label>
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <Phone className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                            <input 
+                                                type="tel"
+                                                value={loyaltySearchPhone}
+                                                onChange={e => setLoyaltySearchPhone(e.target.value)}
+                                                placeholder="05xxxxxxxx"
+                                                className={cn("w-full pr-10 pl-4 py-3 rounded-xl border-none font-bold text-sm outline-none focus:ring-2 focus:ring-primary/50", isDark ? 'bg-zinc-800 text-white' : 'bg-gray-100 text-gray-900')}
+                                            />
+                                        </div>
+                                        <button 
+                                            onClick={async () => {
+                                                if (!loyaltySearchPhone) return;
+                                                setIsLoyaltyProcessing(true);
+                                                const { data, error } = await supabaseLoyaltyAdmin.from('customers').select('*').eq('phone_number', loyaltySearchPhone).single();
+                                                if (data) {
+                                                    setLoyaltyCustomer(data);
+                                                } else {
+                                                    setLoyaltyCustomer({ phone_number: loyaltySearchPhone, points_balance: 0, is_new: true });
+                                                }
+                                                setIsLoyaltyProcessing(false);
+                                            }}
+                                            disabled={isLoyaltyProcessing || !loyaltySearchPhone}
+                                            className="px-4 bg-primary text-white rounded-xl font-bold hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                                        >
+                                            {isLoyaltyProcessing ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {loyaltyCustomer && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className={cn("p-5 rounded-2xl border text-center space-y-4", isDark ? 'bg-zinc-800/50 border-white/5' : 'bg-gray-50 border-gray-100')}
+                                    >
+                                        <div>
+                                            <p className="text-xs text-gray-500 font-bold mb-1">العميل</p>
+                                            <p className={cn("text-lg font-black", isDark ? 'text-white' : 'text-gray-900')}>{loyaltyCustomer.full_name || 'عميل جديد'}</p>
+                                            <p className="text-sm font-mono text-primary" dir="ltr">{loyaltyCustomer.phone_number}</p>
+                                        </div>
+
+                                        <div className="bg-primary/10 rounded-2xl py-4 border border-primary/20">
+                                            <p className="text-[10px] text-primary font-black uppercase tracking-widest mb-1">الرصيد الحالي</p>
+                                            <p className="text-4xl font-black text-primary">{loyaltyCustomer.points_balance} <span className="text-xs">نقطة</span></p>
+                                        </div>
+
+                                        <div className={cn("pt-4 border-t", isDark ? 'border-white/5' : 'border-gray-200')}>
+                                            <label className="text-xs font-bold text-gray-500 block mb-2">تعديل الرصيد (إضافة / خصم)</label>
+                                            <div className="flex gap-2">
+                                                <input 
+                                                    type="number"
+                                                    value={loyaltyPointsToModify}
+                                                    onChange={e => setLoyaltyPointsToModify(e.target.value)}
+                                                    placeholder="مثلاً: 10 أو -5"
+                                                    className={cn("flex-1 px-4 py-3 rounded-xl border-none font-bold text-center text-sm outline-none", isDark ? 'bg-zinc-800 text-white' : 'bg-white text-gray-900')}
+                                                />
+                                                <button 
+                                                    disabled={isLoyaltyProcessing || !loyaltyPointsToModify}
+                                                    onClick={async () => {
+                                                        const points = parseInt(loyaltyPointsToModify);
+                                                        if (isNaN(points) || points === 0) return;
+                                                        setIsLoyaltyProcessing(true);
+                                                        
+                                                        try {
+                                                            if (loyaltyCustomer.is_new) {
+                                                                const { error } = await supabaseLoyaltyAdmin.from('customers').insert([{
+                                                                    phone_number: loyaltyCustomer.phone_number,
+                                                                    full_name: 'عميل الفرع',
+                                                                    points_balance: Math.max(0, points)
+                                                                }]);
+                                                                if (error) throw error;
+                                                            } else {
+                                                                const { error } = await supabaseLoyaltyAdmin
+                                                                    .from('customers')
+                                                                    .update({ points_balance: Math.max(0, loyaltyCustomer.points_balance + points) })
+                                                                    .eq('phone_number', loyaltyCustomer.phone_number);
+                                                                if (error) throw error;
+                                                            }
+                                                            
+                                                            // Log transaction (Optional but good practice)
+                                                            await supabaseLoyaltyAdmin.from('transactions').insert([{
+                                                                customer_phone: loyaltyCustomer.phone_number,
+                                                                points_earned: points > 0 ? points : 0,
+                                                                points_redeemed: points < 0 ? Math.abs(points) : 0,
+                                                                staff_id: branch,
+                                                                bill_amount: 0 // Manual adjustment
+                                                            }]);
+
+                                                            toast.success('تم تحديث نقاط العميل بنجاح');
+                                                            setShowLoyaltyModal(false);
+                                                            setLoyaltyCustomer(null);
+                                                            setLoyaltySearchPhone('');
+                                                            setLoyaltyPointsToModify('');
+                                                        } catch (e) {
+                                                            toast.error('حدث خطأ أثناء التحديث');
+                                                        } finally {
+                                                            setIsLoyaltyProcessing(false);
+                                                        }
+                                                    }}
+                                                    className="px-6 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors disabled:opacity-50"
+                                                >
+                                                    {isLoyaltyProcessing ? <Loader2 size={18} className="animate-spin" /> : 'تحديث'}
+                                                </button>
+                                            </div>
+                                            <p className="text-[10px] text-gray-500 mt-2">لخصم النقاط، ضع علامة سالب (-) قبل الرقم</p>
+                                        </div>
+                                    </motion.div>
                                 )}
                             </div>
                         </motion.div>
