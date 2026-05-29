@@ -1439,20 +1439,21 @@ export const CashierPage: React.FC = () => {
                                                 <div className="space-y-2 bg-amber-50 dark:bg-amber-500/10 p-3 rounded-2xl border border-amber-100 dark:border-amber-500/20">
                                                     <label className="text-xs font-bold text-amber-700 dark:text-amber-400 block">خصم من النقاط</label>
                                                     <div className="flex gap-2">
-                                                        <select 
-                                                            value={loyaltyPointsToModify}
-                                                            onChange={e => setLoyaltyPointsToModify(e.target.value)}
-                                                            className={cn("flex-1 px-3 py-2.5 rounded-xl border-none font-bold text-sm outline-none", isDark ? 'bg-zinc-900 text-white' : 'bg-white text-gray-900')}
-                                                        >
-                                                            <option value="">اختر عدد النقاط لخصمها...</option>
-                                                            {Array.from({ length: Math.floor(loyaltyCustomer.points_balance / 5) }).map((_, i) => {
-                                                                const pts = (i + 1) * 5;
-                                                                const riyals = Math.floor(pts / 5);
-                                                                return (
-                                                                    <option key={pts} value={pts}>خصم {pts} نقطة (بقيمة {riyals} ر.س)</option>
-                                                                );
-                                                            })}
-                                                        </select>
+                                                        <div className="flex-1 relative">
+                                                            <input 
+                                                                type="number"
+                                                                value={loyaltyPointsToModify}
+                                                                onChange={e => setLoyaltyPointsToModify(e.target.value)}
+                                                                placeholder="أدخل النقاط"
+                                                                max={loyaltyCustomer.points_balance}
+                                                                className={cn("w-full px-3 py-2.5 rounded-xl border-none font-bold text-sm outline-none", isDark ? 'bg-zinc-900 text-white' : 'bg-white text-gray-900')}
+                                                            />
+                                                            {loyaltyPointsToModify && parseInt(loyaltyPointsToModify) > 0 && (
+                                                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                                                                    = {Math.floor(parseInt(loyaltyPointsToModify) / 5)} ر.س
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                         <button 
                                                             disabled={isLoyaltyProcessing || !loyaltyPointsToModify}
                                                             onClick={async () => {
