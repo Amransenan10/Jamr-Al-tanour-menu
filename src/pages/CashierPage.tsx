@@ -767,7 +767,7 @@ export const CashierPage: React.FC = () => {
                 <motion.div
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    className={cn("w-full max-w-md rounded-[3rem] p-10 shadow-2xl relative", isDark ? 'bg-zinc-900 border border-white/5' : 'bg-white border border-gray-100')}
+                    className={cn("w-full max-w-md rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-10 shadow-2xl relative", isDark ? 'bg-zinc-900 border border-white/5' : 'bg-white border border-gray-100')}
                 >
                     <div className="absolute -top-16 -right-16 w-48 h-48 bg-primary/10 rounded-full blur-3xl" />
                     <div className="text-center space-y-8 relative">
@@ -852,7 +852,7 @@ export const CashierPage: React.FC = () => {
                 <motion.div
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="flex flex-col items-center text-center space-y-6 max-w-sm"
+                    className="flex flex-col items-center text-center space-y-4 md:space-y-6 max-w-sm px-4"
                 >
                     <div className="w-24 h-24 bg-primary rounded-full flex items-center justify-center animate-pulse shadow-2xl shadow-primary/50">
                         <Volume2 size={40} className="text-white" />
@@ -894,9 +894,10 @@ export const CashierPage: React.FC = () => {
             </AnimatePresence>
 
             {/* Header */}
-            <div className={cn("sticky top-0 z-40 backdrop-blur-md border-b px-4 py-4", isDark ? 'bg-charcoal/90 border-white/5' : 'bg-white/90 border-gray-200')}>
-                <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
+            <div className={cn("sticky top-0 z-40 backdrop-blur-md border-b px-4 py-3 md:py-4", isDark ? 'bg-charcoal/90 border-white/5' : 'bg-white/90 border-gray-200')}>
+                <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4">
+                    <div className="flex items-center justify-between w-full md:w-auto">
+                        <div className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 overflow-hidden p-1 border border-white/10">
                             <img src="/assets/logo.png" alt="جمر التنور" className="w-full h-full object-contain" />
                         </div>
@@ -908,8 +909,9 @@ export const CashierPage: React.FC = () => {
                             </div>
                         </div>
                     </div>
+                    </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto no-scrollbar pb-1 md:pb-0">
                         <button
                             onClick={toggleStoreStatus}
                             disabled={isUpdatingStatus}
@@ -1002,7 +1004,7 @@ export const CashierPage: React.FC = () => {
             </div>
 
             {/* Stats bar */}
-            <div className="max-w-7xl mx-auto px-4 py-4 grid grid-cols-4 gap-3">
+            <div className="max-w-7xl mx-auto px-4 py-4 grid grid-cols-2 md:grid-cols-4 gap-3">
                 {[
                     { label: 'الكل', value: orders.length, color: 'text-gray-300' },
                     { label: 'نشطة', value: counts.active, color: 'text-primary' },
