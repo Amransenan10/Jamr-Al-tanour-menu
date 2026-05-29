@@ -4,7 +4,6 @@ import { useCart } from '../context/CartContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Branch, OrderType, Order } from '../types';
 import { supabase } from '../lib/supabaseClient';
-import { supabaseLoyalty } from '../lib/loyaltySupabase';
 import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { saveOrderLocally } from '../utils/orderStorage';
@@ -54,11 +53,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         return;
       }
 
-      if (!supabaseLoyalty) return; // Silent if not configured
-
       setLoyaltyLoading(true);
       try {
-        const { data, error } = await supabaseLoyalty
+        const { data, error } = await supabase
           .from('customers')
           .select('points_balance')
           .eq('phone_number', formData.phone)
@@ -531,11 +528,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                           <div className="text-xs text-amber-600/80 dark:text-amber-400/80">
                             {loyaltyPoints >= 5 ? `تساوي خصم ${Math.floor(loyaltyPoints / 5)} ر.س` : (loyaltyPoints > 0 ? 'تحتاج 5 نقاط للاستفادة من الخصم' : 'اجمع النقاط مع هذا الطلب لخصومات مستقبلية')}
                           </div>
-                          {!supabaseLoyalty && (
-                            <div className="text-red-500 text-[10px] mt-1 font-black">
-                              ⚠️ خطأ: مفاتيح الربط (URL/Key) مفقودة من Vercel!
-                            </div>
-                          )}
                         </div>
                         {loyaltyPoints >= 5 && (
                           <label className="relative inline-flex items-center cursor-pointer">
