@@ -224,14 +224,43 @@ export default function App() {
     return matchesCategory && matchesSearch;
   });
 
-  const top8PopularProducts = [...products]
-    .filter(p => !p.is_hidden)
-    .sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
-    .slice(0, 8);
+  const topPopularProducts = React.useMemo(() => {
+    if (products.length === 0) return [];
+    
+    // Step 1: Group by category
+    const categoryMap: Record<string, Product[]> = {};
+    products.forEach(p => {
+      if (p.is_hidden) return;
+      if (!categoryMap[p.category_id]) categoryMap[p.category_id] = [];
+      categoryMap[p.category_id].push(p);
+    });
 
-  const displayProducts = (activeCategoryId === null && !searchQuery)
-    ? top8PopularProducts
-    : filteredProducts;
+    // Step 2: Pick top 3 from each category to ensure diversity
+    const diversePopular: Product[] = [];
+    Object.values(categoryMap).forEach(catProds => {
+      const topInCat = [...catProds]
+        .sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
+        .slice(0, 3);
+      diversePopular.push(...topInCat);
+    });
+
+    // Step 3: Combine with overall top sellers, then unique, then limit to 14
+    const overallTop = [...products]
+      .filter(p => !p.is_hidden)
+      .sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
+      .slice(0, 14);
+
+    const combinedSet = new Set([...diversePopular.map(p => p.id), ...overallTop.map(p => p.id)]);
+    const finalPopular = Array.from(combinedSet)
+      .map(id => products.find(p => p.id === id)!)
+      .sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
+      .slice(0, 14);
+
+    return finalPopular;
+  }, [products]);
+
+  const isShowingPopular = activeCategoryId === null && !searchQuery;
+  const displayProducts = isShowingPopular ? topPopularProducts : filteredProducts;
 
   return (
     <ThemeProvider>
@@ -288,17 +317,31 @@ export default function App() {
                 <p className="text-gray-500 font-medium">جاري تحضير المنيو...</p>
               </div>
             ) : displayProducts.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-8">
-                <AnimatePresence mode="popLayout">
-                  {displayProducts.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      onSelect={setSelectedProduct}
-                      isPopular={top8PopularProducts.some(p => p.id === product.id)}
-                    />
-                  ))}
-                </AnimatePresence>
+              <div className="space-y-8">
+                {isShowingPopular && (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-1.5 bg-primary rounded-full" />
+                      <h2 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">الاكثر طلباً 🔥</h2>
+                    </div>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base font-medium mr-4">
+                      إليك ما يفضله عملاؤنا، مختار بعناية من كل قسم
+                    </p>
+                  </div>
+                )}
+                
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-8">
+                  <AnimatePresence mode="popLayout">
+                    {displayProducts.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        onSelect={setSelectedProduct}
+                        isPopular={isShowingPopular || topPopularProducts.some(p => p.id === product.id)}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
               </div>
             ) : error ? (
               <div className="flex flex-col items-center justify-center py-32 text-center">
