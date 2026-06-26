@@ -245,10 +245,17 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
 
               <div className="p-6 sm:p-8">
                 <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-1">{product.name_ar}</h2>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">{product.description_ar}</p>
-                  </div>
+                    <div>
+                      <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-1">{product.name_ar}</h2>
+                      <div className="flex items-center gap-3">
+                        <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">{product.description_ar}</p>
+                        {product.calories && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded-full">
+                            {product.calories} سعرة حرارية
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   <div className="text-primary font-black text-2xl">{calculateTotal()} ر.س</div>
                 </div>
 
@@ -304,14 +311,21 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                                 key={item.id}
                                 onClick={() => handleOptionToggle(group, item)}
                                 className={cn(
-                                  "flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-right",
+                                  "flex flex-col p-4 rounded-2xl border-2 transition-all text-right",
                                   isSelected
                                     ? "border-primary bg-primary/5 text-primary"
                                     : "border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-300"
                                 )}
                               >
-                                <span className="font-bold text-sm">{item.name_ar}</span>
-                                <span className="text-xs font-medium">{displayPrice}</span>
+                                <div className="flex items-center justify-between w-full mb-1">
+                                  <span className="font-bold text-sm">{item.name_ar}</span>
+                                  <span className="text-xs font-medium">{displayPrice}</span>
+                                </div>
+                                {item.calories && item.calories > 0 && (
+                                  <span className="text-[10px] font-bold opacity-70 flex items-center gap-1">
+                                    {item.calories} سعرة
+                                  </span>
+                                )}
                               </button>
                             );
                           })}

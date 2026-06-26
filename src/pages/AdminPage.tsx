@@ -195,7 +195,8 @@ const AdminMenuView = () => {
         category_id: '',
         image_url: '',
         is_available: true,
-        is_hidden: false
+        is_hidden: false,
+        calories: ''
     });
 
     const [optionGroups, setOptionGroups] = useState<any[]>([]);
@@ -229,7 +230,8 @@ const AdminMenuView = () => {
                 category_id: product.category_id,
                 image_url: product.image_url || '',
                 is_available: product.is_available ?? true,
-                is_hidden: product.is_hidden ?? false
+                is_hidden: product.is_hidden ?? false,
+                calories: product.calories?.toString() || ''
             });
             // Fetch product options
             const { data: groupsData } = await supabase.from('option_groups').select('*').eq('product_id', product.id).order('name_ar');
@@ -245,7 +247,8 @@ const AdminMenuView = () => {
                 category_id: categories.length > 0 ? categories[0].id : '',
                 image_url: '',
                 is_available: true,
-                is_hidden: false
+                is_hidden: false,
+                calories: ''
             });
             setOptionGroups([]);
             setOptionItems([]);
@@ -267,7 +270,12 @@ const AdminMenuView = () => {
 
     const saveGroup = async (id: string) => {
         const group = optionGroups.find(g => g.id === id);
-        if (group) await supabaseAdmin.from('option_groups').update({ name_ar: group.name_ar, max_selection: group.max_selection }).eq('id', id);
+        if (group) await supabaseAdmin.from('option_groups').update({ 
+            name_ar: group.name_ar, 
+            name_en: group.name_ar, // Ensure both are updated
+            max_selection: group.max_selection 
+        }).eq('id', id);
+        toast.success('تم حفظ المجموعة');
     };
 
     const deleteGroup = async (id: string) => {
@@ -277,7 +285,7 @@ const AdminMenuView = () => {
     };
 
     const handleAddItem = async (groupId: string) => {
-        const payload = { group_id: groupId, name_ar: 'خيار جديد', name_en: 'New Item', price: 0, is_available: true };
+        const payload = { group_id: groupId, name_ar: 'خيار جديد', name_en: 'New Item', price: 0, calories: 0, is_available: true };
         const { data } = await supabaseAdmin.from('option_items').insert([payload]).select().single();
         if (data) setOptionItems(prev => [...prev, data]);
     };
@@ -290,8 +298,14 @@ const AdminMenuView = () => {
         const item = optionItems.find(i => i.id === id);
         if (item) {
             const cleanPrice = parseFloat(item.price.toString()) || 0;
-            const { error } = await supabaseAdmin.from('option_items').update({ name_ar: item.name_ar, price: cleanPrice }).eq('id', id);
-            if (error) toast.error('خطأ في حفظ السعر');
+            const cleanCalories = parseInt(item.calories?.toString() || '0') || 0;
+            const { error } = await supabaseAdmin.from('option_items').update({ 
+                name_ar: item.name_ar, 
+                name_en: item.name_ar,
+                price: cleanPrice,
+                calories: cleanCalories
+            }).eq('id', id);
+            if (error) toast.error('خطأ في حفظ البيانات');
             else toast.success('تم حفظ التعديل');
         }
     };
@@ -383,7 +397,8 @@ const AdminMenuView = () => {
             category_id: formData.category_id,
             image_url: formData.image_url,
             is_available: formData.is_available,
-            is_hidden: formData.is_hidden
+            is_hidden: formData.is_hidden,
+            calories: parseInt(formData.calories) || null
         };
 
         try {
@@ -499,9 +514,18 @@ const AdminMenuView = () => {
                                     </div>
                                 </div>
 
-                                <div className="space-y-1.5">
-                                    <label className="text-sm font-bold text-gray-400">الوصف (اختياري)</label>
-                                    <textarea value={formData.description_ar} onChange={e => setFormData({...formData, description_ar: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none h-20 resize-none" />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-bold text-gray-400">الوصف (اختياري)</label>
+                                        <textarea value={formData.description_ar} onChange={e => setFormData({...formData, description_ar: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none h-20 resize-none" />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-bold text-gray-400">السعرات الحرارية (اختياري)</label>
+                                        <div className="relative">
+                                            <input type="number" value={formData.calories} onChange={e => setFormData({...formData, calories: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none pr-12" placeholder="مثال: 450" />
+                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-bold">سعرة</span>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-1.5">
@@ -567,9 +591,12 @@ const AdminMenuView = () => {
                                                     {optionItems.filter(i => i.group_id === group.id).map(item => (
                                                         <div key={item.id} className="flex gap-2 items-center relative before:absolute before:right-[-16px] before:top-1/2 before:w-4 before:h-px before:bg-white/10">
                                                             <input type="text" value={item.name_ar} onChange={e => handleUpdateItem(item.id, 'name_ar', e.target.value)} onBlur={() => saveItem(item.id)} className="flex-1 bg-zinc-800 text-white rounded-lg px-3 py-1.5 text-sm border-none outline-none focus:ring-1 focus:ring-primary" placeholder="مثال: كبير" />
-                                                            <div className="relative">
-                                                                <input type="number" step="0.01" value={item.price} onChange={e => handleUpdateItem(item.id, 'price', e.target.value)} onBlur={() => saveItem(item.id)} className="w-20 bg-zinc-800 text-white rounded-lg pl-3 pr-6 py-1.5 text-sm border-none outline-none focus:ring-1 focus:ring-primary text-left" placeholder="0" />
-                                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-500">ر.س</span>
+                                                            <div className="relative shrink-0">
+                                                                <input type="number" step="1" value={item.calories || ''} onChange={e => handleUpdateItem(item.id, 'calories', e.target.value)} onBlur={() => saveItem(item.id)} className="w-16 bg-zinc-800 text-white rounded-lg pl-2 pr-2 py-1.5 text-[10px] border-none outline-none focus:ring-1 focus:ring-primary text-center" placeholder="سعرة" />
+                                                            </div>
+                                                            <div className="relative shrink-0">
+                                                                <input type="number" step="0.01" value={item.price} onChange={e => handleUpdateItem(item.id, 'price', e.target.value)} onBlur={() => saveItem(item.id)} className="w-16 bg-zinc-800 text-white rounded-lg pl-2 pr-7 py-1.5 text-[10px] border-none outline-none focus:ring-1 focus:ring-primary text-left" placeholder="0" />
+                                                                <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-gray-500">ر.س</span>
                                                             </div>
                                                             <button type="button" onClick={() => deleteItem(item.id)} className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"><X size={14}/></button>
                                                         </div>

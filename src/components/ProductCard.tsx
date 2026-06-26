@@ -53,7 +53,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect, isP
 
       <div className="p-3 sm:p-6 flex flex-col flex-1">
         <div className="mb-2 sm:mb-4">
-          <h3 className="font-black text-sm sm:text-xl text-gray-900 dark:text-white mb-1 sm:mb-2 line-clamp-1">{product.name_ar}</h3>
+          <div className="flex justify-between items-start mb-1 sm:mb-2">
+            <h3 className="font-black text-sm sm:text-xl text-gray-900 dark:text-white line-clamp-1">{product.name_ar}</h3>
+            {product.calories && (
+              <span className="shrink-0 flex items-center gap-1 text-[10px] sm:text-xs font-bold text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded-full">
+                {product.calories} سعرة
+              </span>
+            )}
+          </div>
           <p className="hidden sm:block text-gray-500 dark:text-gray-400 text-xs leading-relaxed line-clamp-2">
             {product.description_ar || 'لا يوجد وصف متاح'}
           </p>

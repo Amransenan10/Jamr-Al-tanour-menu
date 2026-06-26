@@ -49,6 +49,7 @@ export interface OptionItem {
   name_en: string;
   price: number;
   is_available: boolean;
+  calories?: number;
 }
 
 export interface Ingredient {
