@@ -38,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
               <img
                 src={logoUrl || '/assets/logo.png'}
                 alt="جمر التنور"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
             </div>
             <div className="hidden sm:block">
