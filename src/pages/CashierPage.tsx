@@ -122,6 +122,12 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                         {(order as any).order_type === 'delivery' ? <Bike size={12} /> : <Coffee size={12} />}
                         {(order as any).order_type === 'delivery' ? 'توصيل' : 'استلام'}
                     </span>
+                    {order.pickup_time && (
+                        <span className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl font-black bg-amber-500/20 text-amber-500 border border-amber-500/30 animate-pulse">
+                            <Clock size={12} />
+                            وقت الاستلام: {order.pickup_time}
+                        </span>
+                    )}
                     {order.phone && (
                         <a href={`tel:${order.phone}`} className="flex items-center gap-2 text-sm font-black px-4 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 transition-colors shadow-sm" title="اتصال بالعميل">
                             <Phone size={14} className="animate-pulse" /> <span className="tracking-widest" dir="ltr">{order.phone}</span>
@@ -436,6 +442,20 @@ export const CashierPage: React.FC = () => {
     useEffect(() => {
         soundPrefRef.current = soundPref;
     }, [soundPref]);
+
+    // ── Run Auto Migration for Scheduled / Pickup Time ───────────────────────
+    useEffect(() => {
+        const runMigration = async () => {
+            try {
+                await supabase.rpc('execute_sql', {
+                    sql_query: `ALTER TABLE orders ADD COLUMN IF NOT EXISTS pickup_time TEXT;`
+                });
+            } catch (e) {
+                console.error("Migration failed:", e);
+            }
+        };
+        runMigration();
+    }, []);
 
     // ── Load store status and subscribe ───────────────────────────────────────
     useEffect(() => {

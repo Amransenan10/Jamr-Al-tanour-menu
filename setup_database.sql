@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS coupons (
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_fee NUMERIC DEFAULT 0;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_amount NUMERIC DEFAULT 0;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS promo_code TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS pickup_time TEXT;
 
 -- تمكين الـ Realtime للجداول الحساسة
 alter publication supabase_realtime add table coupons;

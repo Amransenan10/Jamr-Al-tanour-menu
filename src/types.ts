@@ -106,6 +106,7 @@ export interface Order {
   created_at?: string;
   discount_amount?: number;
   promo_code?: string;
+  pickup_time?: string;
 }
 
 export interface StoreSettings {

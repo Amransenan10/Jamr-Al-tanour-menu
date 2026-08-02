@@ -253,6 +253,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         total_price: finalPrice,
         items: cart,
         status: 'new',
+        pickup_time: orderType === 'pickup' && formData.pickupTime ? formData.pickupTime : undefined,
         // Typecasting below to bypass strict type checking temporarily, assuming the 'orders' table supports these columns per our recent migration
         ...({
           delivery_fee: deliveryFee,

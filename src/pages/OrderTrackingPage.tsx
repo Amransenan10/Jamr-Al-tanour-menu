@@ -221,6 +221,11 @@ export const OrderTrackingPage: React.FC = () => {
                                 <p className="font-bold text-gray-900 dark:text-white">
                                     {order.order_type === 'delivery' ? 'توصيل 🛵' : 'استلام 🛍️'}
                                 </p>
+                                {order.pickup_time && (
+                                    <p className="text-xs text-amber-500 font-bold mt-1">
+                                        ⏱️ وقت الاستلام المحدد: {order.pickup_time}
+                                    </p>
+                                )}
                             </div>
                         </div>
 
