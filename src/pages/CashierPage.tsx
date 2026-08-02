@@ -443,23 +443,6 @@ export const CashierPage: React.FC = () => {
         soundPrefRef.current = soundPref;
     }, [soundPref]);
 
-    // ── Run Auto Migration for Scheduled / Pickup Time ───────────────────────
-    useEffect(() => {
-        const runMigration = async () => {
-            try {
-                await supabase.rpc('execute_sql', {
-                    sql_query: `
-                        ALTER TABLE orders ADD COLUMN IF NOT EXISTS pickup_time TEXT;
-                        NOTIFY pgrst, 'reload schema';
-                    `
-                });
-            } catch (e) {
-                console.error("Migration failed:", e);
-            }
-        };
-        runMigration();
-    }, []);
-
     // ── Load store status and subscribe ───────────────────────────────────────
     useEffect(() => {
         const fetchStatus = async () => {
