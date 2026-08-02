@@ -422,7 +422,7 @@ export const AdminAnalyticsView: React.FC = () => {
             XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(productsSheet), 'المنتجات الأكثر طلباً');
             XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ordersSheet), 'سجل الطلبات');
 
-            XLSX.writeFile(wb, `تقرير_إحصائيات_جمرة_الرافدين_${dateRangeLabel.replace(/\s+/g, '_')}.xlsx`);
+            XLSX.writeFile(wb, `تقرير_إحصائيات_جمر_التنور_${dateRangeLabel.replace(/\s+/g, '_')}.xlsx`);
             toast.success('تم تصدير تقرير Excel بنجاح 📊');
         } catch (err) {
             console.error('Excel Export Error:', err);
@@ -610,7 +610,7 @@ export const AdminAnalyticsView: React.FC = () => {
 
             {/* Print Header */}
             <div className="hidden print-only text-center space-y-2 mb-6">
-                <h1 className="text-2xl font-bold">تقرير إحصائيات وأداء النظام - مطعم جمرة الرافدين</h1>
+                <h1 className="text-2xl font-bold">تقرير إحصائيات وأداء النظام - مطعم جمر التنور</h1>
                 <p className="text-sm text-gray-600">الفترة: {dateRangeLabel} | الفرع: {selectedBranch === 'all' ? 'جميع الفروع' : selectedBranch}</p>
                 <p className="text-xs text-gray-500">تاريخ إصدار التقرير: {new Date().toLocaleString('ar-SA')}</p>
             </div>
