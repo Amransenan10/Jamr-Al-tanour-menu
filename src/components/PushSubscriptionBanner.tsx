@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bell, BellRing, X, Sparkles, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getNotificationPermission, subscribeToPushNotifications } from '../utils/pushSubscription';
+import { requestOneSignalPermission } from '../utils/oneSignalService';
 
 export const PushSubscriptionBanner: React.FC = () => {
   const [show, setShow] = useState(false);
@@ -27,6 +28,7 @@ export const PushSubscriptionBanner: React.FC = () => {
 
   const handleSubscribe = async () => {
     setLoading(true);
+    await requestOneSignalPermission();
     const success = await subscribeToPushNotifications();
     setLoading(false);
     if (success) {

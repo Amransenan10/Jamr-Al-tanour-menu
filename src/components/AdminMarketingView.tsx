@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { supabaseAdmin } from '../lib/supabaseAdmin';
+import { sendOneSignalPushNotification } from '../utils/oneSignalService';
 import { 
   Send, Bell, Users, Crown, MessageSquare, Sparkles, 
   Search, Copy, CheckCircle2, Loader2, RefreshCw, Ticket, ExternalLink
@@ -149,6 +150,13 @@ export const AdminMarketingView: React.FC = () => {
       if (res.error) throw res.error;
 
       const created = res.data && res.data[0];
+
+      // Trigger OneSignal Web Push to background devices
+      sendOneSignalPushNotification({
+        title: notifForm.title.trim(),
+        message: notifForm.message.trim(),
+        url: notifForm.url.trim() || undefined
+      }).catch(err => console.warn('OneSignal background push error:', err));
 
       toast.success('تم إرسال الإشعار لجميع العملاء والمشتركين بنجاح! 🚀');
       setNotifForm({ title: '', message: '', promo_code: '', url: '' });

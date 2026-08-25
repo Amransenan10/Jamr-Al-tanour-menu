@@ -1,0 +1,100 @@
+// OneSignal Web Push Integration Service
+let ONESIGNAL_APP_ID = import.meta.env.VITE_ONESIGNAL_APP_ID || '';
+let ONESIGNAL_REST_KEY = import.meta.env.VITE_ONESIGNAL_REST_KEY || '';
+
+declare global {
+  interface Window {
+    OneSignalDeferred?: any[];
+    OneSignal?: any;
+  }
+}
+
+/**
+ * Initialize OneSignal Web Push SDK
+ */
+export const initOneSignal = (appId?: string) => {
+  const activeAppId = appId || ONESIGNAL_APP_ID;
+  if (!activeAppId || typeof window === 'undefined') {
+    console.log('OneSignal App ID not set yet.');
+    return;
+  }
+
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  window.OneSignalDeferred.push(async (OneSignal: any) => {
+    try {
+      await OneSignal.init({
+        appId: activeAppId,
+        allowLocalhostAsSecureOrigin: true,
+        welcomeNotification: {
+          title: "مطعم جمر التنور 🔥",
+          message: "أهلاً بك! تم تفعيل إشعارات العروض والخصومات بنجاح 🎉"
+        }
+      });
+      console.log('OneSignal initialized successfully');
+    } catch (err) {
+      console.warn('OneSignal init error:', err);
+    }
+  });
+};
+
+/**
+ * Prompt user to subscribe to OneSignal Push Notifications
+ */
+export const requestOneSignalPermission = async () => {
+  if (window.OneSignal) {
+    try {
+      await window.OneSignal.Notifications.requestPermission();
+    } catch (e) {
+      console.error('Error requesting OneSignal permission:', e);
+    }
+  }
+};
+
+/**
+ * Send Background Push Notification to ALL subscribers via OneSignal REST API
+ */
+export const sendOneSignalPushNotification = async ({
+  title,
+  message,
+  url,
+  appId,
+  restKey
+}: {
+  title: string;
+  message: string;
+  url?: string;
+  appId?: string;
+  restKey?: string;
+}) => {
+  const finalAppId = appId || ONESIGNAL_APP_ID;
+  const finalRestKey = restKey || ONESIGNAL_REST_KEY;
+
+  if (!finalAppId || !finalRestKey) {
+    console.warn('OneSignal credentials missing, skipping REST API background push call.');
+    return { success: false, reason: 'credentials_missing' };
+  }
+
+  try {
+    const response = await fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Authorization': `Basic ${finalRestKey}`
+      },
+      body: JSON.stringify({
+        app_id: finalAppId,
+        included_segments: ['Subscribed Users', 'All'],
+        headings: { ar: title, en: title },
+        contents: { ar: message, en: message },
+        url: url || window.location.origin,
+      })
+    });
+
+    const result = await response.json();
+    console.log('OneSignal push API response:', result);
+    return { success: true, result };
+  } catch (error) {
+    console.error('Error triggering OneSignal push:', error);
+    return { success: false, error };
+  }
+};

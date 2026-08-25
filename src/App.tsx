@@ -25,6 +25,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { notifyCustomerStatusChange } from './utils/customerNotifications';
 import { PushSubscriptionBanner } from './components/PushSubscriptionBanner';
 import { showSystemNotification } from './utils/pushSubscription';
+import { initOneSignal } from './utils/oneSignalService';
 
 export default function App() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -51,6 +52,10 @@ export default function App() {
   useBackButton(isSideMenuOpen, () => setIsSideMenuOpen(false), 'menu');
   useBackButton(selectedProduct !== null, () => setSelectedProduct(null), 'product');
   useBackButton(activeStoryIndex !== null, () => setActiveStoryIndex(null), 'story');
+
+  useEffect(() => {
+    initOneSignal();
+  }, []);
 
   // Debugging & Resilience: Anti-hang timeout
   useEffect(() => {
