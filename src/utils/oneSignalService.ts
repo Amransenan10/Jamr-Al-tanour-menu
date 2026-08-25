@@ -116,7 +116,6 @@ export const sendOneSignalPushNotification = async ({
         chrome_web_badge: "https://jamr-al-tanour-menu.vercel.app/pwa-192x192.png",
         ios_sound: "default",
         android_sound: "default",
-        android_channel_id: "push_notifications",
         sound: "default",
         priority: 10,
         ttl: 259200
