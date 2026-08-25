@@ -65,40 +65,89 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [loading]);
 
-  // Real-time broadcast notification listener for marketing messages
+  // Bulletproof Broadcast Notification Engine (Realtime + Sync Polling)
   useEffect(() => {
-    const broadcastChannel = supabase
-      .channel('public:broadcast_notifications')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'broadcast_notifications' }, (payload) => {
-        const newNotif = payload.new as any;
-        if (newNotif && newNotif.title) {
-          showSystemNotification(newNotif.title, newNotif.message, newNotif.url);
-          toast.custom(
-            (t) => (
-              <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-zinc-900 text-white shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-amber-500/30 p-4 border border-amber-500/20`}>
-                <div className="flex-1 w-0">
-                  <div className="flex items-start">
-                    <div className="shrink-0 pt-0.5 text-2xl">🔔</div>
-                    <div className="mr-3 flex-1 text-right">
-                      <p className="text-sm font-black text-amber-400">{newNotif.title}</p>
-                      <p className="mt-1 text-xs text-gray-200 leading-relaxed">{newNotif.message}</p>
-                      {newNotif.promo_code && (
-                        <span className="inline-block mt-2 text-[11px] bg-amber-500/20 text-amber-300 font-mono font-black px-2.5 py-1 rounded-lg border border-amber-500/30">
-                          كود الخصم: {newNotif.promo_code}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+    const handleNewBroadcast = (newNotif: any) => {
+      if (!newNotif || !newNotif.id || !newNotif.title) return;
+
+      const lastSeenId = localStorage.getItem('jamr_last_broadcast_id');
+      if (lastSeenId === newNotif.id) return; // Already shown
+
+      localStorage.setItem('jamr_last_broadcast_id', newNotif.id);
+
+      // Trigger Mobile OS Notification + Sound
+      showSystemNotification(newNotif.title, newNotif.message, newNotif.url);
+
+      // Trigger In-App Rich Banner
+      toast.custom(
+        (t) => (
+          <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-zinc-900 text-white shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-amber-500/30 p-4 border border-amber-500/20`}>
+            <div className="flex-1 w-0">
+              <div className="flex items-start">
+                <div className="shrink-0 pt-0.5 text-2xl">🔔</div>
+                <div className="mr-3 flex-1 text-right">
+                  <p className="text-sm font-black text-amber-400">{newNotif.title}</p>
+                  <p className="mt-1 text-xs text-gray-200 leading-relaxed">{newNotif.message}</p>
+                  {newNotif.promo_code && (
+                    <span className="inline-block mt-2 text-[11px] bg-amber-500/20 text-amber-300 font-mono font-black px-2.5 py-1 rounded-lg border border-amber-500/30">
+                      كود الخصم: {newNotif.promo_code}
+                    </span>
+                  )}
                 </div>
               </div>
-            ),
-            { duration: 8000 }
-          );
+            </div>
+          </div>
+        ),
+        { duration: 10000 }
+      );
+    };
+
+    // 1. Direct fetch latest broadcast on app mount / focus
+    const checkLatestBroadcast = async () => {
+      try {
+        const { data } = await supabase
+          .from('broadcast_notifications')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (data && data.length > 0) {
+          const latest = data[0];
+          const lastSeenId = localStorage.getItem('jamr_last_broadcast_id');
+          
+          // Only show if it's new and was created in the last 24 hours
+          const createdAt = new Date(latest.created_at).getTime();
+          const isRecent = (Date.now() - createdAt) < (24 * 60 * 60 * 1000);
+
+          if (isRecent && (!lastSeenId || lastSeenId !== latest.id)) {
+            handleNewBroadcast(latest);
+          } else if (!lastSeenId) {
+            // First time visitor, mark current as seen so we don't spam old notifications
+            localStorage.setItem('jamr_last_broadcast_id', latest.id);
+          }
+        }
+      } catch (err) {
+        console.warn('Error checking latest broadcast:', err);
+      }
+    };
+
+    checkLatestBroadcast();
+
+    // Polling interval every 8 seconds as fail-safe
+    const interval = setInterval(checkLatestBroadcast, 8000);
+
+    // 2. Realtime WebSocket subscription
+    const broadcastChannel = supabase
+      .channel('public:broadcast_notifications_channel')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'broadcast_notifications' }, (payload) => {
+        if (payload.new) {
+          handleNewBroadcast(payload.new);
         }
       })
       .subscribe();
 
     return () => {
+      clearInterval(interval);
       supabase.removeChannel(broadcastChannel);
     };
   }, []);
