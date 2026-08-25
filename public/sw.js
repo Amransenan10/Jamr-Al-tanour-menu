@@ -32,7 +32,10 @@ self.addEventListener('push', (event) => {
         body: data.body || data.message || '',
         icon: '/pwa-192x192.png',
         badge: '/pwa-192x192.png',
-        vibrate: [200, 100, 200],
+        vibrate: [500, 110, 500, 110, 500, 110, 500],
+        silent: false,
+        renotify: true,
+        tag: 'jamr-notification-' + Date.now(),
         data: { url: data.url || '/' },
         dir: 'rtl',
         lang: 'ar'
