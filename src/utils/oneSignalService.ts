@@ -114,7 +114,6 @@ export const sendOneSignalPushNotification = async ({
         url: url || window.location.origin,
         chrome_web_icon: "https://jamr-al-tanour-menu.vercel.app/assets/logo.png",
         chrome_web_badge: "https://jamr-al-tanour-menu.vercel.app/assets/logo.png",
-        firefox_icon: "https://jamr-al-tanour-menu.vercel.app/assets/logo.png",
         ios_sound: "default",
         android_sound: "default",
         sound: "default",
