@@ -98,12 +98,35 @@ export const playBroadcastSound = () => {
 };
 
 /**
- * Triggers a system push notification if permission is granted
+ * Triggers a system push notification if permission is granted (Mobile & Desktop supported)
  */
-export const showSystemNotification = (title: string, message: string, url?: string) => {
+export const showSystemNotification = async (title: string, message: string, url?: string) => {
   if (isNotificationSupported() && Notification.permission === 'granted') {
     try {
       playBroadcastSound();
+
+      // Check for Service Worker support on Mobile devices first
+      if ('serviceWorker' in navigator) {
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          if (reg && reg.showNotification) {
+            await reg.showNotification(title, {
+              body: message,
+              icon: '/pwa-192x192.png',
+              badge: '/pwa-192x192.png',
+              tag: 'jamr-broadcast-' + Date.now(),
+              dir: 'rtl',
+              lang: 'ar',
+              data: { url: url || '/' }
+            } as any);
+            return;
+          }
+        } catch (swErr) {
+          console.warn('ServiceWorker showNotification skipped, using fallback:', swErr);
+        }
+      }
+
+      // Fallback for desktop browsers
       const notification = new Notification(title, {
         body: message,
         icon: '/pwa-192x192.png',
