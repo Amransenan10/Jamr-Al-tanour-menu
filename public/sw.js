@@ -30,8 +30,8 @@ self.addEventListener('push', (event) => {
 
     const options = {
         body: data.body || data.message || '',
-        icon: '/pwa-192x192.png',
-        badge: '/pwa-192x192.png',
+        icon: '/assets/logo.png',
+        badge: '/assets/logo.png',
         vibrate: [500, 110, 500, 110, 500, 110, 500],
         silent: false,
         renotify: true,
