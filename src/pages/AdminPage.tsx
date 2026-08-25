@@ -84,22 +84,25 @@ export const AdminPage: React.FC = () => {
     );
 
     return (
-        <div className="min-h-screen bg-charcoal text-white text-right" dir="rtl">
+        <div className="min-h-screen bg-charcoal text-white text-right select-none" dir="rtl">
             {/* Admin Header */}
-            <div className="sticky top-0 z-40 bg-zinc-900 overflow-hidden border-b border-white/5">
-                <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+            <div className="sticky top-0 z-40 bg-zinc-900/95 backdrop-blur-md border-b border-white/5 shadow-xl">
+                <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary shrink-0">
                             <LayoutDashboard size={20} />
                         </div>
-                        <h1 className="font-black text-xl">لوحة الإدارة</h1>
+                        <div>
+                            <h1 className="font-black text-base sm:text-xl text-white">لوحة الإدارة</h1>
+                            <p className="text-[10px] text-gray-400 hidden sm:block">مطعم جمر التنور</p>
+                        </div>
                     </div>
-                    <button onClick={() => { localStorage.removeItem('jamr_admin_auth'); setIsAuthenticated(false); }} className="flex items-center gap-2 text-red-400 bg-red-500/10 px-4 py-2 rounded-xl hover:bg-red-500/20 font-bold transition-colors">
-                        <LogOut size={16} /> تسجيل خروج
+                    <button onClick={() => { localStorage.removeItem('jamr_admin_auth'); setIsAuthenticated(false); }} className="flex items-center gap-1.5 text-red-400 bg-red-500/10 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl hover:bg-red-500/20 font-bold text-xs sm:text-sm transition-colors cursor-pointer">
+                        <LogOut size={16} /> <span className="hidden sm:inline">تسجيل خروج</span>
                     </button>
                 </div>
-                {/* Tabs */}
-                <div className="max-w-7xl mx-auto px-4 flex gap-2 overflow-x-auto no-scrollbar pb-4 pt-2">
+                {/* Responsive Touch-Friendly Tabs */}
+                <div className="max-w-7xl mx-auto px-2 sm:px-4 flex gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar pb-3 pt-1 snap-x snap-mandatory touch-pan-x">
                     {[
                         { id: 'analytics', label: 'الإحصائيات والتحليلات', icon: <BarChart3 size={16} /> },
                         { id: 'orders', label: 'الطلبات الحية', icon: <ShoppingBag size={16} /> },
@@ -110,7 +113,16 @@ export const AdminPage: React.FC = () => {
                         { id: 'marketing', label: 'التسويق والإشعارات 📢', icon: <Send size={16} /> },
                         { id: 'settings', label: 'الفروع والإعدادات', icon: <SettingsIcon size={16} /> }
                     ].map(tab => (
-                        <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={cn("flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer", activeTab === tab.id ? "bg-primary text-white" : "bg-zinc-800 text-gray-400 hover:bg-zinc-700")}>
+                        <button 
+                            key={tab.id} 
+                            onClick={() => setActiveTab(tab.id as any)} 
+                            className={cn(
+                                "flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer snap-start shrink-0", 
+                                activeTab === tab.id 
+                                    ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]" 
+                                    : "bg-zinc-800/80 text-gray-400 hover:bg-zinc-700 hover:text-white"
+                            )}
+                        >
                             {tab.icon} {tab.label}
                         </button>
                     ))}
@@ -465,7 +477,7 @@ const AdminOrdersView = () => {
                 </div>
 
                 {loading ? <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" size={32} /></div> : (
-                    <div className="bg-zinc-900 rounded-3xl overflow-hidden border border-white/5">
+                    <div className="bg-zinc-900 rounded-3xl overflow-hidden border border-white/5 overflow-x-auto">
                         <table className="w-full text-xs text-right">
                             <thead className="bg-zinc-80/50 text-gray-400 border-b border-white/5">
                                 <tr>
@@ -1412,7 +1424,7 @@ const AdminCouponsView = () => {
             </div>
 
             {loading ? <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" size={32} /></div> : (
-                <div className="bg-zinc-900 rounded-2xl overflow-hidden border border-white/5">
+                <div className="bg-zinc-900 rounded-2xl overflow-hidden border border-white/5 overflow-x-auto">
                     <table className="w-full text-sm text-right">
                         <thead className="bg-zinc-800/50 text-gray-400">
                             <tr>
