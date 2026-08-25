@@ -77,21 +77,23 @@ export const playBroadcastSound = () => {
     const ctx = new AudioCtx();
     const now = ctx.currentTime;
     
-    // Play a friendly two-tone notification melody (C5 -> G5)
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(523.25, now); // C5
-    osc1.frequency.setValueAtTime(783.99, now + 0.12); // G5
-    
-    gain1.gain.setValueAtTime(0, now);
-    gain1.gain.linearRampToValueAtTime(0.2, now + 0.02);
-    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
-    
-    osc1.connect(gain1);
-    gain1.connect(ctx.destination);
-    osc1.start(now);
-    osc1.stop(now + 0.45);
+    // Play a loud four-tone notification chime (C5 -> E5 -> G5 -> C6)
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + i * 0.1);
+      
+      gain.gain.setValueAtTime(0, now + i * 0.1);
+      gain.gain.linearRampToValueAtTime(0.6, now + i * 0.1 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.3);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + i * 0.1);
+      osc.stop(now + i * 0.1 + 0.3);
+    });
   } catch (e) {
     console.warn('Audio playback skipped:', e);
   }

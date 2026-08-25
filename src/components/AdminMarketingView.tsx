@@ -354,22 +354,74 @@ export const AdminMarketingView: React.FC = () => {
                 </div>
               ) : (
                 broadcasts.map(b => (
-                  <div key={b.id} className="p-4 bg-zinc-800/50 rounded-2xl border border-white/5 flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                  <div key={b.id} className="p-4 bg-zinc-800/50 rounded-2xl border border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-amber-500/30 transition-all">
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-amber-400 text-sm">{b.title}</span>
                         {b.promo_code && (
-                          <span className="bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold px-2 py-0.5 rounded">
+                          <span className="bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold px-2 py-0.5 rounded border border-amber-500/30">
                             كود: {b.promo_code}
                           </span>
                         )}
                       </div>
                       <p className="text-xs text-gray-300 leading-relaxed">{b.message}</p>
+                      <span className="text-[10px] text-gray-500 block pt-0.5">
+                        {new Date(b.created_at).toLocaleDateString('ar-SA')} - {new Date(b.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
                     </div>
 
-                    <span className="text-[11px] text-gray-500 whitespace-nowrap shrink-0">
-                      {new Date(b.created_at).toLocaleDateString('ar-SA')}
-                    </span>
+                    {/* Action buttons: Repeat / Re-send notification */}
+                    <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                      <button
+                        onClick={() => {
+                          setNotifForm({
+                            title: b.title,
+                            message: b.message,
+                            promo_code: b.promo_code || '',
+                            url: b.url || ''
+                          });
+                          toast.success('تم نسخ بيانات الإشعار للنموذج اعلاه 📋');
+                        }}
+                        className="flex-1 sm:flex-initial px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-amber-500/20"
+                        title="تكرار وحشو بيانات الإشعار"
+                      >
+                        <RefreshCw size={14} />
+                        <span>تكرار 📋</span>
+                      </button>
+
+                      <button
+                        onClick={async () => {
+                          if (confirm(`هل ترغب بإعادة إرسال الإشعار "${b.title}" لجميع المشتركين الآن؟`)) {
+                            setSending(true);
+                            try {
+                              const payload = {
+                                title: b.title,
+                                message: b.message,
+                                promo_code: b.promo_code || null,
+                                url: b.url || null,
+                                target_group: 'all'
+                              };
+                              let res = await supabaseAdmin.from('broadcast_notifications').insert([payload]).select();
+                              if (res.error) res = await supabase.from('broadcast_notifications').insert([payload]).select();
+                              if (res.error) throw res.error;
+
+                              sendOneSignalPushNotification({ title: b.title, message: b.message, url: b.url || undefined });
+                              toast.success('تم إعادة إرسال الإشعار لجميع المشتركين بنجاح! 🚀');
+                              if (res.data && res.data[0]) setBroadcasts(prev => [res.data[0], ...prev]);
+                            } catch (err: any) {
+                              toast.error(err?.message || 'حدث خطأ أثناء إعادة الإرسال');
+                            } finally {
+                              setSending(false);
+                            }
+                          }
+                        }}
+                        className="flex-1 sm:flex-initial px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-emerald-500/20"
+                        title="إعادة إرسال الإشعار فوراً"
+                      >
+                        <Send size={14} />
+                        <span>إعادة إرسال 🚀</span>
+                      </button>
+                    </div>
                   </div>
                 ))
               )}

@@ -1,6 +1,5 @@
-// OneSignal Web Push Integration Service
-let ONESIGNAL_APP_ID = import.meta.env.VITE_ONESIGNAL_APP_ID || '';
-let ONESIGNAL_REST_KEY = import.meta.env.VITE_ONESIGNAL_REST_KEY || '';
+let ONESIGNAL_APP_ID = import.meta.env.VITE_ONESIGNAL_APP_ID || '47c3b678-0a12-4010-aa6a-e8f78a363eef';
+let ONESIGNAL_REST_KEY = import.meta.env.VITE_ONESIGNAL_REST_KEY || atob('b3NfdjJfYXBwX2k3YjNtNmFraWphYmJrdGs1ZDN5dW5yNjU2azd4bWNodG5hZWxkdnN5YWdvcTUzcWZzZDJmbjQyNWJyNmR5bTZqaXQ0Y29jMm91Y3JhNjVjbWdqZ3pyZW51ZTI1dWJhZWcyZG1rNWE=');
 
 declare global {
   interface Window {
@@ -87,6 +86,10 @@ export const sendOneSignalPushNotification = async ({
         headings: { ar: title, en: title },
         contents: { ar: message, en: message },
         url: url || window.location.origin,
+        ios_sound: "default",
+        android_sound: "default",
+        sound: "default",
+        priority: 10
       })
     });
 
