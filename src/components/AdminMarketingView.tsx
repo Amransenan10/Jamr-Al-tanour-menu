@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 
 interface CustomerAggregated {
   phone: string;
+  name?: string;
   orderCount: number;
   totalSpent: number;
   lastOrderDate: string;
@@ -41,11 +42,17 @@ export const AdminMarketingView: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Subscribers Count
-      const { count: subCount } = await supabase
+      // 1. Fetch Subscribers Count using supabaseAdmin to bypass RLS
+      const { count: subCount, error: subErr } = await supabaseAdmin
         .from('push_subscriptions')
         .select('*', { count: 'exact', head: true });
-      setSubscribersCount(subCount || 0);
+      
+      if (!subErr && subCount !== null) {
+        setSubscribersCount(subCount);
+      } else {
+        // Fallback check if table is empty or being created
+        setSubscribersCount(subCount || 0);
+      }
 
       // 2. Fetch Broadcast History
       const { data: bData } = await supabase
@@ -54,27 +61,38 @@ export const AdminMarketingView: React.FC = () => {
         .order('created_at', { ascending: false });
       if (bData) setBroadcasts(bData);
 
-      // 3. Aggregate Orders to get Customer VIP list
+      // 3. Aggregate Orders to get Customer VIP list with customer names
       const { data: ordersData } = await supabaseAdmin
         .from('orders')
-        .select('phone, total_price, created_at')
+        .select('phone, customer_name, total_price, created_at')
         .not('phone', 'is', null);
 
       if (ordersData) {
-        const customerMap: Record<string, { count: number; total: number; lastDate: string }> = {};
+        const customerMap: Record<string, { name?: string; count: number; total: number; lastDate: string }> = {};
 
         ordersData.forEach(ord => {
           const phone = ord.phone?.trim();
           if (!phone || phone.length < 8) return;
 
           if (!customerMap[phone]) {
-            customerMap[phone] = { count: 0, total: 0, lastDate: ord.created_at };
+            customerMap[phone] = { 
+              name: ord.customer_name?.trim() || undefined, 
+              count: 0, 
+              total: 0, 
+              lastDate: ord.created_at 
+            };
+          } else if (ord.customer_name?.trim() && !customerMap[phone].name) {
+            customerMap[phone].name = ord.customer_name.trim();
           }
+
           customerMap[phone].count += 1;
           customerMap[phone].total += (ord.total_price || 0);
 
           if (new Date(ord.created_at) > new Date(customerMap[phone].lastDate)) {
             customerMap[phone].lastDate = ord.created_at;
+            if (ord.customer_name?.trim()) {
+              customerMap[phone].name = ord.customer_name.trim();
+            }
           }
         });
 
@@ -85,6 +103,7 @@ export const AdminMarketingView: React.FC = () => {
 
           return {
             phone,
+            name: data.name,
             orderCount: data.count,
             totalSpent: data.total,
             lastOrderDate: data.lastDate,
@@ -134,7 +153,7 @@ export const AdminMarketingView: React.FC = () => {
     }
   };
 
-  const formatWhatsAppLink = (phone: string, customerBadge: string) => {
+  const formatWhatsAppLink = (phone: string, customerName?: string, customerBadge?: string) => {
     // Format phone to international 966 standard
     let cleaned = phone.replace(/\D/g, '');
     if (cleaned.startsWith('05')) {
@@ -144,8 +163,11 @@ export const AdminMarketingView: React.FC = () => {
     }
 
     const badgeTitle = customerBadge === 'vip' ? 'عميلنا المميز جداً VIP 🏆' : 'عميلنا العزيز 🌟';
+    const nameGreeting = customerName ? `أهلاً بك أ/ ${customerName}! 🌸` : 'أهلاً بك! 🌸';
+
     const text = encodeURIComponent(
-      `أهلاً بك! لأنك ${badgeTitle} في مطعم جمر التنور 🔥\n` +
+      `${nameGreeting}\n` +
+      `لأنك ${badgeTitle} في مطعم جمر التنور 🔥\n` +
       `يسعدنا تقديم كود خصم حصري لك (WELCOME10) لخصم 10% على طلبك القادم! 🍕✨\n\n` +
       `استخدم الكود عند الطلب من المنيو:\nhttps://jamr-al-tanour-menu.vercel.app/`
     );
@@ -154,7 +176,8 @@ export const AdminMarketingView: React.FC = () => {
   };
 
   const filteredCustomers = customers.filter(c => {
-    const matchesPhone = c.phone.toLowerCase().includes(searchPhone.trim().toLowerCase());
+    const matchesPhone = c.phone.toLowerCase().includes(searchPhone.trim().toLowerCase()) ||
+      (c.name && c.name.toLowerCase().includes(searchPhone.trim().toLowerCase()));
     const matchesLevel = filterLevel === 'all' || c.badge === filterLevel;
     return matchesPhone && matchesLevel;
   });
@@ -382,7 +405,7 @@ export const AdminMarketingView: React.FC = () => {
             <table className="w-full text-sm text-right">
               <thead className="bg-zinc-800/60 text-gray-400 text-xs">
                 <tr>
-                  <th className="p-3 font-bold">رقم الجوال</th>
+                  <th className="p-3 font-bold">اسم العميل / الجوال</th>
                   <th className="p-3 font-bold">تصنيف العميل</th>
                   <th className="p-3 font-bold">عدد الطلبات</th>
                   <th className="p-3 font-bold">إجمالي المشتريات</th>
@@ -398,8 +421,15 @@ export const AdminMarketingView: React.FC = () => {
                 ) : (
                   filteredCustomers.map(cust => (
                     <tr key={cust.phone} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="p-3 font-mono font-bold dir-ltr text-right text-white">
-                        {cust.phone}
+                      <td className="p-3 font-bold text-white">
+                        {cust.name ? (
+                          <div>
+                            <p className="text-amber-400 text-sm font-black">{cust.name}</p>
+                            <p className="text-xs font-mono text-gray-400 dir-ltr text-right">{cust.phone}</p>
+                          </div>
+                        ) : (
+                          <p className="font-mono text-white dir-ltr text-right">{cust.phone}</p>
+                        )}
                       </td>
                       <td className="p-3">
                         {cust.badge === 'vip' ? (
@@ -423,7 +453,7 @@ export const AdminMarketingView: React.FC = () => {
                       </td>
                       <td className="p-3 text-center">
                         <a
-                          href={formatWhatsAppLink(cust.phone, cust.badge)}
+                          href={formatWhatsAppLink(cust.phone, cust.name, cust.badge)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-xl font-bold text-xs transition-all hover:scale-105"
