@@ -1,3 +1,5 @@
+importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
+
 // Basic Service Worker for PWA installation & Push Notifications
 self.addEventListener('install', (e) => {
     self.skipWaiting();

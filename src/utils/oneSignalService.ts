@@ -24,11 +24,37 @@ export const initOneSignal = (appId?: string) => {
       await OneSignal.init({
         appId: activeAppId,
         allowLocalhostAsSecureOrigin: true,
+        slidedown: {
+          prompts: [
+            {
+              type: "push",
+              autoPrompt: true,
+              text: {
+                actionMessage: "هل ترغب في استقبال خصومات وعروض جمر التنور الحصرية؟",
+                acceptButton: "موافق 👍",
+                cancelButton: "لاحقاً"
+              },
+              delay: {
+                pageViews: 1,
+                timeDelay: 1
+              }
+            }
+          ]
+        },
         welcomeNotification: {
           title: "مطعم جمر التنور 🔥",
           message: "أهلاً بك! تم تفعيل إشعارات العروض والخصومات بنجاح 🎉"
         }
       });
+
+      // Auto request permission if prompt available
+      if (OneSignal.Notifications && OneSignal.Notifications.permission !== true) {
+        setTimeout(() => {
+          try {
+            OneSignal.Notifications.requestPermission();
+          } catch (e) {}
+        }, 1500);
+      }
       console.log('OneSignal initialized successfully');
     } catch (err) {
       console.warn('OneSignal init error:', err);
@@ -82,14 +108,15 @@ export const sendOneSignalPushNotification = async ({
       },
       body: JSON.stringify({
         app_id: finalAppId,
-        included_segments: ['Subscribed Users', 'All'],
+        included_segments: ['Subscribed Users', 'All', 'Total Subscriptions'],
         headings: { ar: title, en: title },
         contents: { ar: message, en: message },
         url: url || window.location.origin,
         ios_sound: "default",
         android_sound: "default",
         sound: "default",
-        priority: 10
+        priority: 10,
+        ttl: 259200
       })
     });
 
