@@ -1,15 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { motion, AnimatePresence } from 'motion/react';
 import {
     Loader2, CheckCircle2, Package, Clock, LogOut, FileText, MapPin, Phone,
-    ChefHat, UtensilsCrossed, CheckCircle, Store, AlertCircle
+    ChefHat, UtensilsCrossed, CheckCircle, Store, AlertCircle, Bell
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Order } from '../types';
 import toast from 'react-hot-toast';
 import { updateStoredOrderStatus } from '../utils/orderStorage';
+import { notifyCustomerStatusChange, testCustomerNotificationAndSound, unlockCustomerAudio } from '../utils/customerNotifications';
 
 type OrderStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 
@@ -26,20 +27,54 @@ export const OrderTrackingPage: React.FC = () => {
     const [order, setOrder] = useState<Order & { id: string } | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const prevStatusRef = useRef<string | null>(null);
+    const [notifPermission, setNotifPermission] = useState<NotificationPermission>(() => {
+        return typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'denied';
+    });
+
+    const requestNotifications = async () => {
+        unlockCustomerAudio();
+        testCustomerNotificationAndSound();
+        if ('Notification' in window) {
+            const p = await Notification.requestPermission();
+            setNotifPermission(p);
+            if (p === 'granted') {
+                toast.success('تم تفعيل واختبار الإشعارات بنجاح! 🔔');
+            }
+        }
+    };
+
+    const processOrderUpdate = (updatedOrder: Order & { id: string }, isInitial = false) => {
+        setOrder(updatedOrder);
+
+        if (['completed', 'cancelled'].includes(updatedOrder.status)) {
+            localStorage.removeItem('jamr_active_order');
+        } else {
+            localStorage.setItem('jamr_active_order', updatedOrder.id);
+        }
+        updateStoredOrderStatus(updatedOrder.id, updatedOrder.status);
+
+        if (!isInitial && prevStatusRef.current && prevStatusRef.current !== updatedOrder.status) {
+            const stepMsg = STATUS_STEPS.find(s => s.id === updatedOrder.status)?.label || 'تحديث جديد';
+            toast.success(`تحديث في الطلب: ${stepMsg}`, {
+                duration: 5000,
+                icon: '🔔',
+            });
+            // Trigger sound chime, vibration, and push notification
+            notifyCustomerStatusChange(updatedOrder.status, stepMsg, updatedOrder.id);
+        }
+        prevStatusRef.current = updatedOrder.status;
+    };
 
     useEffect(() => {
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
-        }
-
         if (!id) {
             setError('رقم الطلب غير متاح');
             setLoading(false);
             return;
         }
 
-        const fetchOrder = async () => {
-            setLoading(true);
+        const fetchOrder = async (isSilent = false) => {
+            if (!isSilent) setLoading(true);
             const { data, error } = await supabase
                 .from('orders')
                 .select('*')
@@ -48,20 +83,19 @@ export const OrderTrackingPage: React.FC = () => {
 
             if (error || !data) {
                 console.error(error);
-                setError('لم نتمكن من العثور على الطلب. قد يكون رقمه غير صحيح.');
+                if (!isSilent) setError('لم نتمكن من العثور على الطلب. قد يكون رقمه غير صحيح.');
             } else {
-                setOrder(data);
-                // Save active order to local storage
-                if (!['completed', 'cancelled'].includes(data.status)) {
-                    localStorage.setItem('jamr_active_order', data.id);
-                } else {
-                    localStorage.removeItem('jamr_active_order');
-                }
+                processOrderUpdate(data, prevStatusRef.current === null);
             }
-            setLoading(false);
+            if (!isSilent) setLoading(false);
         };
 
-        fetchOrder();
+        fetchOrder(false);
+
+        // Fast 3-second polling fallback to guarantee notification triggers even on mobile sleep
+        const pollInterval = setInterval(() => {
+            fetchOrder(true);
+        }, 3000);
 
         // Subscribe to real-time changes
         const channel = supabase
@@ -70,43 +104,13 @@ export const OrderTrackingPage: React.FC = () => {
                 { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${id}` },
                 (payload) => {
                     const updatedOrder = payload.new as (Order & { id: string });
-                    setOrder(updatedOrder);
-
-                    if (['completed', 'cancelled'].includes(updatedOrder.status)) {
-                        localStorage.removeItem('jamr_active_order');
-                    }
-                    
-                    updateStoredOrderStatus(updatedOrder.id, updatedOrder.status);
-
-                    const stepMsg = STATUS_STEPS.find(s => s.id === updatedOrder.status)?.label || 'تحديث جديد';
-                    toast.success(`تحديث في الطلب: ${stepMsg}`, {
-                       duration: 5000,
-                       icon: '🔔',
-                    });
-
-                    if ('Notification' in window && Notification.permission === 'granted') {
-                        navigator.serviceWorker.ready.then(registration => {
-                            registration.showNotification('تحديث في طلب الجمر التنور', {
-                                body: `حالة طلبك الآن: ${stepMsg}`,
-                                icon: '/vite.svg'
-                            });
-                        }).catch(err => {
-                            // Fallback if no service worker
-                            try {
-                                new window.Notification('تحديث في طلب الجمر التنور', {
-                                    body: `حالة طلبك الآن: ${stepMsg}`,
-                                    icon: '/vite.svg'
-                                });
-                            } catch (e) {
-                                console.error('Notification error:', e);
-                            }
-                        });
-                    }
+                    processOrderUpdate(updatedOrder, false);
                 }
             )
             .subscribe();
 
         return () => {
+            clearInterval(pollInterval);
             supabase.removeChannel(channel);
         };
     }, [id]);
@@ -149,7 +153,43 @@ export const OrderTrackingPage: React.FC = () => {
                     </Link>
                     <h1 className="text-2xl font-black text-gray-900 dark:text-white">تتبع طلبك</h1>
                     <p className="text-gray-500 mt-1 text-sm font-medium">رقم الطلب: {order.id.slice(0, 8).toUpperCase()}</p>
+                    
+                    <button
+                        onClick={() => {
+                            testCustomerNotificationAndSound();
+                            toast.success('تم اختبار نغمة التنبيه والاهتزاز! 🎵', { icon: '🔔' });
+                        }}
+                        className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-bold transition-all border border-primary/20"
+                    >
+                        <Bell size={14} className="animate-pulse" />
+                        <span>اختبار نغمة التنبيه والاهتزاز 🎵</span>
+                    </button>
                 </div>
+
+                {/* Notification Permission Card (iOS & Android friendly prompt) */}
+                {notifPermission === 'default' && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between gap-3 text-amber-600 dark:text-amber-400 shadow-sm"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
+                                <Bell size={20} className="animate-bounce text-amber-500" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-black">تفعيل التنبيهات الفورية 🔔</p>
+                                <p className="text-[11px] opacity-90 font-medium">احصل على تنبيه بالصوت والاهتزاز فور استلامك أو جاهزية وجبتك</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={requestNotifications}
+                            className="px-4 py-2 bg-amber-500 text-white font-bold rounded-xl text-xs shadow-md hover:bg-amber-600 transition-colors shrink-0"
+                        >
+                            تفعيل
+                        </button>
+                    </motion.div>
+                )}
 
                 {/* Tracking Card */}
                 <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-xl border border-gray-100 dark:border-white/5 overflow-hidden">

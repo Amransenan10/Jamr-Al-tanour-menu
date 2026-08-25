@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabaseClient';
 import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { saveOrderLocally } from '../utils/orderStorage';
+import { normalizeCouponCode } from '../utils/couponUtils';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -135,30 +136,45 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
   const finalPrice = Math.max(0, totalPrice + deliveryFee - discountAmount - loyaltyDiscountAmount);
   const loyaltyPointsEarned = Math.floor(finalPrice / 10);
 
-    const handleApplyPromo = async () => {
-    if (!promoCodeInput.trim()) return;
+  const handleApplyPromo = async () => {
+    const rawInput = promoCodeInput.trim();
+    if (!rawInput) return;
     setPromoError('');
     setPromoSuccess('');
     
     try {
+      const normalizedInput = normalizeCouponCode(rawInput);
+
       // Check local storage first for quick feedback
-      const usedPromos = JSON.parse(localStorage.getItem('jamr_used_promos') || '[]');
-      if (usedPromos.includes(promoCodeInput.trim().toUpperCase())) {
+      const usedPromos: string[] = JSON.parse(localStorage.getItem('jamr_used_promos') || '[]');
+      if (usedPromos.some(p => normalizeCouponCode(p) === normalizedInput)) {
         setPromoError('لقد قمت باستخدام كود الخصم هذا مسبقاً');
         return;
       }
 
-      const { data, error } = await supabase
+      // Fetch all active coupons
+      const { data: allCoupons, error } = await supabase
         .from('coupons')
         .select('*')
-        .eq('code', promoCodeInput.trim().toUpperCase())
-        .eq('is_active', true)
-        .single();
+        .eq('is_active', true);
         
-      if (error || !data) {
+      if (error || !allCoupons || allCoupons.length === 0) {
         setPromoError('كود الخصم غير صحيح أو غير مفعل');
         return;
       }
+
+      // Match coupon using normalized comparison (handles Arabic spaces, Alef variants, Teh Marbuta, etc.)
+      const matchedCoupon = allCoupons.find(c => 
+        normalizeCouponCode(c.code) === normalizedInput ||
+        c.code.trim().toUpperCase() === rawInput.toUpperCase()
+      );
+
+      if (!matchedCoupon) {
+        setPromoError('كود الخصم غير صحيح أو غير مفعل');
+        return;
+      }
+
+      const data = matchedCoupon;
       
       // Check expiry
       if (data.expires_at && new Date(data.expires_at) < new Date()) {

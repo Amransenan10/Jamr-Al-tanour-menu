@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { Order } from '../types';
 import { motion } from 'motion/react';
-import { ArrowRight, CheckCircle2, Clock, MapPin, ChefHat, Bike, Receipt } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Clock, MapPin, ChefHat, Bike, Receipt, Bell } from 'lucide-react';
 import { updateStoredOrderStatus } from '../utils/orderStorage';
+import { notifyCustomerStatusChange, testCustomerNotificationAndSound, unlockCustomerAudio } from '../utils/customerNotifications';
 import toast from 'react-hot-toast';
 
 const STATUS_STEPS = [
@@ -20,13 +21,41 @@ export const OrderTracking: React.FC = () => {
   const navigate = useNavigate();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const prevStatusRef = useRef<string | null>(null);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(() => {
+    return typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'denied';
+  });
 
-  useEffect(() => {
-    // Request notification permission if not granted yet
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+  const requestNotifications = async () => {
+    unlockCustomerAudio();
+    testCustomerNotificationAndSound();
+    if ('Notification' in window) {
+      const p = await Notification.requestPermission();
+      setNotifPermission(p);
+      if (p === 'granted') {
+        toast.success('تم تفعيل واختبار الإشعارات بنجاح! 🔔');
+      }
     }
-  }, []);
+  };
+
+  const processOrderUpdate = (updatedOrder: Order, isInitial = false) => {
+    setOrder(updatedOrder);
+
+    if (updatedOrder.id) {
+      updateStoredOrderStatus(updatedOrder.id, updatedOrder.status);
+    }
+
+    if (!isInitial && prevStatusRef.current && prevStatusRef.current !== updatedOrder.status) {
+      const stepMsg = STATUS_STEPS.find(s => s.id === updatedOrder.status)?.label || 'تحديث جديد';
+      toast.success(`تحديث في الطلب: ${stepMsg}`, {
+        duration: 5000,
+        icon: '🔔',
+      });
+      // Trigger sound chime, vibration, and push notification
+      notifyCustomerStatusChange(updatedOrder.status, stepMsg, updatedOrder.id);
+    }
+    prevStatusRef.current = updatedOrder.status;
+  };
 
   useEffect(() => {
     if (!orderId) {
@@ -34,9 +63,9 @@ export const OrderTracking: React.FC = () => {
       return;
     }
 
-    const fetchOrder = async () => {
+    const fetchOrder = async (isSilent = false) => {
       try {
-        setLoading(true);
+        if (!isSilent) setLoading(true);
         const { data, error } = await supabase
           .from('orders')
           .select('*')
@@ -44,17 +73,24 @@ export const OrderTracking: React.FC = () => {
           .single();
 
         if (error) throw error;
-        setOrder(data);
+        processOrderUpdate(data, prevStatusRef.current === null);
       } catch (err) {
         console.error('Error fetching order', err);
-        toast.error('لم نتمكن من العثور على الطلب');
-        navigate('/');
+        if (!isSilent) {
+          toast.error('لم نتمكن من العثور على الطلب');
+          navigate('/');
+        }
       } finally {
-        setLoading(false);
+        if (!isSilent) setLoading(false);
       }
     };
 
-    fetchOrder();
+    fetchOrder(false);
+
+    // Fast 3-second polling fallback
+    const pollInterval = setInterval(() => {
+      fetchOrder(true);
+    }, 3000);
 
     // Subscribe to realtime updates for this specific order
     const subscription = supabase
@@ -69,42 +105,13 @@ export const OrderTracking: React.FC = () => {
         },
         (payload) => {
           const updatedOrder = payload.new as Order;
-          setOrder(updatedOrder);
-          
-          // Update local storage status
-          if (updatedOrder.id) {
-            updateStoredOrderStatus(updatedOrder.id, updatedOrder.status);
-          }
-
-          // Show notifications
-          const stepMsg = STATUS_STEPS.find(s => s.id === updatedOrder.status)?.label || 'تحديث جديد';
-          toast.success(`تحديث في الطلب: ${stepMsg}`, {
-            duration: 5000,
-            icon: '🔔',
-          });
-          
-          if ('Notification' in window && Notification.permission === 'granted') {
-            navigator.serviceWorker.ready.then(registration => {
-              registration.showNotification('تحديث في طلب الجمر التنور', {
-                body: `حالة طلبك الآن: ${stepMsg}`,
-                icon: '/vite.svg'
-              });
-            }).catch(err => {
-              try {
-                new window.Notification('تحديث في طلب الجمر التنور', {
-                  body: `حالة طلبك الآن: ${stepMsg}`,
-                  icon: '/vite.svg'
-                });
-              } catch (e) {
-                console.error('Notification error:', e);
-              }
-            });
-          }
+          processOrderUpdate(updatedOrder, false);
         }
       )
       .subscribe();
 
     return () => {
+      clearInterval(pollInterval);
       supabase.removeChannel(subscription);
     };
   }, [orderId, navigate]);
@@ -143,7 +150,42 @@ export const OrderTracking: React.FC = () => {
         <div className="text-center">
           <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-2">تتبع الطلب</h1>
           <p className="text-gray-500 text-sm">رقم الطلب: #{order.id?.slice(0, 8).toUpperCase()}</p>
+          <button
+            onClick={() => {
+              testCustomerNotificationAndSound();
+              toast.success('تم اختبار نغمة التنبيه والاهتزاز! 🎵', { icon: '🔔' });
+            }}
+            className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-bold transition-all border border-primary/20"
+          >
+            <Bell size={14} className="animate-pulse" />
+            <span>اختبار نغمة التنبيه والاهتزاز 🎵</span>
+          </button>
         </div>
+
+        {/* Notification Permission Prompt Card */}
+        {notifPermission === 'default' && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between gap-3 text-amber-600 dark:text-amber-400 shadow-sm"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
+                <Bell size={20} className="animate-bounce text-amber-500" />
+              </div>
+              <div>
+                <p className="text-xs font-black">تفعيل التنبيهات الفورية 🔔</p>
+                <p className="text-[11px] opacity-90 font-medium">احصل على تنبيه بالصوت والاهتزاز فور وصول وجبتك</p>
+              </div>
+            </div>
+            <button
+              onClick={requestNotifications}
+              className="px-4 py-2 bg-amber-500 text-white font-bold rounded-xl text-xs shadow-md hover:bg-amber-600 transition-colors shrink-0"
+            >
+              تفعيل
+            </button>
+          </motion.div>
+        )}
 
         {isCancelled ? (
           <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 p-6 rounded-3xl text-center text-red-600 dark:text-red-400">

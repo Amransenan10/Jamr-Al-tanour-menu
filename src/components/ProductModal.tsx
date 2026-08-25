@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Minus, Plus, ShoppingBag, UtensilsCrossed } from 'lucide-react';
+import { X, Minus, Plus, ShoppingBag, UtensilsCrossed, Loader2 } from 'lucide-react';
 import { Product, OptionGroup, OptionItem, Ingredient, CartItem } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { useCart } from '../context/CartContext';
@@ -120,16 +120,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
     let additivesTotal = 0;
 
     // Separate options into "base price overrides" (like Size) and "additives" (like Extra Cheese)
-    // A simple heuristic: if a group is mandatory (min_selection > 0) and max_selection = 1, its options MIGHT be base price overrides
-    // To make it fully support the user's request (e.g., Small = 15, Medium = 20 stored in DB as 15 and 20):
-    // If we select Medium(20), the base price becomes 20.
-    // If no such option is selected yet, we fall back to product.price (15).
     const singleSelectionGroups = groups.filter(g => g.max_selection === 1 && g.min_selection > 0);
     const overrides = selectedOptions.filter(o => singleSelectionGroups.some(g => g.id === o.groupId));
     const additives = selectedOptions.filter(o => !singleSelectionGroups.some(g => g.id === o.groupId));
 
     if (overrides.length > 0) {
-      // Sum the overrides (e.g. Size + Choice of Meat)
       basePrice = overrides.reduce((sum, o) => sum + o.price, 0);
     }
 
@@ -158,16 +153,15 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
   };
 
   const isAddToCartDisabled = () => {
+    if (loading) return true;
     return getMissingRequiredGroups().length > 0;
   };
 
   const handleAddToCart = () => {
-    if (!product) return;
+    if (!product || loading || isAddToCartDisabled()) return;
 
-    // Check required options
-    const missingGroups = getMissingRequiredGroups();
-    if (missingGroups.length > 0) {
-      // In a well-designed UI, this block shouldn't be reached because the button is disabled.
+    const calculatedPrice = calculateTotal();
+    if (calculatedPrice <= 0 && product.price <= 0 && selectedOptions.length === 0) {
       return;
     }
 
@@ -193,7 +187,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
       quantity,
       options: finalOptions,
       removedIngredients,
-      totalPrice: calculateTotal(),
+      totalPrice: calculatedPrice,
       notes: notes.trim() ? notes.trim() : undefined
     };
 
@@ -242,7 +236,6 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                 )}
               </div>
 
-
               <div className="p-6 sm:p-8">
                 <div className="flex justify-between items-start mb-4">
                     <div>
@@ -256,7 +249,16 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                         )}
                       </div>
                     </div>
-                  <div className="text-primary font-black text-2xl">{calculateTotal()} ر.س</div>
+                  <div className="text-primary font-black text-2xl">
+                    {loading ? (
+                      <span className="text-xs font-bold text-gray-400 flex items-center gap-1.5 bg-gray-100 dark:bg-white/5 px-3 py-1 rounded-full">
+                        <Loader2 size={14} className="animate-spin text-primary" />
+                        جاري تجهيز الخيارات...
+                      </span>
+                    ) : (
+                      `${calculateTotal()} ر.س`
+                    )}
+                  </div>
                 </div>
 
                 {loading ? (
@@ -404,7 +406,12 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                   )}
                 >
                   <ShoppingBag size={22} />
-                  {isAddToCartDisabled() ? (
+                  {loading ? (
+                    <span className="flex items-center gap-2 text-sm font-bold">
+                      <Loader2 size={18} className="animate-spin" />
+                      جاري تحميل الخيارات...
+                    </span>
+                  ) : isAddToCartDisabled() ? (
                     <span>اختر {getMissingRequiredGroups()[0]?.name_ar}</span>
                   ) : (
                     <span>إضافة • {calculateTotal()} ر.س</span>

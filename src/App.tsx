@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 // Version: 2026-03-13-22-40
 import { Header } from './components/Header';
 import { CategoryBar } from './components/CategoryBar';
@@ -21,7 +21,8 @@ import { BranchSelectorModal } from './components/BranchSelectorModal';
 import { FloatingCartButton } from './components/FloatingCartButton';
 import { useBackButton } from './hooks/useBackButton';
 import { Link } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
+import { notifyCustomerStatusChange } from './utils/customerNotifications';
 
 export default function App() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -37,6 +38,8 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const [activeOrder, setActiveOrder] = useState<{ id: string; status: string; order_type?: string } | null>(null);
+  const prevAppOrderStatusRef = useRef<string | null>(null);
   const [storeSettings, setStoreSettings] = useState<any>(null);
   const [appSettings, setAppSettings] = useState<any>(null);
   const storeStatus = storeSettings?.status || 'open';
@@ -131,6 +134,101 @@ export default function App() {
 
     fetchData(savedBranch || 'السويدي الغربي');
   }, []);
+
+  // Real-time listener & fast polling for active order status updates on customer menu
+  useEffect(() => {
+    const processActiveOrderUpdate = (newOrder: any, isInitial = false) => {
+      setActiveOrder(newOrder);
+
+      if (['completed', 'cancelled'].includes(newOrder.status)) {
+        setTimeout(() => {
+          localStorage.removeItem('jamr_active_order');
+          setActiveOrderId(null);
+          setActiveOrder(null);
+        }, 6000);
+      }
+
+      if (!isInitial && prevAppOrderStatusRef.current && prevAppOrderStatusRef.current !== newOrder.status) {
+        const statusLabels: Record<string, string> = {
+          new: 'تم استلام طلبك 📝',
+          accepted: 'تم قبول الطلب ✅',
+          preparing: 'جاري التحضير في المطبخ 👨‍🍳',
+          ready: newOrder.order_type === 'delivery' ? 'المندوب في الطريق إليك 🛵' : 'طلبك جاهز للاستلام! 🎉',
+          completed: 'تم تسليم الطلب ✨',
+          cancelled: 'تم إلغاء الطلب ❌'
+        };
+        const label = statusLabels[newOrder.status] || 'تحديث جديد في طلبك';
+
+        // Fire sound, vibration, and push notification
+        notifyCustomerStatusChange(newOrder.status, label, newOrder.id);
+
+        toast.success(`تحديث الطلب: ${label}`, {
+          duration: 5000,
+          icon: '🔔',
+        });
+      }
+
+      prevAppOrderStatusRef.current = newOrder.status;
+    };
+
+    const savedOrderId = localStorage.getItem('jamr_active_order');
+    if (!savedOrderId) {
+      setActiveOrderId(null);
+      setActiveOrder(null);
+      return;
+    }
+
+    setActiveOrderId(savedOrderId);
+
+    // Initial & Polling fetch of active order status
+    const fetchActiveOrder = async (isSilent = false) => {
+      const { data } = await supabase
+        .from('orders')
+        .select('id, status, order_type')
+        .eq('id', savedOrderId)
+        .single();
+
+      if (data) {
+        if (['completed', 'cancelled'].includes(data.status)) {
+          localStorage.removeItem('jamr_active_order');
+          setActiveOrderId(null);
+          setActiveOrder(null);
+        } else {
+          processActiveOrderUpdate(data, prevAppOrderStatusRef.current === null);
+        }
+      }
+    };
+
+    fetchActiveOrder(false);
+
+    const pollInterval = setInterval(() => {
+      const currentSavedId = localStorage.getItem('jamr_active_order');
+      if (currentSavedId !== activeOrderId) {
+        setActiveOrderId(currentSavedId);
+      } else if (currentSavedId) {
+        fetchActiveOrder(true);
+      }
+    }, 3000);
+
+    const channel = supabase
+      .channel(`active-order-menu-${savedOrderId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${savedOrderId}` },
+        (payload) => {
+          const newOrder = payload.new as any;
+          if (newOrder) {
+            processActiveOrderUpdate(newOrder, false);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(pollInterval);
+      supabase.removeChannel(channel);
+    };
+  }, [activeOrderId]);
 
   const handleBranchSelect = async (branch: Branch) => {
     setSelectedBranch(branch);
@@ -411,22 +509,37 @@ export default function App() {
           <AnimatePresence>
             {activeOrderId && (
               <motion.div
-                initial={{ y: 100, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 100, opacity: 0 }}
+                initial={{ y: 100, opacity: 0, scale: 0.9 }}
+                animate={{ y: 0, opacity: 1, scale: 1 }}
+                exit={{ y: 100, opacity: 0, scale: 0.9 }}
                 className="fixed bottom-6 left-4 right-4 z-40 mx-auto max-w-sm"
               >
                 <Link
                   to={`/track/${activeOrderId}`}
-                  className="bg-primary text-white p-4 rounded-2xl shadow-xl shadow-primary/30 flex items-center justify-between hover:scale-[1.02] transition-transform"
+                  className="bg-zinc-900 dark:bg-zinc-800 text-white p-4 rounded-3xl shadow-2xl border border-white/10 flex items-center justify-between hover:scale-[1.02] active:scale-95 transition-all group overflow-hidden relative"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                      <Navigation size={20} />
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-transparent to-primary/10 pointer-events-none" />
+                  <div className="flex items-center gap-3.5 relative z-10">
+                    <div className="w-12 h-12 bg-primary text-white rounded-2xl flex items-center justify-center text-xl font-bold shadow-lg shadow-primary/30 group-hover:rotate-12 transition-transform shrink-0">
+                      {activeOrder?.status === 'ready' ? (activeOrder.order_type === 'delivery' ? '🛵' : '🎉') : activeOrder?.status === 'preparing' ? '👨‍🍳' : activeOrder?.status === 'accepted' ? '✅' : '📝'}
                     </div>
                     <div>
-                      <p className="font-bold">لديك طلب جاري تحضيره 🛵</p>
-                      <p className="text-xs text-white/80">اضغط هنا لتتبع حالة الطلب</p>
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-sm text-white">
+                          {activeOrder?.status === 'ready'
+                            ? (activeOrder.order_type === 'delivery' ? 'المندوب في الطريق إليك! 🛵' : 'طلبك جاهز الآن للاستلام! 🎉')
+                            : activeOrder?.status === 'preparing'
+                            ? 'جاري تحضير وجبتك في المطبخ 👨‍🍳'
+                            : activeOrder?.status === 'accepted'
+                            ? 'تم قبول طلبك، ستبدأ تحضيره قريباً ✅'
+                            : 'تم استلام طلبك وجاري مراجعته 📝'}
+                        </span>
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5 font-medium flex items-center gap-1">
+                        <span>اضغط لتتبع الطلب بالوقت الفعلي</span>
+                        <Navigation size={12} className="rotate-45 text-primary" />
+                      </p>
                     </div>
                   </div>
                 </Link>

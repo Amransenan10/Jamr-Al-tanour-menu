@@ -11,6 +11,7 @@ import {
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
 import { AdminAnalyticsView } from '../components/AdminAnalyticsView';
+import { normalizeCouponCode } from '../utils/couponUtils';
 
 export const AdminPage: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -1347,8 +1348,15 @@ const AdminCouponsView = () => {
         setIsSaving(true);
         
         try {
+            const rawCode = formData.code.trim();
+            if (!rawCode) {
+                toast.error('الرجاء إدخال كود خصم صحيح');
+                setIsSaving(false);
+                return;
+            }
+
             const payload = {
-                code: formData.code.toUpperCase().replace(/\s/g, ''),
+                code: rawCode,
                 discount_type: formData.discount_type,
                 discount_value: parseFloat(formData.discount_value),
                 max_uses: formData.max_uses ? parseInt(formData.max_uses) : null,
