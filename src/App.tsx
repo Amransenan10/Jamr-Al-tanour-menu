@@ -23,6 +23,8 @@ import { useBackButton } from './hooks/useBackButton';
 import { Link } from 'react-router-dom';
 import toast, { Toaster } from 'react-hot-toast';
 import { notifyCustomerStatusChange } from './utils/customerNotifications';
+import { PushSubscriptionBanner } from './components/PushSubscriptionBanner';
+import { showSystemNotification } from './utils/pushSubscription';
 
 export default function App() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -62,6 +64,44 @@ export default function App() {
     }, 10000);
     return () => clearTimeout(timer);
   }, [loading]);
+
+  // Real-time broadcast notification listener for marketing messages
+  useEffect(() => {
+    const broadcastChannel = supabase
+      .channel('public:broadcast_notifications')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'broadcast_notifications' }, (payload) => {
+        const newNotif = payload.new as any;
+        if (newNotif && newNotif.title) {
+          showSystemNotification(newNotif.title, newNotif.message, newNotif.url);
+          toast.custom(
+            (t) => (
+              <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-zinc-900 text-white shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-amber-500/30 p-4 border border-amber-500/20`}>
+                <div className="flex-1 w-0">
+                  <div className="flex items-start">
+                    <div className="shrink-0 pt-0.5 text-2xl">🔔</div>
+                    <div className="mr-3 flex-1 text-right">
+                      <p className="text-sm font-black text-amber-400">{newNotif.title}</p>
+                      <p className="mt-1 text-xs text-gray-200 leading-relaxed">{newNotif.message}</p>
+                      {newNotif.promo_code && (
+                        <span className="inline-block mt-2 text-[11px] bg-amber-500/20 text-amber-300 font-mono font-black px-2.5 py-1 rounded-lg border border-amber-500/30">
+                          كود الخصم: {newNotif.promo_code}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ),
+            { duration: 8000 }
+          );
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(broadcastChannel);
+    };
+  }, []);
 
   useEffect(() => {
     if (!supabase) {
@@ -554,6 +594,7 @@ export default function App() {
           />
 
           <InstallPWA />
+          <PushSubscriptionBanner />
         </div>
       </CartProvider>
     </ThemeProvider>

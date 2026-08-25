@@ -6,18 +6,19 @@ import {
     LayoutDashboard, KeyRound, ShoppingBag, Settings as SettingsIcon,
     UtensilsCrossed, LogOut, Loader2, Plus, Edit2, Trash2, CheckCircle2,
     X, Store, Clock, RefreshCw, Upload, TicketPercent, Image as ImageIcon,
-    Camera, Sliders, Volume2, VolumeX, Copy, Search, User, BarChart3
+    Camera, Sliders, Volume2, VolumeX, Copy, Search, User, BarChart3, Send
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
 import { AdminAnalyticsView } from '../components/AdminAnalyticsView';
+import { AdminMarketingView } from '../components/AdminMarketingView';
 import { normalizeCouponCode } from '../utils/couponUtils';
 
 export const AdminPage: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState('');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
-    const [activeTab, setActiveTab] = useState<'analytics' | 'orders' | 'menu' | 'additions' | 'stories' | 'coupons' | 'settings'>('analytics');
+    const [activeTab, setActiveTab] = useState<'analytics' | 'orders' | 'menu' | 'additions' | 'stories' | 'coupons' | 'marketing' | 'settings'>('analytics');
 
     useEffect(() => {
         if (localStorage.getItem('jamr_admin_auth') === 'true') {
@@ -106,6 +107,7 @@ export const AdminPage: React.FC = () => {
                         { id: 'additions', label: 'تخصيص الوجبات', icon: <Sliders size={16} /> },
                         { id: 'stories', label: 'القصص والعروض', icon: <ImageIcon size={16} /> },
                         { id: 'coupons', label: 'كوبونات الخصم', icon: <TicketPercent size={16} /> },
+                        { id: 'marketing', label: 'التسويق والإشعارات 📢', icon: <Send size={16} /> },
                         { id: 'settings', label: 'الفروع والإعدادات', icon: <SettingsIcon size={16} /> }
                     ].map(tab => (
                         <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={cn("flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer", activeTab === tab.id ? "bg-primary text-white" : "bg-zinc-800 text-gray-400 hover:bg-zinc-700")}>
@@ -122,6 +124,7 @@ export const AdminPage: React.FC = () => {
                 {activeTab === 'additions' && <AdminAdditionsView />}
                 {activeTab === 'stories' && <AdminStoriesView />}
                 {activeTab === 'coupons' && <AdminCouponsView />}
+                {activeTab === 'marketing' && <AdminMarketingView />}
                 {activeTab === 'settings' && <AdminSettingsView />}
             </main>
         </div>
