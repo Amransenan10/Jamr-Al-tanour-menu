@@ -139,15 +139,23 @@ export const AdminMarketingView: React.FC = () => {
         target_group: 'all'
       };
 
-      const { data, error } = await supabaseAdmin.from('broadcast_notifications').insert([payload]).select().single();
-      if (error) throw error;
+      // Try inserting with supabaseAdmin first, fallback to supabase
+      let res = await supabaseAdmin.from('broadcast_notifications').insert([payload]).select();
+      if (res.error) {
+        console.warn('supabaseAdmin insert error, trying supabase fallback:', res.error);
+        res = await supabase.from('broadcast_notifications').insert([payload]).select();
+      }
+
+      if (res.error) throw res.error;
+
+      const created = res.data && res.data[0];
 
       toast.success('تم إرسال الإشعار لجميع العملاء والمشتركين بنجاح! 🚀');
       setNotifForm({ title: '', message: '', promo_code: '', url: '' });
-      if (data) setBroadcasts(prev => [data, ...prev]);
+      if (created) setBroadcasts(prev => [created, ...prev]);
     } catch (error: any) {
       console.error('Error sending broadcast:', error);
-      toast.error('حدث خطأ أثناء إرسال الإشعار');
+      toast.error(error?.message || 'حدث خطأ أثناء إرسال الإشعار');
     } finally {
       setSending(false);
     }
