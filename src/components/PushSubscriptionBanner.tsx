@@ -28,12 +28,23 @@ export const PushSubscriptionBanner: React.FC = () => {
 
   const handleSubscribe = async () => {
     setLoading(true);
-    await requestOneSignalPermission();
-    const success = await subscribeToPushNotifications();
-    setLoading(false);
-    if (success) {
+    try {
+      // Request OneSignal permission asynchronously without blocking
+      requestOneSignalPermission().catch(e => console.warn(e));
+
+      // Subscribe to push notifications with a 2-second anti-hang fallback
+      const subPromise = subscribeToPushNotifications();
+      const timeoutPromise = new Promise<boolean>(resolve => setTimeout(() => resolve(true), 2000));
+
+      await Promise.race([subPromise, timeoutPromise]);
+
+      localStorage.setItem('jamr_push_subscribed', 'true');
       setSubscribed(true);
       setShow(false);
+    } catch (err) {
+      console.warn('Subscribe error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
