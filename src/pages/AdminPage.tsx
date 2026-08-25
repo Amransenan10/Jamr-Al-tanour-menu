@@ -101,8 +101,15 @@ export const AdminPage: React.FC = () => {
                         <LogOut size={16} /> <span className="hidden sm:inline">تسجيل خروج</span>
                     </button>
                 </div>
-                {/* Responsive Touch-Friendly Tabs */}
-                <div className="max-w-7xl mx-auto px-2 sm:px-4 flex gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar pb-3 pt-1 snap-x snap-mandatory touch-pan-x">
+                {/* Responsive Touch & Mouse Friendly Tabs */}
+                <div 
+                    onWheel={(e) => {
+                        if (e.deltaY !== 0 && window.innerWidth < 1280) {
+                            e.currentTarget.scrollLeft += e.deltaY;
+                        }
+                    }}
+                    className="max-w-7xl mx-auto px-2 sm:px-4 flex gap-1.5 sm:gap-2 flex-nowrap lg:flex-wrap overflow-x-auto lg:overflow-visible no-scrollbar pb-3 pt-1 snap-x snap-mandatory touch-pan-x"
+                >
                     {[
                         { id: 'analytics', label: 'الإحصائيات والتحليلات', icon: <BarChart3 size={16} /> },
                         { id: 'orders', label: 'الطلبات الحية', icon: <ShoppingBag size={16} /> },
@@ -117,7 +124,7 @@ export const AdminPage: React.FC = () => {
                             key={tab.id} 
                             onClick={() => setActiveTab(tab.id as any)} 
                             className={cn(
-                                "flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer snap-start shrink-0", 
+                                "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer snap-start shrink-0", 
                                 activeTab === tab.id 
                                     ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]" 
                                     : "bg-zinc-800/80 text-gray-400 hover:bg-zinc-700 hover:text-white"
