@@ -34,6 +34,22 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
             <Sparkles size={16} />
             <span>الأكثر طلباً</span>
           </button>
+
+          <button
+            onClick={() => onCategoryChange('offers_weekly')}
+            className={cn(
+              "whitespace-nowrap px-6 py-2.5 rounded-2xl text-sm font-bold transition-all snap-start flex items-center gap-2",
+              activeCategoryId === 'offers_weekly'
+                ? "bg-amber-500 text-black shadow-lg shadow-amber-500/30 scale-105"
+                : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20"
+            )}
+          >
+            <Tag size={16} />
+            <span>العروض الأسبوعية</span>
+            <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black animate-pulse">
+              عروض
+            </span>
+          </button>
           {categories.map((category) => (
             <button
               key={category.id}

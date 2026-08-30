@@ -408,6 +408,14 @@ export default function App() {
     }
   };
 
+  const drinkCategoryIds = React.useMemo(() => {
+    return new Set(
+      categories
+        .filter(c => c.name_ar.includes('مشروب') || c.name_ar.includes('عصير') || c.name_ar.includes('بارد'))
+        .map(c => c.id)
+    );
+  }, [categories]);
+
   const filteredProducts = React.useMemo(() => {
     return products
       .filter((p) => {
@@ -420,18 +428,53 @@ export default function App() {
       .sort((a, b) => (b.is_available === a.is_available ? 0 : b.is_available ? 1 : -1));
   }, [products, activeCategoryId, searchQuery]);
 
+  const weeklyOffersProducts = React.useMemo(() => {
+    const offerProds = products.filter(p => {
+      if (p.is_hidden) return false;
+      const cat = categories.find(c => c.id === p.category_id);
+      const isOfferCat = cat?.name_ar.includes('عرض') || cat?.name_ar.includes('عروض');
+      const hasDiscount = p.original_price && p.original_price > p.price;
+      return p.is_offer || isOfferCat || hasDiscount;
+    });
+
+    const storyOfferProds: Product[] = stories
+      .filter(s => s.offer_name && s.offer_price)
+      .map(s => ({
+        id: `story_offer_${s.id}`,
+        name_ar: s.offer_name!,
+        name_en: s.offer_name!,
+        description_ar: s.title || 'عرض حصري من الاستوري',
+        description_en: s.title || 'Exclusive Story Offer',
+        price: s.offer_price!,
+        category_id: 'offers_weekly',
+        image_url: s.image_url,
+        is_available: true,
+        is_hidden: false,
+        is_offer: true
+      }));
+
+    const combined = [...offerProds];
+    storyOfferProds.forEach(sp => {
+      if (!combined.some(p => p.name_ar === sp.name_ar)) {
+        combined.push(sp);
+      }
+    });
+
+    return combined.sort((a, b) => (b.is_available === a.is_available ? 0 : b.is_available ? 1 : -1));
+  }, [products, categories, stories]);
+
   const topPopularProducts = React.useMemo(() => {
     if (products.length === 0) return [];
     
-    // Step 1: Group by category
+    // Step 1: Group by category (Excluding drinks)
     const categoryMap: Record<string, Product[]> = {};
     products.forEach(p => {
-      if (p.is_hidden) return;
+      if (p.is_hidden || drinkCategoryIds.has(p.category_id)) return;
       if (!categoryMap[p.category_id]) categoryMap[p.category_id] = [];
       categoryMap[p.category_id].push(p);
     });
 
-    // Step 2: Pick top 3 from each category to ensure diversity
+    // Step 2: Pick top 3 from each non-drink category
     const diversePopular: Product[] = [];
     Object.values(categoryMap).forEach(catProds => {
       const topInCat = [...catProds]
@@ -440,15 +483,16 @@ export default function App() {
       diversePopular.push(...topInCat);
     });
 
-    // Step 3: Combine with overall top sellers, then unique, then limit to 14
+    // Step 3: Combine with overall top sellers (excluding drinks), then unique, then limit to 14
     const overallTop = [...products]
-      .filter(p => !p.is_hidden)
+      .filter(p => !p.is_hidden && !drinkCategoryIds.has(p.category_id))
       .sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
       .slice(0, 14);
 
     const combinedSet = new Set([...diversePopular.map(p => p.id), ...overallTop.map(p => p.id)]);
     const finalPopular = Array.from(combinedSet)
       .map(id => products.find(p => p.id === id)!)
+      .filter(Boolean)
       .sort((a, b) => {
         if (a.is_available !== b.is_available) {
           return b.is_available ? 1 : -1;
@@ -458,10 +502,11 @@ export default function App() {
       .slice(0, 14);
 
     return finalPopular;
-  }, [products]);
+  }, [products, drinkCategoryIds]);
 
   const isShowingPopular = activeCategoryId === null && !searchQuery;
-  const displayProducts = isShowingPopular ? topPopularProducts : filteredProducts;
+  const isShowingWeeklyOffers = activeCategoryId === 'offers_weekly' && !searchQuery;
+  const displayProducts = isShowingWeeklyOffers ? weeklyOffersProducts : (isShowingPopular ? topPopularProducts : filteredProducts);
 
   return (
     <ThemeProvider>
@@ -522,6 +567,21 @@ export default function App() {
               </div>
             ) : displayProducts.length > 0 ? (
               <div className="space-y-8">
+                {isShowingWeeklyOffers && (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-1.5 bg-amber-500 rounded-full" />
+                      <div className="flex items-center gap-2">
+                        <Tag size={24} className="text-amber-500" />
+                        <h2 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">العروض الأسبوعية والصفقات الحصرية</h2>
+                      </div>
+                    </div>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base font-medium mr-4">
+                      تصفح أقوى التخفيضات والوجبات المميزة المتوفرة حالياً وعروض الاستوري
+                    </p>
+                  </div>
+                )}
+
                 {isShowingPopular && (
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-3">
