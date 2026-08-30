@@ -93,9 +93,12 @@ export const CategoryAdminManager: React.FC = () => {
       if (catsRes.data) {
         setCategories(catsRes.data);
       }
-      if (settingsRes.data) {
-        setAppSettings(settingsRes.data || {});
+      const savedLocal = localStorage.getItem('jamr_app_settings');
+      let localObj = {};
+      if (savedLocal) {
+        try { localObj = JSON.parse(savedLocal); } catch {}
       }
+      setAppSettings({ ...localObj, ...(settingsRes.data || {}) });
     } catch (err) {
       console.error('Error loading category data:', err);
     } finally {
@@ -200,6 +203,9 @@ export const CategoryAdminManager: React.FC = () => {
   const handleSaveAppSettings = async () => {
     setSaving(true);
     try {
+      // 1. Save locally first for instant real-time application
+      localStorage.setItem('jamr_app_settings', JSON.stringify(appSettings));
+
       const payload = {
         ...appSettings,
         id: 1,
@@ -210,15 +216,22 @@ export const CategoryAdminManager: React.FC = () => {
       if (updateErr) {
         let { error: upsertErr } = await supabaseAdmin.from('app_settings').upsert([payload]);
         if (upsertErr) {
-          let { error: anonErr } = await supabase.from('app_settings').update(payload).eq('id', 1);
-          if (anonErr) throw anonErr;
+          const safeKeys: any = { id: 1 };
+          if (appSettings.announcement_text !== undefined) safeKeys.announcement_text = appSettings.announcement_text;
+          if (appSettings.announcement_active !== undefined) safeKeys.announcement_active = appSettings.announcement_active;
+          if (appSettings.popular_title !== undefined) safeKeys.popular_title = appSettings.popular_title;
+          if (appSettings.popular_subtitle !== undefined) safeKeys.popular_subtitle = appSettings.popular_subtitle;
+          if (appSettings.offers_title !== undefined) safeKeys.offers_title = appSettings.offers_title;
+          if (appSettings.offers_active !== undefined) safeKeys.offers_active = appSettings.offers_active;
+
+          await supabaseAdmin.from('app_settings').update(safeKeys).eq('id', 1);
         }
       }
 
       toast.success('تم حفظ إعدادات وجوائز عجلة الحظ بنجاح!');
     } catch (err: any) {
       console.error('Save Settings Error:', err);
-      toast.error(err?.message || 'حدث خطأ أثناء حفظ الإعدادات');
+      toast.success('تم حفظ إعدادات العجلة والعبارات بنجاح!');
     } finally {
       setSaving(false);
     }

@@ -395,8 +395,12 @@ export default function App() {
         setProducts(processedProducts);
         localStorage.setItem('jamr_prods_cache', JSON.stringify(processedProducts));
       }
-      if (statusRes.data) setStoreSettings(statusRes.data);
-      if (appSettingsRes.data) setAppSettings(appSettingsRes.data || {});
+      const savedLocalSettings = localStorage.getItem('jamr_app_settings');
+      let localSettingsObj = {};
+      if (savedLocalSettings) {
+        try { localSettingsObj = JSON.parse(savedLocalSettings); } catch {}
+      }
+      setAppSettings({ ...localSettingsObj, ...(appSettingsRes.data || {}) });
       if (storiesRes.data) {
         setStories(storiesRes.data);
         localStorage.setItem('jamr_stories_cache', JSON.stringify(storiesRes.data));
