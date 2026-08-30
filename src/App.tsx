@@ -206,13 +206,15 @@ export default function App() {
           console.log('DEBUG: Store status subscription status:', status);
         });
 
-      // Real-time synchronization for products and categories
+      // Real-time synchronization for products, categories, stories, and coupons
       const menuChannel = supabase.channel('menu-sync')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
           console.log('DEBUG: Product changed, refetching...');
           fetchData();
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => fetchData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'stories' }, () => fetchData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'coupons' }, () => fetchData())
         .subscribe();
 
       const settingsChannel = supabase.channel('jamr_realtime_channel')
