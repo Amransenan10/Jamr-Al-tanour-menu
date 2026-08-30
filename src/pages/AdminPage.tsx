@@ -656,6 +656,8 @@ const AdminMenuView = () => {
     const [formData, setFormData] = useState({
         name_ar: '',
         price: '',
+        original_price: '',
+        is_offer: false,
         description_ar: '',
         category_id: '',
         image_url: '',
@@ -691,6 +693,8 @@ const AdminMenuView = () => {
             setFormData({
                 name_ar: product.name_ar,
                 price: product.price?.toString() || '0',
+                original_price: product.original_price?.toString() || '',
+                is_offer: product.is_offer ?? false,
                 description_ar: product.description_ar || '',
                 category_id: product.category_id,
                 image_url: product.image_url || '',
@@ -708,6 +712,8 @@ const AdminMenuView = () => {
             setFormData({
                 name_ar: '',
                 price: '',
+                original_price: '',
+                is_offer: false,
                 description_ar: '',
                 category_id: categories.length > 0 ? categories[0].id : '',
                 image_url: '',
@@ -857,6 +863,8 @@ const AdminMenuView = () => {
             name_ar: formData.name_ar,
             name_en: formData.name_ar, // Optional fallback
             price: parseFloat(formData.price) || 0,
+            original_price: formData.original_price ? parseFloat(formData.original_price) : null,
+            is_offer: formData.is_offer,
             description_ar: formData.description_ar,
             description_en: formData.description_ar,
             category_id: formData.category_id,
@@ -964,10 +972,14 @@ const AdminMenuView = () => {
                                     <input required type="text" value={formData.name_ar} onChange={e => setFormData({...formData, name_ar: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none" />
                                 </div>
                                 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-3 gap-3">
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-gray-400">السعر (ر.س) <span className="text-red-500">*</span></label>
+                                        <label className="text-sm font-bold text-gray-400">سعر البيع (ر.س) <span className="text-red-500">*</span></label>
                                         <input required type="number" step="0.01" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none" />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-sm font-bold text-amber-400">قبل الخصم (اختياري)</label>
+                                        <input type="number" step="0.01" value={formData.original_price} onChange={e => setFormData({...formData, original_price: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-amber-500/50 outline-none" placeholder="مثال: 50" />
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-bold text-gray-400">القسم <span className="text-red-500">*</span></label>
@@ -981,8 +993,8 @@ const AdminMenuView = () => {
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-gray-400">الوصف (اختياري)</label>
-                                        <textarea value={formData.description_ar} onChange={e => setFormData({...formData, description_ar: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none h-20 resize-none" />
+                                        <label className="text-sm font-bold text-gray-400">الوصف / مكونات العرض (اختياري)</label>
+                                        <textarea value={formData.description_ar} onChange={e => setFormData({...formData, description_ar: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none h-20 resize-none" placeholder="مثال: 2 بيتزا + عصير مجاني" />
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-bold text-gray-400">السعرات الحرارية (اختياري)</label>
@@ -995,7 +1007,7 @@ const AdminMenuView = () => {
 
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-bold text-gray-400 flex items-center justify-between">
-                                        <span>صورة الصنف</span>
+                                        <span>صورة الصنف / العرض</span>
                                         {isUploading && <Loader2 size={14} className="animate-spin text-primary" />}
                                     </label>
                                     <div className="flex gap-3 items-center">
