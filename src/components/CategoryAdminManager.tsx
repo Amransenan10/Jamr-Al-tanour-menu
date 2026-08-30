@@ -39,6 +39,10 @@ const parseAppSettings = (data: any) => {
     parsed.popular_subtitle = parsed.popular_subtitle.replace(/\[CONFIG:.*?\]/g, '').trim();
   }
 
+  parsed.announcement_active = parsed.announcement_active === undefined ? true : Boolean(parsed.announcement_active);
+  parsed.offers_active = parsed.offers_active === undefined ? true : Boolean(parsed.offers_active);
+  parsed.wheel_active = parsed.wheel_active === undefined ? true : Boolean(parsed.wheel_active);
+
   return parsed;
 };
 
@@ -232,7 +236,9 @@ export const CategoryAdminManager: React.FC = () => {
       localStorage.setItem('jamr_app_settings', JSON.stringify(appSettings));
 
       const configTag = `[CONFIG:${JSON.stringify({
-        wheel_active: appSettings.wheel_active ?? true,
+        announcement_active: Boolean(appSettings.announcement_active),
+        offers_active: Boolean(appSettings.offers_active),
+        wheel_active: Boolean(appSettings.wheel_active),
         wheel_title: appSettings.wheel_title || 'عجلة الحظ والجوائز',
         wheel_prizes: appSettings.wheel_prizes || DEFAULT_WHEEL_PRIZES
       })}]`;
@@ -244,11 +250,11 @@ export const CategoryAdminManager: React.FC = () => {
       const safeDbPayload: any = {
         id: 1,
         announcement_text: appSettings.announcement_text || '',
-        announcement_active: appSettings.announcement_active ?? true,
+        announcement_active: Boolean(appSettings.announcement_active),
         popular_title: appSettings.popular_title || '',
         popular_subtitle: updatedSub,
         offers_title: appSettings.offers_title || '',
-        offers_active: appSettings.offers_active ?? true
+        offers_active: Boolean(appSettings.offers_active)
       };
 
       // Guaranteed upsert into Supabase (will NOT error because all columns exist)
@@ -409,16 +415,16 @@ export const CategoryAdminManager: React.FC = () => {
             <div className="flex items-center gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => setAppSettings({ ...appSettings, announcement_active: !appSettings.announcement_active })}
+                onClick={() => setAppSettings(prev => ({ ...prev, announcement_active: !Boolean(prev.announcement_active) }))}
                 className={cn(
                   "w-12 h-6 rounded-full transition-colors relative p-1 cursor-pointer",
-                  appSettings.announcement_active ? "bg-amber-500" : "bg-zinc-700"
+                  Boolean(appSettings.announcement_active) ? "bg-amber-500" : "bg-zinc-700"
                 )}
               >
-                <div className={cn("w-4 h-4 rounded-full bg-black transition-transform", appSettings.announcement_active ? "translate-x-0" : "-translate-x-6")} />
+                <div className={cn("w-4 h-4 rounded-full bg-black transition-transform", Boolean(appSettings.announcement_active) ? "translate-x-0" : "-translate-x-6")} />
               </button>
               <span className="text-sm font-bold text-gray-300">
-                {appSettings.announcement_active ? 'مفعل ويظهر أعلى المنيو' : 'مخفي'}
+                {Boolean(appSettings.announcement_active) ? 'مفعل ويظهر أعلى المنيو' : 'مخفي'}
               </span>
             </div>
           </div>
@@ -439,16 +445,16 @@ export const CategoryAdminManager: React.FC = () => {
             <div className="flex items-center gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => setAppSettings({ ...appSettings, offers_active: !(appSettings.offers_active ?? true) })}
+                onClick={() => setAppSettings(prev => ({ ...prev, offers_active: !Boolean(prev.offers_active) }))}
                 className={cn(
                   "w-12 h-6 rounded-full transition-colors relative p-1 cursor-pointer",
-                  (appSettings.offers_active ?? true) ? "bg-amber-500" : "bg-zinc-700"
+                  Boolean(appSettings.offers_active) ? "bg-amber-500" : "bg-zinc-700"
                 )}
               >
-                <div className={cn("w-4 h-4 rounded-full bg-black transition-transform", (appSettings.offers_active ?? true) ? "translate-x-0" : "-translate-x-6")} />
+                <div className={cn("w-4 h-4 rounded-full bg-black transition-transform", Boolean(appSettings.offers_active) ? "translate-x-0" : "-translate-x-6")} />
               </button>
               <span className="text-sm font-bold text-gray-300">
-                {(appSettings.offers_active ?? true) ? 'مفعل ويظهر كزر عروض' : 'مخفي وغير متاح'}
+                {Boolean(appSettings.offers_active) ? 'مفعل ويظهر كزر عروض' : 'مخفي وغير متاح'}
               </span>
             </div>
           </div>

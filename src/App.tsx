@@ -47,6 +47,10 @@ const parseAppSettings = (data: any) => {
     parsed.popular_subtitle = parsed.popular_subtitle.replace(/\[CONFIG:.*?\]/g, '').trim();
   }
 
+  parsed.announcement_active = parsed.announcement_active === undefined ? true : Boolean(parsed.announcement_active);
+  parsed.offers_active = parsed.offers_active === undefined ? true : Boolean(parsed.offers_active);
+  parsed.wheel_active = parsed.wheel_active === undefined ? true : Boolean(parsed.wheel_active);
+
   return parsed;
 };
 
@@ -558,7 +562,7 @@ export default function App() {
       <CartProvider>
         <div className="min-h-screen pb-20">
           <Toaster />
-          <AnnouncementBanner text={appSettings?.announcement_text} isActive={appSettings?.announcement_active} />
+          <AnnouncementBanner text={appSettings?.announcement_text || ''} isActive={Boolean(appSettings?.announcement_active)} />
           
           <Header
             selectedBranch={selectedBranch}
@@ -602,7 +606,7 @@ export default function App() {
             categories={categories}
             activeCategoryId={activeCategoryId}
             onCategoryChange={setActiveCategoryId}
-            showWeeklyOffers={appSettings?.offers_active ?? true}
+            showWeeklyOffers={Boolean(appSettings?.offers_active)}
             offersTitle={appSettings?.offers_title || 'العروض الأسبوعية'}
           />
 
