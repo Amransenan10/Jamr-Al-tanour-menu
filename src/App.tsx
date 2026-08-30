@@ -11,12 +11,13 @@ import { SocialLinks } from './components/SocialLinks';
 import { SideMenuDrawer } from './components/SideMenuDrawer';
 import { StoriesStrip } from './components/StoriesStrip';
 import { StoryViewerModal } from './components/StoryViewerModal';
+import { SpinWheelModal } from './components/SpinWheelModal';
 import { Category, Product, Branch, Story } from './types';
 import { supabase } from './lib/supabaseClient';
 import { CartProvider } from './context/CartContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { Loader2, UtensilsCrossed, Navigation, AlertCircle, Clock, CheckCircle2, Bike, Utensils, FileText, Sparkles, Tag, ShieldAlert } from 'lucide-react';
+import { Loader2, UtensilsCrossed, Navigation, AlertCircle, Clock, CheckCircle2, Bike, Utensils, FileText, Sparkles, Tag, ShieldAlert, ArrowDown, ChevronLeft } from 'lucide-react';
 import { BranchSelectorModal } from './components/BranchSelectorModal';
 import { FloatingCartButton } from './components/FloatingCartButton';
 import { useBackButton } from './hooks/useBackButton';
@@ -45,6 +46,7 @@ export default function App() {
   const prevAppOrderStatusRef = useRef<string | null>(null);
   const [storeSettings, setStoreSettings] = useState<any>(null);
   const [appSettings, setAppSettings] = useState<any>(null);
+  const [isWheelOpen, setIsWheelOpen] = useState(false);
   const storeStatus = storeSettings?.status || 'open';
 
   // Hardware Back Button Handlers
@@ -508,6 +510,15 @@ export default function App() {
   const isShowingWeeklyOffers = activeCategoryId === 'offers_weekly' && !searchQuery;
   const displayProducts = isShowingWeeklyOffers ? weeklyOffersProducts : (isShowingPopular ? topPopularProducts : filteredProducts);
 
+  const nextCategory = React.useMemo(() => {
+    if (!activeCategoryId || activeCategoryId === 'offers_weekly' || categories.length === 0) return null;
+    const currentIndex = categories.findIndex(c => c.id === activeCategoryId);
+    if (currentIndex !== -1 && currentIndex < categories.length - 1) {
+      return categories[currentIndex + 1];
+    }
+    return null;
+  }, [activeCategoryId, categories]);
+
   return (
     <ThemeProvider>
       <CartProvider>
@@ -611,6 +622,28 @@ export default function App() {
                     ))}
                   </AnimatePresence>
                 </div>
+
+                {nextCategory && (
+                  <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/20 rounded-3xl p-6 sm:p-8 text-center space-y-3 mt-12 backdrop-blur-sm">
+                    <div className="text-xs font-bold text-amber-500 flex items-center justify-center gap-1.5">
+                      <CheckCircle2 size={16} />
+                      <span>وصلت لنهاية أصناف قسم ({categories.find(c => c.id === activeCategoryId)?.name_ar})</span>
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white">
+                      الانتقال السلس للقسم التالي: <span className="text-amber-500">{nextCategory.name_ar}</span>
+                    </h3>
+                    <button
+                      onClick={() => {
+                        setActiveCategoryId(nextCategory.id);
+                        window.scrollTo({ top: 350, behavior: 'smooth' });
+                      }}
+                      className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black text-xs sm:text-sm rounded-2xl shadow-xl shadow-amber-500/20 hover:scale-105 active:scale-95 transition-all inline-flex items-center gap-2 cursor-pointer mt-2"
+                    >
+                      <span>تصفح أصناف {nextCategory.name_ar}</span>
+                      <ArrowDown size={16} className="animate-bounce" />
+                    </button>
+                  </div>
+                )}
               </div>
             ) : error ? (
               <div className="flex flex-col items-center justify-center py-32 text-center">
@@ -722,6 +755,26 @@ export default function App() {
             storeStatus={storeStatus} 
             onClick={() => setIsCartOpen(true)} 
             hasActiveOrder={!!activeOrderId} 
+          />
+
+          {/* Floating Wheel Button (Only visible if enabled in Admin Panel) */}
+          {appSettings?.wheel_active && (
+            <motion.button
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setIsWheelOpen(true)}
+              className="fixed bottom-24 right-4 z-40 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-black px-4 py-2.5 sm:px-5 sm:py-3 rounded-full shadow-2xl shadow-amber-500/50 flex items-center gap-2 font-black text-xs sm:text-sm cursor-pointer border-2 border-white/20"
+            >
+              <span className="text-xl animate-spin" style={{ animationDuration: '6s' }}>🎡</span>
+              <span>عجلة الحظ!</span>
+            </motion.button>
+          )}
+
+          <SpinWheelModal
+            isOpen={isWheelOpen}
+            onClose={() => setIsWheelOpen(false)}
           />
 
           <InstallPWA />

@@ -334,6 +334,46 @@ export const CategoryAdminManager: React.FC = () => {
               </span>
             </div>
           </div>
+
+          {/* Spin Wheel Settings */}
+          <div className="space-y-2 md:col-span-2 pt-4 border-t border-white/10">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="text-amber-400" size={18} />
+              <label className="text-sm font-black text-white">إعدادات لعبة عجلة الحظ (Spin the Wheel)</label>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-zinc-800/50 p-4 rounded-2xl border border-white/5">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 block">تنشيط ظهور لعبة عجلة الحظ للعملاء</label>
+                <div className="flex items-center gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setAppSettings({ ...appSettings, wheel_active: !appSettings.wheel_active })}
+                    className={cn(
+                      "w-12 h-6 rounded-full transition-colors relative p-1 cursor-pointer",
+                      appSettings.wheel_active ? "bg-amber-500" : "bg-zinc-700"
+                    )}
+                  >
+                    <div className={cn("w-4 h-4 rounded-full bg-black transition-transform", appSettings.wheel_active ? "translate-x-0" : "-translate-x-6")} />
+                  </button>
+                  <span className="text-sm font-bold text-gray-300">
+                    {appSettings.wheel_active ? '🎡 مفعلة وتظهر كزر عائم للعميل' : 'مغلقة ومخفية كلياً'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 block">عنوان اللعبة المنبثقة</label>
+                <input
+                  type="text"
+                  placeholder="دَوّر واكسب جوائز المنيو!"
+                  value={appSettings.wheel_title || 'دَوّر واكسب جوائز المنيو!'}
+                  onChange={e => setAppSettings({ ...appSettings, wheel_title: e.target.value })}
+                  className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm border border-transparent focus:border-amber-500/50 outline-none"
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="flex justify-end pt-2">
