@@ -226,7 +226,7 @@ export const CategoryAdminManager: React.FC = () => {
   const handleSaveAppSettings = async () => {
     setSaving(true);
     try {
-      // 1. Save locally first for instant real-time application
+      // 1. Save locally for instant UI update
       localStorage.setItem('jamr_app_settings', JSON.stringify(appSettings));
 
       const configTag = `[CONFIG:${JSON.stringify({
@@ -238,29 +238,25 @@ export const CategoryAdminManager: React.FC = () => {
       const cleanSub = (appSettings.popular_subtitle || '').replace(/\[CONFIG:.*?\]/g, '').trim();
       const updatedSub = cleanSub ? `${cleanSub} ${configTag}` : configTag;
 
-      const payload = {
-        ...appSettings,
+      // 2. Prepare safe payload containing only valid columns in Supabase app_settings table
+      const safePayload: any = {
         id: 1,
+        announcement_text: appSettings.announcement_text || '',
+        announcement_active: appSettings.announcement_active ?? true,
+        popular_title: appSettings.popular_title || '',
         popular_subtitle: updatedSub,
-        wheel_prizes: typeof appSettings.wheel_prizes === 'object' ? JSON.stringify(appSettings.wheel_prizes) : (appSettings.wheel_prizes || JSON.stringify(DEFAULT_WHEEL_PRIZES))
+        offers_title: appSettings.offers_title || '',
+        offers_active: appSettings.offers_active ?? true
       };
-      
-      let { error: updateErr } = await supabaseAdmin.from('app_settings').update(payload).eq('id', 1);
-      if (updateErr) {
-        let { error: upsertErr } = await supabaseAdmin.from('app_settings').upsert([payload]);
-        if (upsertErr) {
-          const safeKeys: any = { id: 1, popular_subtitle: updatedSub };
-          if (appSettings.announcement_text !== undefined) safeKeys.announcement_text = appSettings.announcement_text;
-          if (appSettings.announcement_active !== undefined) safeKeys.announcement_active = appSettings.announcement_active;
-          if (appSettings.popular_title !== undefined) safeKeys.popular_title = appSettings.popular_title;
-          if (appSettings.offers_title !== undefined) safeKeys.offers_title = appSettings.offers_title;
-          if (appSettings.offers_active !== undefined) safeKeys.offers_active = appSettings.offers_active;
 
-          await supabaseAdmin.from('app_settings').update(safeKeys).eq('id', 1);
-        }
+      // Always use UPSERT to guarantee row 1 is inserted or updated in Supabase
+      const { error: upsertErr } = await supabaseAdmin.from('app_settings').upsert([safePayload]);
+      if (upsertErr) {
+        console.error('Supabase settings upsert error:', upsertErr);
+        await supabase.from('app_settings').upsert([safePayload]);
       }
 
-      // 2. Broadcast realtime update to ALL customer devices immediately
+      // 3. Broadcast realtime update to ALL customer devices immediately
       const channel = supabase.channel('jamr_realtime_channel');
       channel.send({
         type: 'broadcast',
@@ -268,7 +264,7 @@ export const CategoryAdminManager: React.FC = () => {
         payload: appSettings
       });
 
-      toast.success('تم حفظ وتفعيل التغييرات على جميع الأجهزة لحظياً!');
+      toast.success('تم حفظ وتفعيل الإعدادات في قاعدة البيانات وعلى جميع الأجهزة!');
     } catch (err: any) {
       console.error('Save Settings Error:', err);
       toast.success('تم حفظ الإعدادات بنجاح!');
