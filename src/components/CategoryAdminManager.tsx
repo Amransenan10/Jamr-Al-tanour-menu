@@ -20,6 +20,28 @@ const DEFAULT_WHEEL_PRIZES = [
   { id: 8, label: 'حظ أوفير غداً', code: '', type: 'unlucky', color: '#6b7280' },
 ];
 
+const parseAppSettings = (data: any) => {
+  if (!data) return {};
+  let parsed = { ...data };
+  
+  const subStr = data.popular_subtitle || data.announcement_text || '';
+  const match = typeof subStr === 'string' ? subStr.match(/\[CONFIG:(.*?)\]/) : null;
+  if (match && match[1]) {
+    try {
+      const extraConfig = JSON.parse(match[1]);
+      parsed = { ...parsed, ...extraConfig };
+    } catch (e) {
+      console.error('Error parsing config tag:', e);
+    }
+  }
+
+  if (typeof parsed.popular_subtitle === 'string') {
+    parsed.popular_subtitle = parsed.popular_subtitle.replace(/\[CONFIG:.*?\]/g, '').trim();
+  }
+
+  return parsed;
+};
+
 export const CategoryAdminManager: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,7 +120,8 @@ export const CategoryAdminManager: React.FC = () => {
       if (savedLocal) {
         try { localObj = JSON.parse(savedLocal); } catch {}
       }
-      setAppSettings({ ...localObj, ...(settingsRes.data || {}) });
+      const parsedDb = parseAppSettings(settingsRes.data || {});
+      setAppSettings({ ...localObj, ...parsedDb });
     } catch (err) {
       console.error('Error loading category data:', err);
     } finally {
