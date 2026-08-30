@@ -427,11 +427,10 @@ export default function App() {
       }
       const savedLocalSettings = localStorage.getItem('jamr_app_settings');
       let localSettingsObj = {};
-      if (savedLocalSettings) {
-        try { localSettingsObj = JSON.parse(savedLocalSettings); } catch {}
-      }
       const parsedDbConfig = parseAppSettings(appSettingsRes.data || {});
-      setAppSettings({ ...parsedDbConfig, ...localSettingsObj });
+      const mergedSettings = { ...localSettingsObj, ...parsedDbConfig };
+      setAppSettings(mergedSettings);
+      localStorage.setItem('jamr_app_settings', JSON.stringify(mergedSettings));
       if (storiesRes.data) {
         setStories(storiesRes.data);
         localStorage.setItem('jamr_stories_cache', JSON.stringify(storiesRes.data));
@@ -765,7 +764,7 @@ export default function App() {
           />
 
           {/* Floating Wheel Button (Compact & Left-aligned so it never covers products) */}
-          {(appSettings?.wheel_active !== false) && (
+          {(appSettings?.wheel_active === true) && (
             <motion.button
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
