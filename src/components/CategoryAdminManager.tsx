@@ -238,7 +238,7 @@ export const CategoryAdminManager: React.FC = () => {
       const cleanSub = (appSettings.popular_subtitle || '').replace(/\[CONFIG:.*?\]/g, '').trim();
       const updatedSub = cleanSub ? `${cleanSub} ${configTag}` : configTag;
 
-      // 2. Prepare safe payload containing only valid columns in Supabase app_settings table
+      // 2. Prepare safe payload containing native columns & fallback config in Supabase app_settings table
       const safePayload: any = {
         id: 1,
         announcement_text: appSettings.announcement_text || '',
@@ -246,7 +246,10 @@ export const CategoryAdminManager: React.FC = () => {
         popular_title: appSettings.popular_title || '',
         popular_subtitle: updatedSub,
         offers_title: appSettings.offers_title || '',
-        offers_active: appSettings.offers_active ?? true
+        offers_active: appSettings.offers_active ?? true,
+        wheel_active: appSettings.wheel_active ?? true,
+        wheel_title: appSettings.wheel_title || 'عجلة الحظ والجوائز',
+        wheel_prizes: typeof appSettings.wheel_prizes === 'object' ? JSON.stringify(appSettings.wheel_prizes) : (appSettings.wheel_prizes || JSON.stringify(DEFAULT_WHEEL_PRIZES))
       };
 
       // Always use UPSERT to guarantee row 1 is inserted or updated in Supabase
