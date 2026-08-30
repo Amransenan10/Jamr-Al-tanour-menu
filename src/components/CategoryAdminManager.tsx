@@ -226,7 +226,7 @@ export const CategoryAdminManager: React.FC = () => {
   const handleSaveAppSettings = async () => {
     setSaving(true);
     try {
-      // 1. Save locally for instant UI update
+      // 1. Save locally for instant UI response
       localStorage.setItem('jamr_app_settings', JSON.stringify(appSettings));
 
       const configTag = `[CONFIG:${JSON.stringify({
@@ -238,25 +238,33 @@ export const CategoryAdminManager: React.FC = () => {
       const cleanSub = (appSettings.popular_subtitle || '').replace(/\[CONFIG:.*?\]/g, '').trim();
       const updatedSub = cleanSub ? `${cleanSub} ${configTag}` : configTag;
 
-      // 2. Prepare safe payload containing native columns & fallback config in Supabase app_settings table
-      const safePayload: any = {
+      // 2. Guaranteed payload with ONLY standard schema columns to prevent SQL column errors
+      const safeDbPayload: any = {
         id: 1,
         announcement_text: appSettings.announcement_text || '',
         announcement_active: appSettings.announcement_active ?? true,
         popular_title: appSettings.popular_title || '',
         popular_subtitle: updatedSub,
         offers_title: appSettings.offers_title || '',
-        offers_active: appSettings.offers_active ?? true,
-        wheel_active: appSettings.wheel_active ?? true,
-        wheel_title: appSettings.wheel_title || 'عجلة الحظ والجوائز',
-        wheel_prizes: typeof appSettings.wheel_prizes === 'object' ? JSON.stringify(appSettings.wheel_prizes) : (appSettings.wheel_prizes || JSON.stringify(DEFAULT_WHEEL_PRIZES))
+        offers_active: appSettings.offers_active ?? true
       };
 
-      // Always use UPSERT to guarantee row 1 is inserted or updated in Supabase
-      const { error: upsertErr } = await supabaseAdmin.from('app_settings').upsert([safePayload]);
-      if (upsertErr) {
-        console.error('Supabase settings upsert error:', upsertErr);
-        await supabase.from('app_settings').upsert([safePayload]);
+      // Guaranteed upsert into Supabase (will NOT error because all columns exist)
+      let { error: err1 } = await supabaseAdmin.from('app_settings').upsert([safeDbPayload]);
+      if (err1) {
+        console.error('Admin upsert failed, trying anon client:', err1);
+        await supabase.from('app_settings').upsert([safeDbPayload]);
+      }
+
+      // Optional attempt to update native columns if user ran migration
+      try {
+        await supabaseAdmin.from('app_settings').update({
+          wheel_active: appSettings.wheel_active ?? true,
+          wheel_title: appSettings.wheel_title || 'عجلة الحظ والجوائز',
+          wheel_prizes: typeof appSettings.wheel_prizes === 'object' ? JSON.stringify(appSettings.wheel_prizes) : (appSettings.wheel_prizes || JSON.stringify(DEFAULT_WHEEL_PRIZES))
+        }).eq('id', 1);
+      } catch (e) {
+        // Ignore column missing error since configTag handles it
       }
 
       // 3. Broadcast realtime update to ALL customer devices immediately
@@ -267,10 +275,10 @@ export const CategoryAdminManager: React.FC = () => {
         payload: appSettings
       });
 
-      toast.success('تم حفظ وتفعيل الإعدادات في قاعدة البيانات وعلى جميع الأجهزة!');
+      toast.success('تم حفظ وتفعيل الإعدادات في قاعدة البيانات بنجاح! 🎉');
     } catch (err: any) {
       console.error('Save Settings Error:', err);
-      toast.success('تم حفظ الإعدادات بنجاح!');
+      toast.error('حدث خطأ أثناء التوصيل بالسيرفر، تم الحفظ محلياً');
     } finally {
       setSaving(false);
     }
