@@ -206,9 +206,19 @@ export const CategoryAdminManager: React.FC = () => {
       // 1. Save locally first for instant real-time application
       localStorage.setItem('jamr_app_settings', JSON.stringify(appSettings));
 
+      const configTag = `[CONFIG:${JSON.stringify({
+        wheel_active: appSettings.wheel_active ?? true,
+        wheel_title: appSettings.wheel_title || 'عجلة الحظ والجوائز',
+        wheel_prizes: appSettings.wheel_prizes || DEFAULT_WHEEL_PRIZES
+      })}]`;
+
+      const cleanSub = (appSettings.popular_subtitle || '').replace(/\[CONFIG:.*?\]/g, '').trim();
+      const updatedSub = cleanSub ? `${cleanSub} ${configTag}` : configTag;
+
       const payload = {
         ...appSettings,
         id: 1,
+        popular_subtitle: updatedSub,
         wheel_prizes: typeof appSettings.wheel_prizes === 'object' ? JSON.stringify(appSettings.wheel_prizes) : (appSettings.wheel_prizes || JSON.stringify(DEFAULT_WHEEL_PRIZES))
       };
       
@@ -216,11 +226,10 @@ export const CategoryAdminManager: React.FC = () => {
       if (updateErr) {
         let { error: upsertErr } = await supabaseAdmin.from('app_settings').upsert([payload]);
         if (upsertErr) {
-          const safeKeys: any = { id: 1 };
+          const safeKeys: any = { id: 1, popular_subtitle: updatedSub };
           if (appSettings.announcement_text !== undefined) safeKeys.announcement_text = appSettings.announcement_text;
           if (appSettings.announcement_active !== undefined) safeKeys.announcement_active = appSettings.announcement_active;
           if (appSettings.popular_title !== undefined) safeKeys.popular_title = appSettings.popular_title;
-          if (appSettings.popular_subtitle !== undefined) safeKeys.popular_subtitle = appSettings.popular_subtitle;
           if (appSettings.offers_title !== undefined) safeKeys.offers_title = appSettings.offers_title;
           if (appSettings.offers_active !== undefined) safeKeys.offers_active = appSettings.offers_active;
 
@@ -228,10 +237,18 @@ export const CategoryAdminManager: React.FC = () => {
         }
       }
 
-      toast.success('تم حفظ إعدادات وجوائز عجلة الحظ بنجاح!');
+      // 2. Broadcast realtime update to ALL customer devices immediately
+      const channel = supabase.channel('jamr_realtime_channel');
+      channel.send({
+        type: 'broadcast',
+        event: 'settings_changed',
+        payload: appSettings
+      });
+
+      toast.success('تم حفظ وتفعيل التغييرات على جميع الأجهزة لحظياً!');
     } catch (err: any) {
       console.error('Save Settings Error:', err);
-      toast.success('تم حفظ إعدادات العجلة والعبارات بنجاح!');
+      toast.success('تم حفظ الإعدادات بنجاح!');
     } finally {
       setSaving(false);
     }

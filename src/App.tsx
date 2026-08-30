@@ -28,6 +28,28 @@ import { PushSubscriptionBanner } from './components/PushSubscriptionBanner';
 import { showSystemNotification } from './utils/pushSubscription';
 import { initOneSignal } from './utils/oneSignalService';
 
+const parseAppSettings = (data: any) => {
+  if (!data) return {};
+  let parsed = { ...data };
+  
+  const subStr = data.popular_subtitle || data.announcement_text || '';
+  const match = typeof subStr === 'string' ? subStr.match(/\[CONFIG:(.*?)\]/) : null;
+  if (match && match[1]) {
+    try {
+      const extraConfig = JSON.parse(match[1]);
+      parsed = { ...parsed, ...extraConfig };
+    } catch (e) {
+      console.error('Error parsing config tag:', e);
+    }
+  }
+
+  if (typeof parsed.popular_subtitle === 'string') {
+    parsed.popular_subtitle = parsed.popular_subtitle.replace(/\[CONFIG:.*?\]/g, '').trim();
+  }
+
+  return parsed;
+};
+
 export default function App() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -189,16 +211,21 @@ export default function App() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => fetchData())
         .subscribe();
 
-      const settingsChannel = supabase.channel('app-settings-sync')
+      const settingsChannel = supabase.channel('jamr_realtime_channel')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, 
           (payload) => {
-            console.log('DEBUG: App settings changed:', payload);
-            const savedLocal = localStorage.getItem('jamr_app_settings');
-            let localObj = {};
-            if (savedLocal) { try { localObj = JSON.parse(savedLocal); } catch {} }
-            setAppSettings({ ...(payload.new || {}), ...localObj });
+            console.log('DEBUG: App settings changed via DB:', payload);
+            const parsed = parseAppSettings(payload.new || {});
+            setAppSettings(prev => ({ ...prev, ...parsed }));
           }
-        ).subscribe();
+        )
+        .on('broadcast', { event: 'settings_changed' }, (message) => {
+          console.log('DEBUG: Instant broadcast settings update:', message.payload);
+          if (message.payload) {
+            setAppSettings(prev => ({ ...prev, ...message.payload }));
+          }
+        })
+        .subscribe();
 
       return () => { 
         console.log('DEBUG: Cleaning up real-time channels');
@@ -403,7 +430,8 @@ export default function App() {
       if (savedLocalSettings) {
         try { localSettingsObj = JSON.parse(savedLocalSettings); } catch {}
       }
-      setAppSettings({ ...(appSettingsRes.data || {}), ...localSettingsObj });
+      const parsedDbConfig = parseAppSettings(appSettingsRes.data || {});
+      setAppSettings({ ...parsedDbConfig, ...localSettingsObj });
       if (storiesRes.data) {
         setStories(storiesRes.data);
         localStorage.setItem('jamr_stories_cache', JSON.stringify(storiesRes.data));
