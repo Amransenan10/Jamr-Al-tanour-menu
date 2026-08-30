@@ -45,7 +45,7 @@ export default function App() {
   const [activeOrder, setActiveOrder] = useState<{ id: string; status: string; order_type?: string } | null>(null);
   const prevAppOrderStatusRef = useRef<string | null>(null);
   const [storeSettings, setStoreSettings] = useState<any>(null);
-  const [appSettings, setAppSettings] = useState<any>(null);
+  const [appSettings, setAppSettings] = useState<any>({});
   const [isWheelOpen, setIsWheelOpen] = useState(false);
   const storeStatus = storeSettings?.status || 'open';
 
@@ -193,7 +193,7 @@ export default function App() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, 
           (payload) => {
             console.log('DEBUG: App settings changed:', payload);
-            setAppSettings(payload.new);
+            setAppSettings(payload.new || {});
           }
         ).subscribe();
 
@@ -396,7 +396,7 @@ export default function App() {
         localStorage.setItem('jamr_prods_cache', JSON.stringify(processedProducts));
       }
       if (statusRes.data) setStoreSettings(statusRes.data);
-      if (appSettingsRes.data) setAppSettings(appSettingsRes.data);
+      if (appSettingsRes.data) setAppSettings(appSettingsRes.data || {});
       if (storiesRes.data) {
         setStories(storiesRes.data);
         localStorage.setItem('jamr_stories_cache', JSON.stringify(storiesRes.data));
@@ -568,8 +568,8 @@ export default function App() {
             categories={categories}
             activeCategoryId={activeCategoryId}
             onCategoryChange={setActiveCategoryId}
-            showWeeklyOffers={appSettings.offers_active ?? true}
-            offersTitle={appSettings.offers_title || 'العروض الأسبوعية'}
+            showWeeklyOffers={appSettings?.offers_active ?? true}
+            offersTitle={appSettings?.offers_title || 'العروض الأسبوعية'}
           />
 
           <main className="container mx-auto px-4 py-8">

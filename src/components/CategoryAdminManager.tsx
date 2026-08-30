@@ -50,7 +50,7 @@ export const CategoryAdminManager: React.FC = () => {
         setCategories(catsRes.data);
       }
       if (settingsRes.data) {
-        setAppSettings(settingsRes.data);
+        setAppSettings(settingsRes.data || {});
       }
     } catch (err) {
       console.error('Error loading category data:', err);
