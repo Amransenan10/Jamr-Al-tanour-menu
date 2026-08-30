@@ -557,6 +557,8 @@ export default function App() {
             categories={categories}
             activeCategoryId={activeCategoryId}
             onCategoryChange={setActiveCategoryId}
+            showWeeklyOffers={appSettings.offers_active ?? true}
+            offersTitle={appSettings.offers_title || 'العروض الأسبوعية'}
           />
 
           <main className="container mx-auto px-4 py-8">

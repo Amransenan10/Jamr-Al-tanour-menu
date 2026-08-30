@@ -30,6 +30,8 @@ export const CategoryAdminManager: React.FC = () => {
     announcement_active?: boolean;
     popular_title?: string;
     popular_subtitle?: string;
+    offers_title?: string;
+    offers_active?: boolean;
   }>({});
 
   useEffect(() => {
@@ -285,7 +287,7 @@ export const CategoryAdminManager: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-400 block">تنشيط شريط الإعلانات</label>
+            <label className="text-xs font-bold text-gray-400 block">تنشيط شريط الإعلانات الأعلى</label>
             <div className="flex items-center gap-3 pt-2">
               <button
                 type="button"
@@ -299,6 +301,36 @@ export const CategoryAdminManager: React.FC = () => {
               </button>
               <span className="text-sm font-bold text-gray-300">
                 {appSettings.announcement_active ? 'مفعل ويظهر أعلى المنيو' : 'مخفي'}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-gray-400 block">اسم زر قسم العروض في الشريط</label>
+            <input
+              type="text"
+              placeholder="العروض الأسبوعية"
+              value={appSettings.offers_title || 'العروض الأسبوعية'}
+              onChange={e => setAppSettings({ ...appSettings, offers_title: e.target.value })}
+              className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm border border-transparent focus:border-amber-500/50 outline-none"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-gray-400 block">إظهار قسم العروض في شريط الأقسام</label>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setAppSettings({ ...appSettings, offers_active: !(appSettings.offers_active ?? true) })}
+                className={cn(
+                  "w-12 h-6 rounded-full transition-colors relative p-1 cursor-pointer",
+                  (appSettings.offers_active ?? true) ? "bg-amber-500" : "bg-zinc-700"
+                )}
+              >
+                <div className={cn("w-4 h-4 rounded-full bg-black transition-transform", (appSettings.offers_active ?? true) ? "translate-x-0" : "-translate-x-6")} />
+              </button>
+              <span className="text-sm font-bold text-gray-300">
+                {(appSettings.offers_active ?? true) ? 'مفعل ويظهر كزر عروض' : 'مخفي وغير متاح'}
               </span>
             </div>
           </div>
