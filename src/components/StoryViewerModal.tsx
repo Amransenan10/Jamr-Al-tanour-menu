@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Story, Product } from '../types';
-import { X, ChevronRight, ChevronLeft, ShoppingCart } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, ShoppingBag, Ticket, ExternalLink, Copy, Check } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import toast from 'react-hot-toast';
 
@@ -19,13 +19,16 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
     const { addToCart } = useCart();
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [progress, setProgress] = useState(0);
+    const [isCopied, setIsCopied] = useState(false);
     const STORY_DURATION = 5000; // 5 seconds per story
 
     const currentStory = stories[currentIndex];
     const linkedProduct = currentStory?.product_id ? products.find(p => p.id === currentStory.product_id) : null;
+    const promoCode = currentStory?.promo_code;
 
     useEffect(() => {
         setProgress(0);
+        setIsCopied(false);
         const startTime = Date.now();
         let animationFrame: number;
 
@@ -62,8 +65,23 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
         }
     };
 
-    const handleOrderClick = (e: React.MouseEvent) => {
-        e.stopPropagation(); // prevent navigation
+    const handleCopyCode = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (promoCode) {
+            navigator.clipboard.writeText(promoCode);
+            setIsCopied(true);
+            toast.success(`تم نسخ كود الخصم (${promoCode}) بنجاح!`);
+            setTimeout(() => setIsCopied(false), 3000);
+        }
+    };
+
+    const handleActionClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (promoCode) {
+            handleCopyCode(e);
+            return;
+        }
+
         if (currentStory.offer_name && currentStory.offer_price) {
             addToCart({
                 id: Math.random().toString(36).substr(2, 9),
@@ -81,6 +99,8 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
         } else if (linkedProduct) {
             onClose();
             onProductSelect(linkedProduct.id);
+        } else if (currentStory.action_url) {
+            window.open(currentStory.action_url, '_blank');
         }
     };
 
@@ -90,7 +110,7 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
                 initial={{ opacity: 0, y: 100 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 100 }}
-                className="fixed inset-0 z-50 bg-black flex flex-col"
+                className="fixed inset-0 z-50 bg-black flex flex-col dir-rtl"
             >
                 {/* Progress Bars */}
                 <div className="absolute top-0 left-0 right-0 z-20 flex gap-1 p-2 pt-4 bg-gradient-to-b from-black/80 to-transparent">
@@ -109,22 +129,26 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
 
                 {/* Header Controls */}
                 <div className="absolute top-6 left-0 right-0 z-20 flex justify-between items-center px-4">
-                    <button onClick={onClose} className="p-2 bg-black/40 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-colors">
-                        <X size={24} />
-                    </button>
-                    {/* Optionally add brand logo here */}
+                    <div className="flex items-center gap-2">
+                        <button onClick={onClose} className="p-2 bg-black/40 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-colors">
+                            <X size={20} />
+                        </button>
+                        {currentStory.title && (
+                            <span className="text-white text-xs font-bold bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+                                {currentStory.title}
+                            </span>
+                        )}
+                    </div>
                 </div>
 
                 {/* Touch Areas for Navigation */}
                 <div className="absolute inset-x-0 top-20 bottom-32 z-10 flex">
-                    {/* Right side = Next (since Arabic is RTL, but typically left implies prev, right next. In RTL stories, clicking right is next) */}
                     <div className="flex-1" onClick={handleNext} />
-                    {/* Left side = Prev */}
                     <div className="w-1/3" onClick={handlePrev} />
                 </div>
 
                 {/* Story Image */}
-                <div className="flex-1 flex items-center justify-center bg-zinc-900">
+                <div className="flex-1 flex items-center justify-center bg-zinc-950 relative">
                     <motion.img 
                         key={currentStory.id}
                         initial={{ opacity: 0.5, scale: 0.95 }}
@@ -133,23 +157,56 @@ export const StoryViewerModal: React.FC<StoryViewerModalProps> = ({
                         alt="Story" 
                         className="w-full h-full object-contain md:object-cover max-w-md mx-auto"
                     />
+
+                    {/* Promo Code Floating Banner if exists */}
+                    {promoCode && (
+                        <div className="absolute top-24 inset-x-4 z-20 mx-auto max-w-xs bg-zinc-900/90 backdrop-blur-md border border-amber-500/40 p-3 rounded-2xl flex items-center justify-between text-white shadow-2xl">
+                            <div className="flex items-center gap-2">
+                                <Ticket size={18} className="text-amber-400" />
+                                <div>
+                                    <p className="text-[10px] text-gray-400">كود الخصم الخاص</p>
+                                    <p className="font-mono font-black text-amber-400 text-sm">{promoCode}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleCopyCode}
+                                className="px-3 py-1.5 bg-amber-500 text-black font-bold text-xs rounded-xl flex items-center gap-1 hover:brightness-110 active:scale-95 transition-all"
+                            >
+                                {isCopied ? <Check size={14} /> : <Copy size={14} />}
+                                <span>{isCopied ? 'تم النسخ' : 'نسخ'}</span>
+                            </button>
+                        </div>
+                    )}
                 </div>
 
-                {/* Footer Action */}
-                {(currentStory.offer_name || linkedProduct) && (
+                {/* Footer Action Button */}
+                {(currentStory.offer_name || linkedProduct || promoCode || currentStory.button_text || currentStory.action_url) && (
                     <div className="absolute bottom-0 left-0 right-0 z-20 p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex justify-center pb-8">
                         <button 
-                            onClick={handleOrderClick}
-                            className="w-full max-w-sm bg-white text-black font-black py-4 px-8 rounded-2xl flex items-center justify-center gap-3 shadow-[0_0_40px_rgba(255,255,255,0.3)] hover:scale-105 active:scale-95 transition-all animate-bounce"
-                            style={{ animationDuration: '2s' }}
+                            onClick={handleActionClick}
+                            className="w-full max-w-sm bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2.5 shadow-[0_0_30px_rgba(245,158,11,0.4)] hover:scale-105 active:scale-95 transition-all"
                         >
-                            <ShoppingCart size={24} />
-                            <span>
-                                {currentStory.offer_name 
-                                    ? `اطلب الآن - ${currentStory.offer_price} ر.س`
-                                    : `اطلب الآن - ${linkedProduct?.price} ر.س`
-                                }
-                            </span>
+                            {promoCode ? (
+                                <>
+                                    <Ticket size={20} />
+                                    <span>{isCopied ? 'تم نسخ كود الخصم' : `استخدم الكود (${promoCode})`}</span>
+                                </>
+                            ) : linkedProduct ? (
+                                <>
+                                    <ShoppingBag size={20} />
+                                    <span>اطلب {linkedProduct.name_ar} - {linkedProduct.price} ر.س</span>
+                                </>
+                            ) : currentStory.offer_name ? (
+                                <>
+                                    <ShoppingBag size={20} />
+                                    <span>اطلب الآن - {currentStory.offer_price} ر.س</span>
+                                </>
+                            ) : (
+                                <>
+                                    <ExternalLink size={20} />
+                                    <span>{currentStory.button_text || 'عرض التفاصيل'}</span>
+                                </>
+                            )}
                         </button>
                     </div>
                 )}

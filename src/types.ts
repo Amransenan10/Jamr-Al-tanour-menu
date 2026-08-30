@@ -4,6 +4,8 @@ export interface Category {
   name_en: string;
   is_active: boolean;
   sort_order: number;
+  display_order?: number;
+  description_ar?: string;
 }
 
 export interface Product {
@@ -20,17 +22,25 @@ export interface Product {
   starting_price?: number;
   sales_count?: number;
   is_hidden?: boolean;
+  is_offer?: boolean;
+  original_price?: number;
+  offer_discount_percent?: number;
 }
 
 export interface Story {
   id: string;
   image_url: string;
+  title?: string;
   product_id?: string;
   offer_name?: string;
   offer_price?: number;
   is_active: boolean;
   created_at?: string;
   expires_at?: string;
+  story_type?: 'product' | 'coupon' | 'event';
+  promo_code?: string;
+  button_text?: string;
+  action_url?: string;
 }
 
 export interface OptionGroup {

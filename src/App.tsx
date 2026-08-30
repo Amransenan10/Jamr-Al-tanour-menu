@@ -16,7 +16,7 @@ import { supabase } from './lib/supabaseClient';
 import { CartProvider } from './context/CartContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { Loader2, UtensilsCrossed, Navigation } from 'lucide-react';
+import { Loader2, UtensilsCrossed, Navigation, AlertCircle, Clock, CheckCircle2, Bike, Utensils, FileText, Sparkles, Tag, ShieldAlert } from 'lucide-react';
 import { BranchSelectorModal } from './components/BranchSelectorModal';
 import { FloatingCartButton } from './components/FloatingCartButton';
 import { useBackButton } from './hooks/useBackButton';
@@ -348,7 +348,7 @@ export default function App() {
         supabase
           .from('products')
           .select('*, option_groups(id, min_selection, max_selection, option_items(price))')
-          .eq('is_available', true),
+          .order('is_available', { ascending: false }),
         supabase.from('store_settings')
           .select('*')
           .eq('branch_name', overrideBranch || selectedBranch || 'السويدي الغربي')
@@ -408,13 +408,17 @@ export default function App() {
     }
   };
 
-  const filteredProducts = products.filter((p) => {
-    if (p.is_hidden) return false;
-    const matchesCategory = activeCategoryId ? p.category_id === activeCategoryId : true;
-    const matchesSearch = p.name_ar.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.name_en.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const filteredProducts = React.useMemo(() => {
+    return products
+      .filter((p) => {
+        if (p.is_hidden) return false;
+        const matchesCategory = activeCategoryId ? p.category_id === activeCategoryId : true;
+        const matchesSearch = p.name_ar.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.name_en.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesCategory && matchesSearch;
+      })
+      .sort((a, b) => (b.is_available === a.is_available ? 0 : b.is_available ? 1 : -1));
+  }, [products, activeCategoryId, searchQuery]);
 
   const topPopularProducts = React.useMemo(() => {
     if (products.length === 0) return [];
@@ -445,7 +449,12 @@ export default function App() {
     const combinedSet = new Set([...diversePopular.map(p => p.id), ...overallTop.map(p => p.id)]);
     const finalPopular = Array.from(combinedSet)
       .map(id => products.find(p => p.id === id)!)
-      .sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
+      .sort((a, b) => {
+        if (a.is_available !== b.is_available) {
+          return b.is_available ? 1 : -1;
+        }
+        return (b.sales_count || 0) - (a.sales_count || 0);
+      })
       .slice(0, 14);
 
     return finalPopular;
@@ -472,17 +481,20 @@ export default function App() {
 
           {storeStatus === 'closed' && (
               <div className="bg-red-500/10 border-b border-red-500/20 text-red-500 dark:text-red-400 py-3 px-4 text-center text-sm font-bold flex items-center justify-center gap-2">
-                  🔴 عذراً، المطعم مغلق حالياً. لا يمكننا استقبال طلبات جديدة.
+                  <ShieldAlert size={16} />
+                  <span>عذراً، المطعم مغلق حالياً. لا يمكننا استقبال طلبات جديدة.</span>
               </div>
           )}
           {storeStatus === 'busy' && (
               <div className="bg-orange-500/10 border-b border-orange-500/20 text-orange-600 dark:text-orange-400 py-3 px-4 text-center text-sm font-bold flex items-center justify-center gap-2">
-                  🟠 نواجه ضغطاً في الطلبات حالياً. قد يتأخر تحضير طلبك قليلاً، شكراً لتفهمك!
+                  <Clock size={16} />
+                  <span>نواجه ضغطاً في الطلبات حالياً. قد يتأخر تحضير طلبك قليلاً، شكراً لتفهمك!</span>
               </div>
           )}
           {storeStatus === 'prayer' && (
               <div className="bg-indigo-500/10 border-b border-indigo-500/20 text-indigo-600 dark:text-indigo-400 py-3 px-4 text-center text-sm font-bold flex items-center justify-center gap-2">
-                  🕌 عذراً مغلق للصلاة. يمكنك إرسال طلبك وسيتم تحضيره بعد الصلاة.
+                  <Clock size={16} />
+                  <span>مغلق مؤقتاً أثناء الصلاة. يمكنك إرسال طلبك وسيتم تحضيره بعد الصلاة مباشرة.</span>
               </div>
           )}
 
@@ -514,7 +526,10 @@ export default function App() {
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-3">
                       <div className="h-8 w-1.5 bg-primary rounded-full" />
-                      <h2 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">الاكثر طلباً 🔥</h2>
+                      <div className="flex items-center gap-2">
+                        <Sparkles size={24} className="text-amber-500" />
+                        <h2 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">الأكثر طلباً</h2>
+                      </div>
                     </div>
                     <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base font-medium mr-4">
                       إليك ما يفضله عملاؤنا، مختار بعناية من كل قسم
@@ -615,18 +630,18 @@ export default function App() {
                   <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-transparent to-primary/10 pointer-events-none" />
                   <div className="flex items-center gap-3.5 relative z-10">
                     <div className="w-12 h-12 bg-primary text-white rounded-2xl flex items-center justify-center text-xl font-bold shadow-lg shadow-primary/30 group-hover:rotate-12 transition-transform shrink-0">
-                      {activeOrder?.status === 'ready' ? (activeOrder.order_type === 'delivery' ? '🛵' : '🎉') : activeOrder?.status === 'preparing' ? '👨‍🍳' : activeOrder?.status === 'accepted' ? '✅' : '📝'}
+                      {activeOrder?.status === 'ready' ? (activeOrder.order_type === 'delivery' ? <Bike size={24} /> : <CheckCircle2 size={24} />) : activeOrder?.status === 'preparing' ? <Utensils size={24} /> : activeOrder?.status === 'accepted' ? <CheckCircle2 size={24} /> : <FileText size={24} />}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-black text-sm text-white">
                           {activeOrder?.status === 'ready'
-                            ? (activeOrder.order_type === 'delivery' ? 'المندوب في الطريق إليك! 🛵' : 'طلبك جاهز الآن للاستلام! 🎉')
+                            ? (activeOrder.order_type === 'delivery' ? 'المندوب في الطريق إليك' : 'طلبك جاهز الآن للاستلام')
                             : activeOrder?.status === 'preparing'
-                            ? 'جاري تحضير وجبتك في المطبخ 👨‍🍳'
+                            ? 'جاري تحضير وجبتك في المطبخ'
                             : activeOrder?.status === 'accepted'
-                            ? 'تم قبول طلبك، ستبدأ تحضيره قريباً ✅'
-                            : 'تم استلام طلبك وجاري مراجعته 📝'}
+                            ? 'تم قبول طلبك، ستبدأ تحضيره قريباً'
+                            : 'تم استلام طلبك وجاري مراجعته'}
                         </span>
                         <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
                       </div>

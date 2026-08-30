@@ -1,6 +1,7 @@
 import React from 'react';
 import { Category } from '../types';
 import { cn } from '../lib/utils';
+import { Sparkles, Tag } from 'lucide-react';
 
 interface CategoryBarProps {
   categories: Category[];
@@ -24,13 +25,14 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
           <button
             onClick={() => onCategoryChange(null)}
             className={cn(
-              "whitespace-nowrap px-6 py-2.5 rounded-2xl text-sm font-bold transition-all snap-start",
+              "whitespace-nowrap px-6 py-2.5 rounded-2xl text-sm font-bold transition-all snap-start flex items-center gap-2",
               activeCategoryId === null
                 ? "bg-primary text-white shadow-lg shadow-primary/30 scale-105"
                 : "bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10"
             )}
           >
-            ⭐ الأكثر طلباً
+            <Sparkles size={16} />
+            <span>الأكثر طلباً</span>
           </button>
           {categories.map((category) => (
             <button
