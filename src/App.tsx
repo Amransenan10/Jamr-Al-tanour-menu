@@ -580,35 +580,7 @@ export default function App() {
               </div>
             ) : displayProducts.length > 0 ? (
               <div className="space-y-8">
-                {isShowingWeeklyOffers && (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-1.5 bg-amber-500 rounded-full" />
-                      <div className="flex items-center gap-2">
-                        <Tag size={24} className="text-amber-500" />
-                        <h2 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">العروض الأسبوعية والصفقات الحصرية</h2>
-                      </div>
-                    </div>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base font-medium mr-4">
-                      تصفح أقوى التخفيضات والوجبات المميزة المتوفرة حالياً وعروض الاستوري
-                    </p>
-                  </div>
-                )}
 
-                {isShowingPopular && (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-1.5 bg-primary rounded-full" />
-                      <div className="flex items-center gap-2">
-                        <Sparkles size={24} className="text-amber-500" />
-                        <h2 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">الأكثر طلباً</h2>
-                      </div>
-                    </div>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base font-medium mr-4">
-                      إليك ما يفضله عملاؤنا، مختار بعناية من كل قسم
-                    </p>
-                  </div>
-                )}
                 
                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-8">
                   <AnimatePresence mode="popLayout">
