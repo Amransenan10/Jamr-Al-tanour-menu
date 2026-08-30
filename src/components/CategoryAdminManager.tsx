@@ -417,16 +417,16 @@ export const CategoryAdminManager: React.FC = () => {
                 <div className="flex items-center gap-3 pt-1">
                   <button
                     type="button"
-                    onClick={() => setAppSettings({ ...appSettings, wheel_active: !appSettings.wheel_active })}
+                    onClick={() => setAppSettings({ ...appSettings, wheel_active: !(appSettings.wheel_active ?? true) })}
                     className={cn(
                       "w-12 h-6 rounded-full transition-colors relative p-1 cursor-pointer",
-                      appSettings.wheel_active ? "bg-amber-500" : "bg-zinc-700"
+                      (appSettings.wheel_active ?? true) ? "bg-amber-500" : "bg-zinc-700"
                     )}
                   >
-                    <div className={cn("w-4 h-4 rounded-full bg-black transition-transform", appSettings.wheel_active ? "translate-x-0" : "-translate-x-6")} />
+                    <div className={cn("w-4 h-4 rounded-full bg-black transition-transform", (appSettings.wheel_active ?? true) ? "translate-x-0" : "-translate-x-6")} />
                   </button>
                   <span className="text-sm font-bold text-gray-300">
-                    {appSettings.wheel_active ? '🎡 مفعلة وتظهر كزر عائم للعميل' : 'مغلقة ومخفية كلياً'}
+                    {(appSettings.wheel_active ?? true) ? '🎡 مفعلة وتظهر كزر عائم للعميل' : 'مغلقة ومخفية كلياً'}
                   </span>
                 </div>
               </div>

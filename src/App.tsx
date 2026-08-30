@@ -400,7 +400,7 @@ export default function App() {
       if (savedLocalSettings) {
         try { localSettingsObj = JSON.parse(savedLocalSettings); } catch {}
       }
-      setAppSettings({ ...localSettingsObj, ...(appSettingsRes.data || {}) });
+      setAppSettings({ ...(appSettingsRes.data || {}), ...localSettingsObj });
       if (storiesRes.data) {
         setStories(storiesRes.data);
         localStorage.setItem('jamr_stories_cache', JSON.stringify(storiesRes.data));
@@ -733,8 +733,8 @@ export default function App() {
             hasActiveOrder={!!activeOrderId} 
           />
 
-          {/* Floating Wheel Button (Only visible if enabled in Admin Panel) */}
-          {appSettings?.wheel_active && (
+          {/* Floating Wheel Button (Enabled by default, toggleable in Admin Panel) */}
+          {(appSettings?.wheel_active ?? true) && (
             <motion.button
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
