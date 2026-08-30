@@ -984,6 +984,7 @@ const AdminMenuView = () => {
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-bold text-gray-400">القسم <span className="text-red-500">*</span></label>
                                         <select required value={formData.category_id} onChange={e => setFormData({...formData, category_id: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none appearance-none cursor-pointer">
+                                            <option value="offers_weekly">🏷️ قسم العروض الأسبوعية</option>
                                             {categories.map(cat => (
                                                 <option key={cat.id} value={cat.id}>{cat.name_ar}</option>
                                             ))}

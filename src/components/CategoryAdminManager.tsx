@@ -4,7 +4,7 @@ import { supabaseAdmin } from '../lib/supabaseAdmin';
 import { Category } from '../types';
 import { 
   FolderPlus, Edit, Trash2, Check, X, ArrowUp, ArrowDown, 
-  Layers, Type, Loader2, Sparkles, Eye, EyeOff, Save, Plus
+  Layers, Type, Loader2, Sparkles, Eye, EyeOff, Save, Plus, Tag
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '../lib/utils';
@@ -343,6 +343,34 @@ export const CategoryAdminManager: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
+                {/* Special Offers Category Row */}
+                <tr className="bg-amber-500/5 hover:bg-amber-500/10 transition-colors border-b border-amber-500/20">
+                  <td className="p-3 font-mono text-amber-400 font-black">⭐</td>
+                  <td className="p-3 font-black text-amber-300 flex items-center gap-2">
+                    <Tag size={16} className="text-amber-400" />
+                    <span>{appSettings.offers_title || 'العروض الأسبوعية'}</span>
+                    <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-bold">قسم عروض رئيسي</span>
+                  </td>
+                  <td className="p-3 font-mono text-gray-400">Weekly Offers</td>
+                  <td className="p-3">
+                    <button
+                      onClick={() => setAppSettings(prev => ({ ...prev, offers_active: !Boolean(prev.offers_active) }))}
+                      className={cn(
+                        "px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                        Boolean(appSettings.offers_active)
+                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                          : "bg-red-500/20 text-red-400 border border-red-500/30"
+                      )}
+                    >
+                      {Boolean(appSettings.offers_active) ? <Eye size={12} /> : <EyeOff size={12} />}
+                      <span>{Boolean(appSettings.offers_active) ? 'مفعل ومتاح بالشريط' : 'موقف ومخفي'}</span>
+                    </button>
+                  </td>
+                  <td className="p-3 text-center text-xs text-amber-400/70 font-bold">
+                    قسم مثبت في شريط الأقسام
+                  </td>
+                </tr>
+
                 {categories.map((cat) => (
                   <tr key={cat.id} className="hover:bg-white/[0.02] transition-colors">
                     <td className="p-3 font-mono text-amber-400 font-black">
