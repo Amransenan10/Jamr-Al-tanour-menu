@@ -119,28 +119,33 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
     let basePrice = product.price;
     let additivesTotal = 0;
 
-    // Separate options into "base price overrides" (like Size) and "additives" (like Extra Cheese)
     const singleSelectionGroups = groups.filter(g => g.max_selection === 1 && g.min_selection > 0);
     const overrides = selectedOptions.filter(o => singleSelectionGroups.some(g => g.id === o.groupId));
     const additives = selectedOptions.filter(o => !singleSelectionGroups.some(g => g.id === o.groupId));
 
-    if (overrides.length > 0) {
-      basePrice = overrides.reduce((sum, o) => sum + o.price, 0);
-    }
+    const isOffer = product.is_offer || product.category_id === 'offers_weekly' || (product.original_price && product.original_price > product.price);
 
-    additivesTotal = additives.reduce((sum, o) => {
-      let currentPrice = o.price;
-      const originalItem = items.find(i => i.id === o.itemId);
-      if (originalItem && originalItem.price_rules) {
-        for (const otherOpt of selectedOptions) {
-          if (originalItem.price_rules[otherOpt.itemName] !== undefined) {
-            currentPrice = originalItem.price_rules[otherOpt.itemName];
-            break;
+    if (product.price === 0 && overrides.length > 0) {
+      basePrice = overrides.reduce((sum, o) => sum + o.price, 0);
+    } else if (product.price > 0) {
+      if (!isOffer) {
+        additivesTotal += overrides.reduce((sum, o) => sum + (o.price || 0), 0);
+      }
+      
+      additivesTotal += additives.reduce((sum, o) => {
+        let currentPrice = o.price;
+        const originalItem = items.find(i => i.id === o.itemId);
+        if (originalItem && originalItem.price_rules) {
+          for (const otherOpt of selectedOptions) {
+            if (originalItem.price_rules[otherOpt.itemName] !== undefined) {
+              currentPrice = originalItem.price_rules[otherOpt.itemName];
+              break;
+            }
           }
         }
-      }
-      return sum + currentPrice;
-    }, 0);
+        return sum + currentPrice;
+      }, 0);
+    }
 
     return (basePrice + additivesTotal) * quantity;
   };
@@ -304,8 +309,10 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                               }
                             }
 
+                            const isOfferProduct = product.is_offer || product.category_id === 'offers_weekly' || (product.original_price && product.original_price > product.price);
+
                             const displayPrice = isOverrideGroup
-                              ? `${displayItemPrice} ر.س`
+                              ? (isOfferProduct && product.price > 0 ? (displayItemPrice > 0 ? 'مشمول بالعرض' : 'مجاناً') : `${displayItemPrice} ر.س`)
                               : displayItemPrice > 0 ? `+${displayItemPrice} ر.س` : 'مجاناً';
 
                             return (
