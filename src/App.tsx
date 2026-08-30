@@ -193,7 +193,10 @@ export default function App() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, 
           (payload) => {
             console.log('DEBUG: App settings changed:', payload);
-            setAppSettings(payload.new || {});
+            const savedLocal = localStorage.getItem('jamr_app_settings');
+            let localObj = {};
+            if (savedLocal) { try { localObj = JSON.parse(savedLocal); } catch {} }
+            setAppSettings({ ...(payload.new || {}), ...localObj });
           }
         ).subscribe();
 
@@ -733,18 +736,19 @@ export default function App() {
             hasActiveOrder={!!activeOrderId} 
           />
 
-          {/* Floating Wheel Button (Enabled by default, toggleable in Admin Panel) */}
-          {(appSettings?.wheel_active ?? true) && (
+          {/* Floating Wheel Button (Compact & Left-aligned so it never covers products) */}
+          {(appSettings?.wheel_active !== false) && (
             <motion.button
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
               onClick={() => setIsWheelOpen(true)}
-              className="fixed bottom-24 right-4 z-40 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-black px-4 py-2.5 sm:px-5 sm:py-3 rounded-full shadow-2xl shadow-amber-500/50 flex items-center gap-2 font-black text-xs sm:text-sm cursor-pointer border-2 border-white/20"
+              className="fixed bottom-28 left-4 z-40 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-black p-3 sm:px-4 sm:py-2.5 rounded-full shadow-2xl shadow-amber-500/50 flex items-center gap-2 font-black text-xs cursor-pointer border-2 border-white/30 backdrop-blur-md"
+              title="دَوّر واكسب جوائز المنيو!"
             >
               <span className="text-xl animate-spin" style={{ animationDuration: '6s' }}>🎡</span>
-              <span>عجلة الحظ!</span>
+              <span className="hidden sm:inline font-black text-xs">عجلة الحظ!</span>
             </motion.button>
           )}
 
