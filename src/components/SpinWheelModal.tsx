@@ -10,15 +10,23 @@ interface SpinWheelModalProps {
   onApplyCoupon?: (code: string) => void;
 }
 
-interface Prize {
-  id: number;
+export interface Prize {
+  id: number | string;
   label: string;
   code: string;
   type: 'discount' | 'item' | 'points' | 'unlucky';
   color: string;
 }
 
-const PRIZES: Prize[] = [
+interface SpinWheelModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onApplyCoupon?: (code: string) => void;
+  prizes?: Prize[];
+  title?: string;
+}
+
+const DEFAULT_PRIZES: Prize[] = [
   { id: 1, label: 'خصم 10% عند الطلب', code: 'WHEEL10', type: 'discount', color: '#f59e0b' },
   { id: 2, label: 'مشروب مجاني مع طلبك', code: 'FREEJUICE', type: 'item', color: '#ec4899' },
   { id: 3, label: 'خصم 15% على الوجبات', code: 'WHEEL15', type: 'discount', color: '#10b981' },
@@ -32,8 +40,12 @@ const PRIZES: Prize[] = [
 export const SpinWheelModal: React.FC<SpinWheelModalProps> = ({
   isOpen,
   onClose,
-  onApplyCoupon
+  onApplyCoupon,
+  prizes,
+  title
 }) => {
+  const activePrizes = (prizes && prizes.length > 0) ? prizes : DEFAULT_PRIZES;
+
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [winningPrize, setWinningPrize] = useState<Prize | null>(null);
@@ -54,12 +66,12 @@ export const SpinWheelModal: React.FC<SpinWheelModalProps> = ({
     setSpinning(true);
     setWinningPrize(null);
 
-    // Pick a prize (weighted random, pick index 0 to 6 with higher chance)
-    const prizeIndex = Math.floor(Math.random() * (PRIZES.length - 1)); // 0..6
-    const selectedPrize = PRIZES[prizeIndex];
+    // Pick a prize (weighted random, non-unlucky preferred)
+    const prizeIndex = Math.floor(Math.random() * (activePrizes.length - 1));
+    const selectedPrize = activePrizes[prizeIndex] || activePrizes[0];
 
     // Calculate rotation angle
-    const segmentAngle = 360 / PRIZES.length;
+    const segmentAngle = 360 / activePrizes.length;
     // Extra full spins (5 to 8 rounds)
     const extraRounds = (5 + Math.floor(Math.random() * 3)) * 360;
     // Target angle (invert because wheel spins clockwise)
@@ -116,7 +128,7 @@ export const SpinWheelModal: React.FC<SpinWheelModalProps> = ({
             <Sparkles size={14} />
             <span>عجلة الحظ والجوائز الفورية</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-black text-white">دَوّر واكسب جوائز المنيو!</h2>
+          <h2 className="text-xl sm:text-2xl font-black text-white">{title || 'دَوّر واكسب جوائز المنيو!'}</h2>
           <p className="text-xs text-gray-400">جرب حظك الآن واحصل على كوبونات خصم وهدايا مباشرة</p>
         </div>
 
@@ -131,8 +143,8 @@ export const SpinWheelModal: React.FC<SpinWheelModalProps> = ({
             style={{ transform: `rotate(${rotation}deg)` }}
           >
             <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
-              {PRIZES.map((prize, idx) => {
-                const angle = 360 / PRIZES.length;
+              {activePrizes.map((prize, idx) => {
+                const angle = 360 / activePrizes.length;
                 const startAngle = idx * angle;
                 const endAngle = (idx + 1) * angle;
                 

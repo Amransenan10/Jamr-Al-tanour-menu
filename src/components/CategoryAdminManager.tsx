@@ -9,6 +9,17 @@ import {
 import toast from 'react-hot-toast';
 import { cn } from '../lib/utils';
 
+const DEFAULT_WHEEL_PRIZES = [
+  { id: 1, label: 'خصم 10% عند الطلب', code: 'WHEEL10', type: 'discount', color: '#f59e0b' },
+  { id: 2, label: 'مشروب مجاني مع طلبك', code: 'FREEJUICE', type: 'item', color: '#ec4899' },
+  { id: 3, label: 'خصم 15% على الوجبات', code: 'WHEEL15', type: 'discount', color: '#10b981' },
+  { id: 4, label: 'بطاطس مجانية مع طلبك', code: 'FREEFRIES', type: 'item', color: '#6366f1' },
+  { id: 5, label: '50 نقطة ولاء مجانية', code: 'POINTS50', type: 'points', color: '#8b5cf6' },
+  { id: 6, label: 'خصم 20% للطلبات العائلية', code: 'WHEEL20', type: 'discount', color: '#ef4444' },
+  { id: 7, label: 'وفّر 10 ر.س عند الطلب', code: 'SAVE10', type: 'discount', color: '#14b8a6' },
+  { id: 8, label: 'حظ أوفير غداً', code: '', type: 'unlucky', color: '#6b7280' },
+];
+
 export const CategoryAdminManager: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +43,40 @@ export const CategoryAdminManager: React.FC = () => {
     popular_subtitle?: string;
     offers_title?: string;
     offers_active?: boolean;
+    wheel_active?: boolean;
+    wheel_title?: string;
+    wheel_prizes?: any;
   }>({});
+
+  const currentPrizes = React.useMemo(() => {
+    if (!appSettings.wheel_prizes) return DEFAULT_WHEEL_PRIZES;
+    if (typeof appSettings.wheel_prizes === 'string') {
+      try { return JSON.parse(appSettings.wheel_prizes); } catch { return DEFAULT_WHEEL_PRIZES; }
+    }
+    return Array.isArray(appSettings.wheel_prizes) ? appSettings.wheel_prizes : DEFAULT_WHEEL_PRIZES;
+  }, [appSettings.wheel_prizes]);
+
+  const updatePrizeField = (idx: number, field: string, value: any) => {
+    const updated = [...currentPrizes];
+    updated[idx] = { ...updated[idx], [field]: value };
+    setAppSettings(prev => ({ ...prev, wheel_prizes: updated }));
+  };
+
+  const handleAddPrize = () => {
+    const newPrize = {
+      id: Date.now(),
+      label: 'جائزة جديدة',
+      code: 'GIFT' + Math.floor(Math.random() * 100),
+      type: 'discount',
+      color: '#f59e0b'
+    };
+    setAppSettings(prev => ({ ...prev, wheel_prizes: [...currentPrizes, newPrize] }));
+  };
+
+  const handleDeletePrize = (idx: number) => {
+    const updated = currentPrizes.filter((_, i) => i !== idx);
+    setAppSettings(prev => ({ ...prev, wheel_prizes: updated }));
+  };
 
   useEffect(() => {
     fetchCategoriesAndSettings();
@@ -156,15 +200,25 @@ export const CategoryAdminManager: React.FC = () => {
   const handleSaveAppSettings = async () => {
     setSaving(true);
     try {
-      const payload = { id: 1, ...appSettings };
-      let res = await supabaseAdmin.from('app_settings').upsert([payload]);
-      if (res.error) res = await supabase.from('app_settings').upsert([payload]);
-      if (res.error) throw res.error;
+      const payload = {
+        ...appSettings,
+        id: 1,
+        wheel_prizes: typeof appSettings.wheel_prizes === 'object' ? JSON.stringify(appSettings.wheel_prizes) : (appSettings.wheel_prizes || JSON.stringify(DEFAULT_WHEEL_PRIZES))
+      };
+      
+      let { error: updateErr } = await supabaseAdmin.from('app_settings').update(payload).eq('id', 1);
+      if (updateErr) {
+        let { error: upsertErr } = await supabaseAdmin.from('app_settings').upsert([payload]);
+        if (upsertErr) {
+          let { error: anonErr } = await supabase.from('app_settings').update(payload).eq('id', 1);
+          if (anonErr) throw anonErr;
+        }
+      }
 
-      toast.success('تم حفظ إعدادات المنيو وعجلة الحظ بنجاح!');
+      toast.success('تم حفظ إعدادات وجوائز عجلة الحظ بنجاح!');
     } catch (err: any) {
       console.error('Save Settings Error:', err);
-      toast.error(err?.message || 'حدث خطأ عند حفظ الإعدادات');
+      toast.error(err?.message || 'حدث خطأ أثناء حفظ الإعدادات');
     } finally {
       setSaving(false);
     }
@@ -373,6 +427,82 @@ export const CategoryAdminManager: React.FC = () => {
                   onChange={e => setAppSettings({ ...appSettings, wheel_title: e.target.value })}
                   className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm border border-transparent focus:border-amber-500/50 outline-none"
                 />
+              </div>
+            </div>
+
+            {/* Dynamic Prize Manager */}
+            <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-xs font-bold text-amber-400 block">إدارة وتحديد جوائز العجلة 🎁 (تخصيص الفئات والكوبونات)</label>
+                  <p className="text-[10px] text-gray-400">يمكنك إضافة أو حذف أو تعديل مسمى الجائزة، كود الخصم، نوع الهدية ولون القطاع</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddPrize}
+                  className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs font-bold rounded-xl flex items-center gap-1 border border-amber-500/30 transition-colors cursor-pointer"
+                >
+                  <Plus size={14} /> إضافة جائزة
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
+                {currentPrizes.map((prize: any, idx: number) => (
+                  <div key={prize.id || idx} className="bg-zinc-900/80 p-3 rounded-xl border border-white/10 space-y-2 relative group">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1">
+                        <input
+                          type="color"
+                          value={prize.color || '#f59e0b'}
+                          onChange={e => updatePrizeField(idx, 'color', e.target.value)}
+                          className="w-6 h-6 rounded-lg border-none bg-transparent cursor-pointer shrink-0"
+                          title="اختر لون القطاع بالعجلة"
+                        />
+                        <input
+                          type="text"
+                          value={prize.label}
+                          onChange={e => updatePrizeField(idx, 'label', e.target.value)}
+                          placeholder="اسم الجائزة"
+                          className="w-full bg-zinc-800 text-white rounded-lg px-2.5 py-1.5 text-xs font-bold border border-transparent focus:border-amber-500/50 outline-none"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePrize(idx)}
+                        className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                        title="حذف الجائزة"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-gray-400 block mb-0.5">كود الكوبون</label>
+                        <input
+                          type="text"
+                          value={prize.code}
+                          onChange={e => updatePrizeField(idx, 'code', e.target.value.toUpperCase())}
+                          placeholder="مثال: FREEJUICE"
+                          className="w-full bg-zinc-800 text-amber-400 font-mono text-xs font-bold rounded-lg px-2 py-1 border border-transparent focus:border-amber-500/50 outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-400 block mb-0.5">نوع الجائزة</label>
+                        <select
+                          value={prize.type}
+                          onChange={e => updatePrizeField(idx, 'type', e.target.value)}
+                          className="w-full bg-zinc-800 text-gray-200 text-xs font-bold rounded-lg px-2 py-1 border border-transparent focus:border-amber-500/50 outline-none"
+                        >
+                          <option value="discount">خصم نسبة %</option>
+                          <option value="item">صنف / هدية مجانية</option>
+                          <option value="points">نقاط ولاء</option>
+                          <option value="unlucky">حظ أوفير (لا كود)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

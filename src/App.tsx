@@ -775,6 +775,14 @@ export default function App() {
           <SpinWheelModal
             isOpen={isWheelOpen}
             onClose={() => setIsWheelOpen(false)}
+            title={appSettings?.wheel_title}
+            prizes={
+              appSettings?.wheel_prizes
+                ? typeof appSettings.wheel_prizes === 'string'
+                  ? JSON.parse(appSettings.wheel_prizes)
+                  : appSettings.wheel_prizes
+                : undefined
+            }
           />
 
           <InstallPWA />
