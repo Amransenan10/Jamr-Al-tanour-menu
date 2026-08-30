@@ -19,13 +19,13 @@ interface Prize {
 }
 
 const PRIZES: Prize[] = [
-  { id: 1, label: 'خصم 10%', code: 'WHEEL10', type: 'discount', color: '#f59e0b' },
-  { id: 2, label: 'مشروب مجاني', code: 'FREEJUICE', type: 'item', color: '#ec4899' },
-  { id: 3, label: 'خصم 15%', code: 'WHEEL15', type: 'discount', color: '#10b981' },
-  { id: 4, label: 'مقبلات مجانية', code: 'FREEAPP', type: 'item', color: '#6366f1' },
-  { id: 5, label: '50 نقطة ولاء', code: 'POINTS50', type: 'points', color: '#8b5cf6' },
-  { id: 6, label: 'خصم 20%', code: 'WHEEL20', type: 'discount', color: '#ef4444' },
-  { id: 7, label: 'وفّر 5 ر.س', code: 'SAVE5', type: 'discount', color: '#14b8a6' },
+  { id: 1, label: 'خصم 10% عند الطلب', code: 'WHEEL10', type: 'discount', color: '#f59e0b' },
+  { id: 2, label: 'مشروب مجاني مع طلبك', code: 'FREEJUICE', type: 'item', color: '#ec4899' },
+  { id: 3, label: 'خصم 15% على الوجبات', code: 'WHEEL15', type: 'discount', color: '#10b981' },
+  { id: 4, label: 'بطاطس مجانية مع طلبك', code: 'FREEFRIES', type: 'item', color: '#6366f1' },
+  { id: 5, label: '50 نقطة ولاء مجانية', code: 'POINTS50', type: 'points', color: '#8b5cf6' },
+  { id: 6, label: 'خصم 20% للطلبات العائلية', code: 'WHEEL20', type: 'discount', color: '#ef4444' },
+  { id: 7, label: 'وفّر 10 ر.س عند الطلب', code: 'SAVE10', type: 'discount', color: '#14b8a6' },
   { id: 8, label: 'حظ أوفير غداً', code: '', type: 'unlucky', color: '#6b7280' },
 ];
 
@@ -206,16 +206,33 @@ export const SpinWheelModal: React.FC<SpinWheelModalProps> = ({
                   </div>
 
                   {winningPrize.code && (
-                    <div className="flex items-center justify-between bg-zinc-900 p-2.5 rounded-xl border border-white/10">
-                      <span className="font-mono text-amber-400 font-black text-sm px-2">
-                        {winningPrize.code}
-                      </span>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between bg-zinc-900 p-2.5 rounded-xl border border-white/10">
+                        <span className="font-mono text-amber-400 font-black text-sm px-2">
+                          {winningPrize.code}
+                        </span>
+                        <button
+                          onClick={handleCopyCode}
+                          className="px-3 py-1.5 bg-zinc-800 text-gray-200 text-xs font-bold rounded-lg flex items-center gap-1.5 hover:bg-zinc-700 cursor-pointer"
+                        >
+                          {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                          <span>{copied ? 'تم النسخ' : 'نسخ الكود'}</span>
+                        </button>
+                      </div>
+
                       <button
-                        onClick={handleCopyCode}
-                        className="px-3 py-1.5 bg-amber-500 text-black text-xs font-black rounded-lg flex items-center gap-1.5 hover:brightness-110 cursor-pointer"
+                        onClick={() => {
+                          if (winningPrize.code) {
+                            localStorage.setItem('jamr_applied_promo', winningPrize.code);
+                            if (onApplyCoupon) onApplyCoupon(winningPrize.code);
+                            toast.success(`🎉 تم تفعيل هديتك! أضف أصنافك واستفد من (${winningPrize.label})`);
+                            onClose();
+                          }
+                        }}
+                        className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
                       >
-                        {copied ? <Check size={14} /> : <Copy size={14} />}
-                        <span>{copied ? 'تم النسخ' : 'نسخ الكود'}</span>
+                        <Gift size={16} />
+                        <span>تطبيق الهدية مع طلبي الآن 🛒</span>
                       </button>
                     </div>
                   )}

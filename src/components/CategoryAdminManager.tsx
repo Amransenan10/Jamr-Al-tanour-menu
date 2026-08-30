@@ -156,13 +156,15 @@ export const CategoryAdminManager: React.FC = () => {
   const handleSaveAppSettings = async () => {
     setSaving(true);
     try {
-      let res = await supabaseAdmin.from('app_settings').upsert([appSettings]);
-      if (res.error) res = await supabase.from('app_settings').upsert([appSettings]);
+      const payload = { id: 1, ...appSettings };
+      let res = await supabaseAdmin.from('app_settings').upsert([payload]);
+      if (res.error) res = await supabase.from('app_settings').upsert([payload]);
       if (res.error) throw res.error;
 
-      toast.success('تم حفظ عبارات المنيو بنجاح!');
+      toast.success('تم حفظ إعدادات المنيو وعجلة الحظ بنجاح!');
     } catch (err: any) {
-      toast.error(err?.message || 'حدث خطأ عند حفظ العبارات');
+      console.error('Save Settings Error:', err);
+      toast.error(err?.message || 'حدث خطأ عند حفظ الإعدادات');
     } finally {
       setSaving(false);
     }
