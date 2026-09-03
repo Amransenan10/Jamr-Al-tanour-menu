@@ -574,30 +574,73 @@ export const CategoryAdminManager: React.FC = () => {
 
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] text-gray-400 block mb-0.5">كود الخصم الأولي</label>
-                        <input
-                          type="text"
-                          value={prize.code}
-                          onChange={e => updatePrizeField(idx, 'code', e.target.value.toUpperCase())}
-                          placeholder="مولد تلقائياً عند الفوز"
-                          className="w-full bg-zinc-800 text-amber-400 font-mono text-xs font-bold rounded-lg px-2 py-1 border border-transparent focus:border-amber-500/50 outline-none"
-                        />
-                      </div>
-                      <div>
                         <label className="text-[10px] text-gray-400 block mb-0.5">نوع الجائزة</label>
                         <select
                           value={prize.type}
                           onChange={e => updatePrizeField(idx, 'type', e.target.value)}
                           className="w-full bg-zinc-800 text-gray-200 text-xs font-bold rounded-lg px-2 py-1 border border-transparent focus:border-amber-500/50 outline-none"
                         >
-                          <option value="discount">خصم نسبة % / مبلغ</option>
+                          <option value="discount">خصم قيمة / نسبة</option>
                           <option value="free_delivery">توصيل مجاني 🚚</option>
                           <option value="item">صنف / هدية مجانية</option>
                           <option value="points">نقاط ولاء 🌟</option>
                           <option value="unlucky">حظ أوفير ⭐️</option>
                         </select>
                       </div>
+
+                      {prize.type === 'discount' ? (
+                        <div>
+                          <label className="text-[10px] text-gray-400 block mb-0.5">طريقة الخصم</label>
+                          <select
+                            value={prize.discount_type || 'percentage'}
+                            onChange={e => updatePrizeField(idx, 'discount_type', e.target.value)}
+                            className="w-full bg-zinc-800 text-gray-200 text-xs font-bold rounded-lg px-2 py-1 border border-transparent focus:border-amber-500/50 outline-none"
+                          >
+                            <option value="percentage">نسبة مئوية %</option>
+                            <option value="fixed">مبلغ ثابت ر.س</option>
+                          </select>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="text-[10px] text-gray-400 block mb-0.5">كود أولي (اختياري)</label>
+                          <input
+                            type="text"
+                            value={prize.code || ''}
+                            onChange={e => updatePrizeField(idx, 'code', e.target.value.toUpperCase())}
+                            placeholder="مولد تلقائياً"
+                            className="w-full bg-zinc-800 text-amber-400 font-mono text-xs font-bold rounded-lg px-2 py-1 border border-transparent focus:border-amber-500/50 outline-none"
+                          />
+                        </div>
+                      )}
                     </div>
+
+                    {(prize.type === 'discount' || prize.type === 'points' || prize.type === 'item') && (
+                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/5">
+                        <div>
+                          <label className="text-[10px] text-amber-400 font-bold block mb-0.5">
+                            {prize.type === 'points' ? 'عدد النقاط الممنوحة' : prize.discount_type === 'fixed' ? 'مبلغ الخصم (ر.س)' : 'نسبة الخصم (%)'}
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={prize.discount_value !== undefined ? prize.discount_value : ''}
+                            onChange={e => updatePrizeField(idx, 'discount_value', Number(e.target.value))}
+                            placeholder={prize.type === 'points' ? 'مثال: 50' : 'مثال: 15'}
+                            className="w-full bg-zinc-800 text-white text-xs font-bold rounded-lg px-2 py-1 border border-amber-500/30 focus:border-amber-500 outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-400 block mb-0.5">كود الخصم الأولي</label>
+                          <input
+                            type="text"
+                            value={prize.code || ''}
+                            onChange={e => updatePrizeField(idx, 'code', e.target.value.toUpperCase())}
+                            placeholder="تلقائي SPIN-XXXX"
+                            className="w-full bg-zinc-800 text-amber-400 font-mono text-xs font-bold rounded-lg px-2 py-1 border border-transparent focus:border-amber-500/50 outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

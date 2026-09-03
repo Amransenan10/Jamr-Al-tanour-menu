@@ -250,6 +250,21 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
       return;
     }
 
+    if (orderType === 'delivery' && storeSettings?.is_delivery_active === false) {
+      alert('عذراً، خدمة التوصيل مغلقة حالياً من قبل المطعم. يرجى اختيار الاستلام أو المحاولة لاحقاً.');
+      return;
+    }
+
+    if (orderType === 'pickup' && storeSettings?.is_pickup_active === false) {
+      alert('عذراً، خدمة الاستلام مغلقة حالياً من قبل المطعم. يرجى اختيار التوصيل أو المحاولة لاحقاً.');
+      return;
+    }
+
+    if (storeStatus === 'closed') {
+      alert('عذراً، المطعم مغلق حالياً ولا يستقبل طلبات جديدة.');
+      return;
+    }
+
     setLoading(true);
     try {
       // Re-verify promo with phone one more time to prevent bypasses when user enters phone AFTER applying promo

@@ -100,8 +100,8 @@ export const OrderTrackingPage: React.FC = () => {
             } else {
                 processOrderUpdate(orderRes.data, prevStatusRef.current === null);
 
-                // Auto-trigger wheel spin popup 1 second after landing if not spun yet
-                if (!spun && (settingsRes.data?.wheel_active !== false)) {
+                // Auto-trigger wheel spin popup 1 second after landing ONLY on initial page load if not spun yet
+                if (!isSilent && !spun && (settingsRes.data?.wheel_active !== false)) {
                     setTimeout(() => {
                         setIsWheelOpen(true);
                     }, 1000);
@@ -349,7 +349,13 @@ export const OrderTrackingPage: React.FC = () => {
                 {/* Spin Wheel Modal */}
                 <SpinWheelModal
                     isOpen={isWheelOpen}
-                    onClose={() => setIsWheelOpen(false)}
+                    onClose={() => {
+                        setIsWheelOpen(false);
+                        if (order?.id) {
+                            const spun = localStorage.getItem(`jamr_wheel_spun_${order.id}`);
+                            setHasSpunCurrentOrder(!!spun);
+                        }
+                    }}
                     title={appSettings?.wheel_title}
                     customerPhone={order?.phone}
                     orderId={order?.id}

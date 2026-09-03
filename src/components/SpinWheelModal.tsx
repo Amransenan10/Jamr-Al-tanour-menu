@@ -101,7 +101,7 @@ export const SpinWheelModal: React.FC<SpinWheelModalProps> = ({
 
           if (selectedPrize.type === 'points') {
             // Loyalty points prize
-            const pointsVal = 50;
+            const pointsVal = selectedPrize.discount_value || 50;
             setPointsGranted(pointsVal);
 
             // Fetch & update customer points in Supabase
@@ -122,7 +122,7 @@ export const SpinWheelModal: React.FC<SpinWheelModalProps> = ({
               await supabase.from('customers').upsert([{ phone_number: cleanPhone, points_balance: newBal }], { onConflict: 'phone_number' });
             }
 
-            toast.success(`🎉 مبروك! أضيفت ${pointsVal} نقطة ولاء لمصيدك بنجاح! 🌟`);
+            toast.success(`🎉 مبروك! أضيفت ${pointsVal} نقطة ولاء لرصيدك بنجاح! 🌟`);
 
           } else {
             // Dynamic Single-Use Coupon Prize
@@ -130,23 +130,22 @@ export const SpinWheelModal: React.FC<SpinWheelModalProps> = ({
             setGeneratedCode(uniqueCode);
 
             // Determine discount type and value
-            let discType: 'percentage' | 'fixed' | 'free_delivery' = 'percentage';
-            let discVal = 10;
+            let discType: 'percentage' | 'fixed' | 'free_delivery' = selectedPrize.discount_type || 'percentage';
+            let discVal = selectedPrize.discount_value !== undefined ? selectedPrize.discount_value : 10;
 
             if (selectedPrize.type === 'free_delivery' || selectedPrize.label.includes('توصيل')) {
               discType = 'free_delivery';
               discVal = 0;
-            } else if (selectedPrize.label.includes('%')) {
-              discType = 'percentage';
-              const match = selectedPrize.label.match(/(\d+)%/);
-              if (match) discVal = parseInt(match[1]);
-            } else if (selectedPrize.label.includes('ر.س') || selectedPrize.label.includes('ريال')) {
-              discType = 'fixed';
-              const match = selectedPrize.label.match(/(\d+)/);
-              if (match) discVal = parseInt(match[1]);
-            } else {
-              discType = selectedPrize.discount_type || 'percentage';
-              discVal = selectedPrize.discount_value || 10;
+            } else if (selectedPrize.discount_value === undefined) {
+              if (selectedPrize.label.includes('%')) {
+                discType = 'percentage';
+                const match = selectedPrize.label.match(/(\d+)%/);
+                if (match) discVal = parseInt(match[1]);
+              } else if (selectedPrize.label.includes('ر.س') || selectedPrize.label.includes('ريال')) {
+                discType = 'fixed';
+                const match = selectedPrize.label.match(/(\d+)/);
+                if (match) discVal = parseInt(match[1]);
+              }
             }
 
             const couponPayload = {
