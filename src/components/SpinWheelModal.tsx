@@ -107,19 +107,38 @@ export const SpinWheelModal: React.FC<SpinWheelModalProps> = ({
             // Fetch & update customer points in Supabase
             const { data: existingCust } = await supabase
               .from('customers')
-              .select('points_balance')
+              .select('points_balance, full_name')
               .eq('phone_number', cleanPhone)
-              .single();
+              .maybeSingle();
 
             const currentBal = existingCust?.points_balance || 0;
             const newBal = currentBal + pointsVal;
+            const custName = existingCust?.full_name || 'عميل عجلة الحظ';
+
+            const custPayload = {
+              phone_number: cleanPhone,
+              full_name: custName,
+              points_balance: newBal
+            };
 
             let res = await supabaseAdmin
               .from('customers')
-              .upsert([{ phone_number: cleanPhone, points_balance: newBal }], { onConflict: 'phone_number' });
+              .upsert([custPayload], { onConflict: 'phone_number' });
 
             if (res.error) {
-              await supabase.from('customers').upsert([{ phone_number: cleanPhone, points_balance: newBal }], { onConflict: 'phone_number' });
+              await supabase.from('customers').upsert([custPayload], { onConflict: 'phone_number' });
+            }
+
+            // Also record in transactions table
+            try {
+              await supabaseAdmin.from('transactions').insert([{
+                customer_phone: cleanPhone,
+                points_earned: pointsVal,
+                amount: 0,
+                staff_id: 'wheel_prize'
+              }]);
+            } catch (txErr) {
+              console.warn('Transaction record skip:', txErr);
             }
 
             toast.success(`🎉 مبروك! أضيفت ${pointsVal} نقطة ولاء لرصيدك بنجاح! 🌟`);
