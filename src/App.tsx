@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 // Version: 2026-03-13-22-40
 import { Header } from './components/Header';
+import { cn } from './lib/utils';
 import { CategoryBar } from './components/CategoryBar';
 import { ProductCard } from './components/ProductCard';
 import { ProductModal } from './components/ProductModal';
@@ -273,11 +274,20 @@ export default function App() {
       setActiveOrder(newOrder);
 
       if (['completed', 'cancelled'].includes(newOrder.status)) {
-        setTimeout(() => {
-          localStorage.removeItem('jamr_active_order');
-          setActiveOrderId(null);
-          setActiveOrder(null);
-        }, 6000);
+        if (newOrder.status === 'completed') {
+          localStorage.setItem('jamr_last_completed_order', newOrder.id);
+        }
+        const hasSpun = localStorage.getItem(`jamr_wheel_spun_${newOrder.id}`);
+        // If user hasn't spun the wheel yet for this completed order, keep banner visible
+        if (!hasSpun && newOrder.status === 'completed') {
+          setActiveOrderId(newOrder.id);
+        } else {
+          setTimeout(() => {
+            localStorage.removeItem('jamr_active_order');
+            setActiveOrderId(null);
+            setActiveOrder(null);
+          }, 6000);
+        }
       }
 
       if (!isInitial && prevAppOrderStatusRef.current && prevAppOrderStatusRef.current !== newOrder.status) {
@@ -286,7 +296,7 @@ export default function App() {
           accepted: 'تم قبول الطلب ✅',
           preparing: 'جاري التحضير في المطبخ 👨‍🍳',
           ready: newOrder.order_type === 'delivery' ? 'المندوب في الطريق إليك 🛵' : 'طلبك جاهز للاستلام! 🎉',
-          completed: 'تم تسليم الطلب ✨',
+          completed: 'تم تسليم الطلب! اضغط لتدوير عجلة الحظ 🎡',
           cancelled: 'تم إلغاء الطلب ❌'
         };
         const label = statusLabels[newOrder.status] || 'تحديث جديد في طلبك';
@@ -303,7 +313,7 @@ export default function App() {
       prevAppOrderStatusRef.current = newOrder.status;
     };
 
-    const savedOrderId = localStorage.getItem('jamr_active_order');
+    const savedOrderId = localStorage.getItem('jamr_active_order') || localStorage.getItem('jamr_last_completed_order');
     if (!savedOrderId) {
       setActiveOrderId(null);
       setActiveOrder(null);
@@ -321,10 +331,19 @@ export default function App() {
         .single();
 
       if (data) {
+        const hasSpun = localStorage.getItem(`jamr_wheel_spun_${data.id}`);
         if (['completed', 'cancelled'].includes(data.status)) {
-          localStorage.removeItem('jamr_active_order');
-          setActiveOrderId(null);
-          setActiveOrder(null);
+          if (data.status === 'completed') {
+            localStorage.setItem('jamr_last_completed_order', data.id);
+          }
+          if (!hasSpun && data.status === 'completed') {
+            setActiveOrder(data);
+            setActiveOrderId(data.id);
+          } else {
+            localStorage.removeItem('jamr_active_order');
+            setActiveOrderId(null);
+            setActiveOrder(null);
+          }
         } else {
           processActiveOrderUpdate(data, prevAppOrderStatusRef.current === null);
         }
@@ -734,17 +753,39 @@ export default function App() {
               >
                 <Link
                   to={`/track/${activeOrderId}`}
-                  className="bg-zinc-900 dark:bg-zinc-800 text-white p-4 rounded-3xl shadow-2xl border border-white/10 flex items-center justify-between hover:scale-[1.02] active:scale-95 transition-all group overflow-hidden relative"
+                  className={cn(
+                    "bg-zinc-900 dark:bg-zinc-800 text-white p-4 rounded-3xl shadow-2xl border transition-all group overflow-hidden relative flex items-center justify-between hover:scale-[1.02] active:scale-95",
+                    activeOrder?.status === 'completed' 
+                      ? "border-amber-500/50 shadow-amber-500/20 bg-gradient-to-r from-amber-950/80 via-zinc-900 to-zinc-900" 
+                      : "border-white/10"
+                  )}
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-transparent to-primary/10 pointer-events-none" />
                   <div className="flex items-center gap-3.5 relative z-10">
-                    <div className="w-12 h-12 bg-primary text-white rounded-2xl flex items-center justify-center text-xl font-bold shadow-lg shadow-primary/30 group-hover:rotate-12 transition-transform shrink-0">
-                      {activeOrder?.status === 'ready' ? (activeOrder.order_type === 'delivery' ? <Bike size={24} /> : <CheckCircle2 size={24} />) : activeOrder?.status === 'preparing' ? <Utensils size={24} /> : activeOrder?.status === 'accepted' ? <CheckCircle2 size={24} /> : <FileText size={24} />}
+                    <div className={cn(
+                      "w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-bold shadow-lg shrink-0 transition-transform group-hover:rotate-12",
+                      activeOrder?.status === 'completed'
+                        ? "bg-gradient-to-r from-amber-500 to-orange-500 text-black shadow-amber-500/30"
+                        : "bg-primary text-white shadow-primary/30"
+                    )}>
+                      {activeOrder?.status === 'completed' ? (
+                        <Sparkles size={24} className="animate-spin" />
+                      ) : activeOrder?.status === 'ready' ? (
+                        activeOrder.order_type === 'delivery' ? <Bike size={24} /> : <CheckCircle2 size={24} />
+                      ) : activeOrder?.status === 'preparing' ? (
+                        <Utensils size={24} />
+                      ) : activeOrder?.status === 'accepted' ? (
+                        <CheckCircle2 size={24} />
+                      ) : (
+                        <FileText size={24} />
+                      )}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-black text-sm text-white">
-                          {activeOrder?.status === 'ready'
+                          {activeOrder?.status === 'completed'
+                            ? 'تم مكتمل! كسبت فرصة لتدوير العجلة 🎁'
+                            : activeOrder?.status === 'ready'
                             ? (activeOrder.order_type === 'delivery' ? 'المندوب في الطريق إليك' : 'طلبك جاهز الآن للاستلام')
                             : activeOrder?.status === 'preparing'
                             ? 'جاري تحضير وجبتك في المطبخ'
@@ -752,11 +793,20 @@ export default function App() {
                             ? 'تم قبول طلبك، ستبدأ تحضيره قريباً'
                             : 'تم استلام طلبك وجاري مراجعته'}
                         </span>
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                        <span className={cn(
+                          "w-2.5 h-2.5 rounded-full animate-ping shrink-0",
+                          activeOrder?.status === 'completed' ? "bg-amber-400" : "bg-emerald-400"
+                        )} />
                       </div>
-                      <p className="text-xs text-gray-400 mt-0.5 font-medium flex items-center gap-1">
-                        <span>اضغط لتتبع الطلب بالوقت الفعلي</span>
-                        <Navigation size={12} className="rotate-45 text-primary" />
+                      <p className="text-xs text-amber-400/90 dark:text-amber-300 mt-0.5 font-bold flex items-center gap-1">
+                        {activeOrder?.status === 'completed' ? (
+                          <span>اضغط لتدوير عجلة الحظ وكسب هديتك الآن! 🎡</span>
+                        ) : (
+                          <>
+                            <span>اضغط لتتبع الطلب بالوقت الفعلي</span>
+                            <Navigation size={12} className="rotate-45 text-primary" />
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>
