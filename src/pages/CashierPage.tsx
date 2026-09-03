@@ -447,8 +447,14 @@ export const CashierPage: React.FC = () => {
     useEffect(() => {
         const fetchStatus = async () => {
             if (!branch) return;
-            const { data } = await supabase.from('store_settings').select('*').eq('branch_name', branch).single();
-            if (data) setStoreSettings(data);
+            const { data } = await supabase.from('store_settings').select('*').eq('branch_name', branch).maybeSingle();
+            if (data) {
+                setStoreSettings(data);
+            } else {
+                const defaultSetting = { branch_name: branch, status: 'open', is_delivery_active: true, is_pickup_active: true };
+                setStoreSettings(defaultSetting);
+                await supabaseAdmin.from('store_settings').upsert([defaultSetting], { onConflict: 'branch_name' });
+            }
         };
         fetchStatus();
 
@@ -471,11 +477,15 @@ export const CashierPage: React.FC = () => {
         if (isUpdatingStatus || !branch) return;
         setIsUpdatingStatus(true);
         // Optimistic update
-        setStoreSettings((prev: any) => ({ ...prev, [field]: value }));
+        const updatedObj = { ...(storeSettings || {}), branch_name: branch, [field]: value };
+        setStoreSettings(updatedObj);
         
-        const { error } = await supabaseAdmin.from('store_settings').update({ [field]: value }).eq('branch_name', branch);
+        const { error } = await supabaseAdmin.from('store_settings').upsert([
+            updatedObj
+        ], { onConflict: 'branch_name' });
+        
         if (error) {
-            toast.error('تعذر التحديث');
+            toast.error('تعذر التحديث: ' + error.message);
         } else {
             toast.success(successMsg);
         }

@@ -366,9 +366,9 @@ export default function App() {
     setSelectedBranch(branch);
     localStorage.setItem('jamr_al_tannour_branch', branch);
     
-    // Refetch the selected branch store_settings to fix branch interference bug
-    const { data } = await supabase.from('store_settings').select('*').eq('branch_name', branch).single();
-    if (data) setStoreSettings(data);
+    const targetBranch = branch;
+    const { data } = await supabase.from('store_settings').select('*').eq('branch_name', targetBranch).maybeSingle();
+    setStoreSettings(data || { branch_name: targetBranch, status: 'open', is_delivery_active: true, is_pickup_active: true });
   };
 
   const fetchData = async (overrideBranch?: string) => {
@@ -377,6 +377,7 @@ export default function App() {
     setError(null);
     try {
       const startTime = Date.now();
+      const currentSelectedBranch = overrideBranch || selectedBranch || 'السويدي الغربي';
       const [catsRes, prodsRes, statusRes, appSettingsRes, storiesRes] = await Promise.all([
         supabase
           .from('categories')
@@ -389,8 +390,8 @@ export default function App() {
           .order('is_available', { ascending: false }),
         supabase.from('store_settings')
           .select('*')
-          .eq('branch_name', overrideBranch || selectedBranch || 'السويدي الغربي')
-          .single(),
+          .eq('branch_name', currentSelectedBranch)
+          .maybeSingle(),
         supabase.from('app_settings').select('*').single(),
         (async () => {
           try {
@@ -410,6 +411,7 @@ export default function App() {
         errors: { cats: catsRes.error, prods: prodsRes.error, status: statusRes.error }
       });
 
+      setStoreSettings(statusRes.data || { branch_name: currentSelectedBranch, status: 'open', is_delivery_active: true, is_pickup_active: true });
       if (catsRes.data) {
         setCategories(catsRes.data);
         localStorage.setItem('jamr_cats_cache', JSON.stringify(catsRes.data));
