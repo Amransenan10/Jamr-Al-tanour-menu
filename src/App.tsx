@@ -769,34 +769,7 @@ export default function App() {
             hasActiveOrder={!!activeOrderId} 
           />
 
-          {/* Floating Wheel Button (Compact & Left-aligned so it never covers products) */}
-          {(appSettings?.wheel_active === true) && (
-            <motion.button
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setIsWheelOpen(true)}
-              className="fixed bottom-28 left-4 z-40 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-black p-3 sm:px-4 sm:py-2.5 rounded-full shadow-2xl shadow-amber-500/50 flex items-center gap-2 font-black text-xs cursor-pointer border-2 border-white/30 backdrop-blur-md"
-              title="دَوّر واكسب جوائز المنيو!"
-            >
-              <span className="text-xl animate-spin" style={{ animationDuration: '6s' }}>🎡</span>
-              <span className="hidden sm:inline font-black text-xs">عجلة الحظ!</span>
-            </motion.button>
-          )}
 
-          <SpinWheelModal
-            isOpen={isWheelOpen}
-            onClose={() => setIsWheelOpen(false)}
-            title={appSettings?.wheel_title}
-            prizes={
-              appSettings?.wheel_prizes
-                ? typeof appSettings.wheel_prizes === 'string'
-                  ? JSON.parse(appSettings.wheel_prizes)
-                  : appSettings.wheel_prizes
-                : undefined
-            }
-          />
 
           <InstallPWA />
           <PushSubscriptionBanner />

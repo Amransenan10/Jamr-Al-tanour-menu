@@ -25,7 +25,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [promoCodeInput, setPromoCodeInput] = useState('');
-  const [appliedPromo, setAppliedPromo] = useState<{code: string; type: 'fixed' | 'percentage'; value: number} | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{code: string; type: 'fixed' | 'percentage' | 'free_delivery'; value: number} | null>(null);
   const [promoError, setPromoError] = useState('');
   const [promoSuccess, setPromoSuccess] = useState('');
   const [formData, setFormData] = useState(() => {
@@ -110,11 +110,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
     }
   };
 
-  const deliveryFee = orderType === 'delivery' ? 5 : 0;
+  const baseDeliveryFee = orderType === 'delivery' ? 5 : 0;
+  let deliveryFee = baseDeliveryFee;
   
   let discountAmount = 0;
   if (appliedPromo) {
-    if (appliedPromo.type === 'fixed') {
+    if (appliedPromo.type === 'free_delivery') {
+      deliveryFee = 0;
+    } else if (appliedPromo.type === 'fixed') {
       discountAmount = appliedPromo.value;
     } else if (appliedPromo.type === 'percentage') {
       discountAmount = (totalPrice * appliedPromo.value) / 100;
@@ -163,7 +166,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         return;
       }
 
-      // Match coupon using normalized comparison (handles Arabic spaces, Alef variants, Teh Marbuta, etc.)
+      // Match coupon using normalized comparison
       const matchedCoupon = allCoupons.find(c => 
         normalizeCouponCode(c.code) === normalizedInput ||
         c.code.trim().toUpperCase() === rawInput.toUpperCase()
@@ -194,6 +197,19 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
           return;
       }
 
+      // Check phone binding from coupon notes if specified
+      if (data.notes && data.notes.includes('bound to phone:')) {
+        const boundPhoneMatch = data.notes.match(/bound to phone:\s*(\d+)/);
+        if (boundPhoneMatch && boundPhoneMatch[1]) {
+          const boundPhone = boundPhoneMatch[1];
+          const userPhoneClean = formData.phone.replace(/\D/g, '');
+          if (!userPhoneClean || !userPhoneClean.endsWith(boundPhone.slice(-4))) {
+            setPromoError('هذا الكوبون مخصص لصاحب العجلة برقم جواله المقترن فقط');
+            return;
+          }
+        }
+      }
+
       // If phone is entered, check if the user previously used this code
       if (formData.phone) {
         const { data: previousOrders } = await supabase
@@ -211,8 +227,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
 
       setAppliedPromo({
         code: data.code,
-        type: data.discount_type as 'fixed' | 'percentage',
-        value: data.discount_value
+        type: data.discount_type as 'fixed' | 'percentage' | 'free_delivery',
+        value: data.discount_value || 0
       });
       setPromoSuccess('تم تطبيق كود الخصم بنجاح!');
       setPromoCodeInput('');

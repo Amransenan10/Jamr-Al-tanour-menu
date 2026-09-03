@@ -11,6 +11,8 @@ import { Order } from '../types';
 import toast from 'react-hot-toast';
 import { updateStoredOrderStatus } from '../utils/orderStorage';
 import { notifyCustomerStatusChange, testCustomerNotificationAndSound, unlockCustomerAudio } from '../utils/customerNotifications';
+import { SpinWheelModal } from '../components/SpinWheelModal';
+import { Sparkles } from 'lucide-react';
 
 type OrderStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 
@@ -28,6 +30,9 @@ export const OrderTrackingPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const prevStatusRef = useRef<string | null>(null);
+    const [isWheelOpen, setIsWheelOpen] = useState(false);
+    const [appSettings, setAppSettings] = useState<any>({});
+    const [hasSpunCurrentOrder, setHasSpunCurrentOrder] = useState(false);
     const [notifPermission, setNotifPermission] = useState<NotificationPermission>(() => {
         return typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'denied';
     });
@@ -73,28 +78,43 @@ export const OrderTrackingPage: React.FC = () => {
             return;
         }
 
-        const fetchOrder = async (isSilent = false) => {
-            if (!isSilent) setLoading(true);
-            const { data, error } = await supabase
-                .from('orders')
-                .select('*')
-                .eq('id', id)
-                .single();
+        // Check wheel spin status for this order
+        const spun = localStorage.getItem(`jamr_wheel_spun_${id}`);
+        setHasSpunCurrentOrder(!!spun);
 
-            if (error || !data) {
-                console.error(error);
+        const fetchOrderAndSettings = async (isSilent = false) => {
+            if (!isSilent) setLoading(true);
+            
+            const [orderRes, settingsRes] = await Promise.all([
+                supabase.from('orders').select('*').eq('id', id).single(),
+                supabase.from('app_settings').select('*').single()
+            ]);
+
+            if (settingsRes.data) {
+                setAppSettings(settingsRes.data);
+            }
+
+            if (orderRes.error || !orderRes.data) {
+                console.error(orderRes.error);
                 if (!isSilent) setError('لم نتمكن من العثور على الطلب. قد يكون رقمه غير صحيح.');
             } else {
-                processOrderUpdate(data, prevStatusRef.current === null);
+                processOrderUpdate(orderRes.data, prevStatusRef.current === null);
+
+                // Auto-trigger wheel spin popup 1 second after landing if not spun yet
+                if (!spun && (settingsRes.data?.wheel_active !== false)) {
+                    setTimeout(() => {
+                        setIsWheelOpen(true);
+                    }, 1000);
+                }
             }
             if (!isSilent) setLoading(false);
         };
 
-        fetchOrder(false);
+        fetchOrderAndSettings(false);
 
         // Fast 3-second polling fallback to guarantee notification triggers even on mobile sleep
         const pollInterval = setInterval(() => {
-            fetchOrder(true);
+            fetchOrderAndSettings(true);
         }, 3000);
 
         // Subscribe to real-time changes
@@ -293,11 +313,54 @@ export const OrderTrackingPage: React.FC = () => {
                     </div>
                 </div>
 
+                {/* Spin Wheel Post-Order Banner if eligible */}
+                {(appSettings?.wheel_active !== false) && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 border border-amber-500/30 rounded-3xl p-5 text-center space-y-3 shadow-lg"
+                    >
+                        <div className="flex items-center justify-center gap-2 text-amber-500 font-black">
+                            <Sparkles size={20} className="animate-spin" />
+                            <span className="text-base">هدية خاصة بعد طلبك! 🎡</span>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">
+                            {hasSpunCurrentOrder 
+                                ? 'شكراً لتدوير العجلة! استمتع بهديتك في طلبك القادم 🎉' 
+                                : 'ألف مبروك إتمام الطلب! اضغط أدناه لتدوير عجلة الحظ وكسب هديتك لطلبك القادم 🎁'}
+                        </p>
+                        {!hasSpunCurrentOrder && (
+                            <button
+                                onClick={() => setIsWheelOpen(true)}
+                                className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 hover:brightness-110 active:scale-95 transition-all inline-flex items-center gap-2 cursor-pointer"
+                            >
+                                <span>تدوير عجلة الحظ الآن! 🎡</span>
+                            </button>
+                        )}
+                    </motion.div>
+                )}
+
                 <div className="text-center">
                     <Link to="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-primary transition-colors font-bold text-sm">
                         <UtensilsCrossed size={16} /> العودة وتصفح المنيو
                     </Link>
                 </div>
+
+                {/* Spin Wheel Modal */}
+                <SpinWheelModal
+                    isOpen={isWheelOpen}
+                    onClose={() => setIsWheelOpen(false)}
+                    title={appSettings?.wheel_title}
+                    customerPhone={order?.phone}
+                    orderId={order?.id}
+                    prizes={
+                        appSettings?.wheel_prizes
+                            ? typeof appSettings.wheel_prizes === 'string'
+                                ? JSON.parse(appSettings.wheel_prizes)
+                                : appSettings.wheel_prizes
+                            : undefined
+                    }
+                />
             </div>
         </div>
     );

@@ -509,7 +509,7 @@ export const CategoryAdminManager: React.FC = () => {
                     <div className={cn("w-4 h-4 rounded-full bg-black transition-transform", Boolean(appSettings.wheel_active) ? "translate-x-0" : "-translate-x-6")} />
                   </button>
                   <span className="text-sm font-bold text-gray-300">
-                    {Boolean(appSettings.wheel_active) ? '🎡 مفعلة وتظهر كزر عائم للعميل' : 'مغلقة ومخفية كلياً'}
+                    {Boolean(appSettings.wheel_active) ? '🎡 مفعلة وتظهر للعملاء بعد إتمام الطلب' : 'مغلقة ومخفية كلياً'}
                   </span>
                 </div>
               </div>
@@ -574,12 +574,12 @@ export const CategoryAdminManager: React.FC = () => {
 
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] text-gray-400 block mb-0.5">كود الكوبون</label>
+                        <label className="text-[10px] text-gray-400 block mb-0.5">كود الخصم الأولي</label>
                         <input
                           type="text"
                           value={prize.code}
                           onChange={e => updatePrizeField(idx, 'code', e.target.value.toUpperCase())}
-                          placeholder="مثال: FREEJUICE"
+                          placeholder="مولد تلقائياً عند الفوز"
                           className="w-full bg-zinc-800 text-amber-400 font-mono text-xs font-bold rounded-lg px-2 py-1 border border-transparent focus:border-amber-500/50 outline-none"
                         />
                       </div>
@@ -590,10 +590,11 @@ export const CategoryAdminManager: React.FC = () => {
                           onChange={e => updatePrizeField(idx, 'type', e.target.value)}
                           className="w-full bg-zinc-800 text-gray-200 text-xs font-bold rounded-lg px-2 py-1 border border-transparent focus:border-amber-500/50 outline-none"
                         >
-                          <option value="discount">خصم نسبة %</option>
+                          <option value="discount">خصم نسبة % / مبلغ</option>
+                          <option value="free_delivery">توصيل مجاني 🚚</option>
                           <option value="item">صنف / هدية مجانية</option>
-                          <option value="points">نقاط ولاء</option>
-                          <option value="unlucky">حظ أوفير (لا كود)</option>
+                          <option value="points">نقاط ولاء 🌟</option>
+                          <option value="unlucky">حظ أوفير ⭐️</option>
                         </select>
                       </div>
                     </div>
