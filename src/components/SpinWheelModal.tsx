@@ -129,33 +129,51 @@ export const SpinWheelModal: React.FC<SpinWheelModalProps> = ({
             const uniqueCode = `SPIN-${shortPhone}-${Math.floor(1000 + Math.random() * 9000)}`;
             setGeneratedCode(uniqueCode);
 
-            // Determine discount type and value
-            let discType: 'percentage' | 'fixed' | 'free_delivery' = selectedPrize.discount_type || 'percentage';
-            let discVal = selectedPrize.discount_value !== undefined ? selectedPrize.discount_value : 10;
+            // Determine discount type and value compliant with DB constraint (percentage or fixed or free_delivery)
+            let discType: 'percentage' | 'fixed' | 'free_delivery' = 'percentage';
+            let discVal = 10;
 
-            if (selectedPrize.type === 'free_delivery' || selectedPrize.label.includes('توصيل')) {
+            if (selectedPrize.type === 'free_delivery' || selectedPrize.discount_type === 'free_delivery' || selectedPrize.label.includes('توصيل')) {
               discType = 'free_delivery';
               discVal = 0;
-            } else if (selectedPrize.discount_value === undefined) {
-              if (selectedPrize.label.includes('%')) {
-                discType = 'percentage';
-                const match = selectedPrize.label.match(/(\d+)%/);
-                if (match) discVal = parseInt(match[1]);
-              } else if (selectedPrize.label.includes('ر.س') || selectedPrize.label.includes('ريال')) {
-                discType = 'fixed';
-                const match = selectedPrize.label.match(/(\d+)/);
-                if (match) discVal = parseInt(match[1]);
-              }
+            } else if (selectedPrize.discount_type === 'fixed') {
+              discType = 'fixed';
+              discVal = selectedPrize.discount_value !== undefined ? selectedPrize.discount_value : 10;
+            } else {
+              discType = 'percentage';
+              discVal = selectedPrize.discount_value !== undefined ? selectedPrize.discount_value : 10;
             }
 
-            const couponPayload = {
+            const couponData = {
               code: uniqueCode,
               discount_type: discType,
               discount_value: discVal,
               max_uses: 1,
               current_uses: 0,
               is_active: true,
-              notes: `Dynamic wheel coupon bound to phone: ${cleanPhone}`
+              bound_phone: cleanPhone
+            };
+
+            // Save to LocalStorage as instant guaranteed fallback
+            try {
+              const localCoupons = JSON.parse(localStorage.getItem('jamr_dynamic_coupons') || '[]');
+              localCoupons.push(couponData);
+              localStorage.setItem('jamr_dynamic_coupons', JSON.stringify(localCoupons));
+            } catch (e) {
+              console.error('LocalStorage coupon save error:', e);
+            }
+
+            // DB Insert (mapping free_delivery to fixed 5 SAR for DB constraint check)
+            const dbType = discType === 'free_delivery' ? 'fixed' : discType;
+            const dbVal = discType === 'free_delivery' ? 5 : discVal;
+
+            const couponPayload = {
+              code: uniqueCode,
+              discount_type: dbType,
+              discount_value: dbVal,
+              max_uses: 1,
+              current_uses: 0,
+              is_active: true
             };
 
             let res = await supabaseAdmin.from('coupons').insert([couponPayload]);

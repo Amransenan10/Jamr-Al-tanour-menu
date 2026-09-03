@@ -155,22 +155,27 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         return;
       }
 
-      // Fetch all active coupons
-      const { data: allCoupons, error } = await supabase
-        .from('coupons')
-        .select('*')
-        .eq('is_active', true);
-        
-      if (error || !allCoupons || allCoupons.length === 0) {
-        setPromoError('كود الخصم غير صحيح أو غير مفعل');
-        return;
-      }
-
-      // Match coupon using normalized comparison
-      const matchedCoupon = allCoupons.find(c => 
+      // Check local dynamic coupons created by wheel spin
+      const localCoupons: any[] = JSON.parse(localStorage.getItem('jamr_dynamic_coupons') || '[]');
+      let matchedCoupon = localCoupons.find(c => 
         normalizeCouponCode(c.code) === normalizedInput ||
         c.code.trim().toUpperCase() === rawInput.toUpperCase()
       );
+
+      // If not in local dynamic coupons, fetch from Supabase
+      if (!matchedCoupon) {
+        const { data: allCoupons } = await supabase
+          .from('coupons')
+          .select('*')
+          .eq('is_active', true);
+          
+        if (allCoupons && allCoupons.length > 0) {
+          matchedCoupon = allCoupons.find(c => 
+            normalizeCouponCode(c.code) === normalizedInput ||
+            c.code.trim().toUpperCase() === rawInput.toUpperCase()
+          );
+        }
+      }
 
       if (!matchedCoupon) {
         setPromoError('كود الخصم غير صحيح أو غير مفعل');
@@ -197,16 +202,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
           return;
       }
 
-      // Check phone binding from coupon notes if specified
-      if (data.notes && data.notes.includes('bound to phone:')) {
-        const boundPhoneMatch = data.notes.match(/bound to phone:\s*(\d+)/);
-        if (boundPhoneMatch && boundPhoneMatch[1]) {
-          const boundPhone = boundPhoneMatch[1];
-          const userPhoneClean = formData.phone.replace(/\D/g, '');
-          if (!userPhoneClean || !userPhoneClean.endsWith(boundPhone.slice(-4))) {
-            setPromoError('هذا الكوبون مخصص لصاحب العجلة برقم جواله المقترن فقط');
-            return;
-          }
+      // Check phone binding from coupon bound_phone or notes if specified
+      const boundPhone = data.bound_phone || (data.notes && data.notes.includes('bound to phone:') ? data.notes.match(/bound to phone:\s*(\d+)/)?.[1] : null);
+      if (boundPhone) {
+        const userPhoneClean = formData.phone.replace(/\D/g, '');
+        if (!userPhoneClean || !userPhoneClean.endsWith(boundPhone.slice(-4))) {
+          setPromoError('هذا الكوبون مخصص لصاحب العجلة برقم جواله المقترن فقط');
+          return;
         }
       }
 
