@@ -382,11 +382,30 @@ export const CashierPage: React.FC = () => {
     const [loyaltyBillAmount, setLoyaltyBillAmount] = useState<string>('');
     const [loyaltyNewCustomerName, setLoyaltyNewCustomerName] = useState('');
     const [isLoyaltyProcessing, setIsLoyaltyProcessing] = useState(false);
+    const [loyaltyConfig, setLoyaltyConfig] = useState({
+        is_enabled: true,
+        earning_rate: 10,
+        redemption_rate: 5,
+        min_points_to_redeem: 5
+    });
     const [menuProducts, setMenuProducts] = useState<any[]>([]);
     const [loadingMenu, setLoadingMenu] = useState(false);
 
     useEffect(() => {
         if (!showLoyaltyModal) return;
+
+        // Fetch dynamic loyalty config
+        supabase.from('loyalty_config').select('*').eq('id', 1).single().then(({ data }) => {
+            if (data) {
+                setLoyaltyConfig({
+                    is_enabled: data.is_enabled ?? true,
+                    earning_rate: Number(data.earning_rate) || 10,
+                    redemption_rate: Number(data.redemption_rate) || 5,
+                    min_points_to_redeem: Number(data.min_points_to_redeem) || 5
+                });
+            }
+        });
+
         const phone = loyaltySearchPhone.trim();
         if (phone.length >= 9) {
             const search = async () => {
@@ -1388,10 +1407,16 @@ export const CashierPage: React.FC = () => {
                                         <div className="bg-primary/10 rounded-2xl py-4 border border-primary/20 text-center">
                                             <p className="text-[10px] text-primary font-black uppercase tracking-widest mb-1">الرصيد الحالي</p>
                                             <p className="text-4xl font-black text-primary">{loyaltyCustomer.points_balance} <span className="text-xs">نقطة</span></p>
-                                            {loyaltyCustomer.points_balance >= 5 && (
-                                                <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-bold">(تساوي {Math.floor(loyaltyCustomer.points_balance / 5)} ر.س خصم)</p>
+                                            {loyaltyConfig.is_enabled && loyaltyCustomer.points_balance >= (loyaltyConfig.min_points_to_redeem || 5) && (
+                                                <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-bold">(تساوي {Math.floor(loyaltyCustomer.points_balance / (loyaltyConfig.redemption_rate || 5))} ر.س خصم)</p>
                                             )}
                                         </div>
+
+                                        {!loyaltyConfig.is_enabled && (
+                                            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-center text-red-400 text-xs font-bold">
+                                                نظام الولاء معطل حالياً من قِبل الإدارة
+                                            </div>
+                                        )}
 
                                         <div className="space-y-4 pt-2">
                                             {/* Earn Points Section */}
@@ -1406,10 +1431,10 @@ export const CashierPage: React.FC = () => {
                                                         className={cn("flex-1 px-3 py-2.5 rounded-xl border-none font-bold text-sm outline-none", isDark ? 'bg-zinc-900 text-white' : 'bg-white text-gray-900')}
                                                     />
                                                     <button 
-                                                        disabled={isLoyaltyProcessing || !loyaltyBillAmount || parseInt(loyaltyBillAmount) < 10}
+                                                        disabled={isLoyaltyProcessing || !loyaltyBillAmount || parseInt(loyaltyBillAmount) < (loyaltyConfig.earning_rate || 1)}
                                                         onClick={async () => {
                                                             const amount = parseInt(loyaltyBillAmount);
-                                                            const points = Math.floor(amount / 10);
+                                                            const points = Math.floor(amount / (loyaltyConfig.earning_rate || 10));
                                                             if (isNaN(points) || points <= 0) return;
                                                             setIsLoyaltyProcessing(true);
                                                             
@@ -1431,6 +1456,17 @@ export const CashierPage: React.FC = () => {
                                                                         .eq('phone_number', loyaltyCustomer.phone_number);
                                                                     if (error) throw error;
                                                                 }
+
+                                                                // Record Transaction
+                                                                await supabaseAdmin.from('transactions').insert([{
+                                                                    customer_phone: loyaltyCustomer.phone_number,
+                                                                    type: 'earn',
+                                                                    amount: amount,
+                                                                    points_earned: points,
+                                                                    notes: 'إضافة من الكاشير بالفرع',
+                                                                    staff_id: 'كاشير الفرع',
+                                                                    created_at: new Date().toISOString()
+                                                                }]);
                                                                 
                                                                 toast.success(`تم إضافة ${points} نقطة للعميل بنجاح`);
                                                                 setShowLoyaltyModal(false);
@@ -1445,13 +1481,13 @@ export const CashierPage: React.FC = () => {
                                                         }}
                                                         className="px-4 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 transition-colors disabled:opacity-50"
                                                     >
-                                                        إضافة {loyaltyBillAmount ? Math.floor(parseInt(loyaltyBillAmount) / 10) || 0 : 0} نقطة
+                                                        إضافة {loyaltyBillAmount ? Math.floor(parseInt(loyaltyBillAmount) / (loyaltyConfig.earning_rate || 10)) || 0 : 0} نقطة
                                                     </button>
                                                 </div>
                                             </div>
 
                                             {/* Redeem Points Section */}
-                                            {loyaltyCustomer.points_balance >= 5 && (
+                                            {loyaltyConfig.is_enabled && loyaltyCustomer.points_balance >= (loyaltyConfig.min_points_to_redeem || 5) && (
                                                 <div className="space-y-2 bg-amber-50 dark:bg-amber-500/10 p-3 rounded-2xl border border-amber-100 dark:border-amber-500/20">
                                                     <label className="text-xs font-bold text-amber-700 dark:text-amber-400 block">خصم من النقاط</label>
                                                     <div className="flex gap-2">
@@ -1466,7 +1502,7 @@ export const CashierPage: React.FC = () => {
                                                             />
                                                             {loyaltyPointsToModify && parseInt(loyaltyPointsToModify) > 0 && (
                                                                 <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                                                                    = {Math.floor(parseInt(loyaltyPointsToModify) / 5)} ر.س
+                                                                    = {Math.floor(parseInt(loyaltyPointsToModify) / (loyaltyConfig.redemption_rate || 5))} ر.س
                                                                 </div>
                                                             )}
                                                         </div>
@@ -1484,6 +1520,17 @@ export const CashierPage: React.FC = () => {
                                                                         .eq('phone_number', loyaltyCustomer.phone_number);
                                                                     if (error) throw error;
                                                                     
+                                                                    // Record Transaction
+                                                                    await supabaseAdmin.from('transactions').insert([{
+                                                                        customer_phone: loyaltyCustomer.phone_number,
+                                                                        type: 'redeem',
+                                                                        amount: 0,
+                                                                        points_redeemed: pointsToDeduct,
+                                                                        notes: 'خصم استبدال نقاط عند الكاشير بالفرع',
+                                                                        staff_id: 'كاشير الفرع',
+                                                                        created_at: new Date().toISOString()
+                                                                    }]);
+
                                                                     toast.success(`تم خصم ${pointsToDeduct} نقطة بنجاح والتخفيض من الفاتورة`);
                                                                     setShowLoyaltyModal(false);
                                                                     setLoyaltyCustomer(null);

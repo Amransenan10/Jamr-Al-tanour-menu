@@ -44,10 +44,31 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
   const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
+  const [loyaltyConfig, setLoyaltyConfig] = useState({
+    is_enabled: true,
+    earning_rate: 10,
+    redemption_rate: 5,
+    min_points_to_redeem: 5
+  });
 
   React.useEffect(() => {
     const checkLoyalty = async () => {
       setUseLoyaltyPoints(false);
+      
+      // Fetch loyalty config first
+      try {
+        const { data: cfg } = await supabase.from('loyalty_config').select('*').eq('id', 1).single();
+        if (cfg) {
+          setLoyaltyConfig({
+            is_enabled: cfg.is_enabled ?? true,
+            earning_rate: Number(cfg.earning_rate) || 10,
+            redemption_rate: Number(cfg.redemption_rate) || 5,
+            min_points_to_redeem: Number(cfg.min_points_to_redeem) || 5
+          });
+        }
+      } catch (err) {
+        console.warn('Loyalty config fetch warning', err);
+      }
       
       if (!formData.phone || formData.phone.length < 10) {
         setLoyaltyPoints(0);
@@ -124,20 +145,24 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
     }
   }
 
-  // Loyalty Discount Calculation
-  let maxLoyaltyDiscount = Math.floor(loyaltyPoints / 5);
+  // Loyalty Discount & Points Dynamic Calculations
+  const redemptionRate = loyaltyConfig.redemption_rate || 5;
+  const earningRate = loyaltyConfig.earning_rate || 10;
+  const minPointsToRedeem = loyaltyConfig.min_points_to_redeem || 5;
+
+  let maxLoyaltyDiscount = loyaltyConfig.is_enabled ? Math.floor(loyaltyPoints / redemptionRate) : 0;
   let loyaltyDiscountAmount = 0;
   let pointsToDeduct = 0;
 
-  if (useLoyaltyPoints && maxLoyaltyDiscount > 0) {
+  if (loyaltyConfig.is_enabled && useLoyaltyPoints && loyaltyPoints >= minPointsToRedeem && maxLoyaltyDiscount > 0) {
     const remainingTotal = totalPrice + deliveryFee - discountAmount;
     loyaltyDiscountAmount = Math.min(maxLoyaltyDiscount, remainingTotal);
-    pointsToDeduct = loyaltyDiscountAmount * 5;
+    pointsToDeduct = loyaltyDiscountAmount * redemptionRate;
   }
   
   // Ensure final price doesn't go below 0
   const finalPrice = Math.max(0, totalPrice + deliveryFee - discountAmount - loyaltyDiscountAmount);
-  const loyaltyPointsEarned = Math.floor(finalPrice / 10);
+  const loyaltyPointsEarned = loyaltyConfig.is_enabled ? Math.floor(finalPrice / earningRate) : 0;
 
   const handleApplyPromo = async () => {
     const rawInput = promoCodeInput.trim();
@@ -569,17 +594,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                     </div>
                     
                     {/* Loyalty Points Section */}
-                    {formData.phone.length >= 9 && (
+                    {loyaltyConfig.is_enabled && formData.phone.length >= 9 && (
                       <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-500/10 p-3 rounded-xl border border-amber-200 dark:border-amber-500/20">
                         <div>
                           <div className="text-sm font-bold text-amber-700 dark:text-amber-400">
                             {loyaltyPoints > 0 ? `لديك ${loyaltyPoints} نقطة ولاء 🌟` : 'نظام الولاء: 0 نقطة'}
                           </div>
                           <div className="text-xs text-amber-600/80 dark:text-amber-400/80">
-                            {loyaltyPoints >= 5 ? `تساوي خصم ${Math.floor(loyaltyPoints / 5)} ر.س` : (loyaltyPoints > 0 ? 'تحتاج 5 نقاط للاستفادة من الخصم' : 'اجمع النقاط مع هذا الطلب لخصومات مستقبلية')}
+                            {loyaltyPoints >= minPointsToRedeem ? `تساوي خصم ${Math.floor(loyaltyPoints / redemptionRate)} ر.س` : (loyaltyPoints > 0 ? `تحتاج ${minPointsToRedeem} نقاط للاستفادة من الخصم` : 'اجمع النقاط مع هذا الطلب لخصومات مستقبلية')}
                           </div>
                         </div>
-                        {loyaltyPoints >= 5 && (
+                        {loyaltyPoints >= minPointsToRedeem && (
                           <label className="relative inline-flex items-center cursor-pointer">
                             <input 
                               type="checkbox" 

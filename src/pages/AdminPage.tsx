@@ -6,20 +6,21 @@ import {
     LayoutDashboard, KeyRound, ShoppingBag, Settings as SettingsIcon,
     UtensilsCrossed, LogOut, Loader2, Plus, Edit2, Trash2, CheckCircle2,
     X, Store, Clock, RefreshCw, Upload, TicketPercent, Image as ImageIcon,
-    Camera, Sliders, Volume2, VolumeX, Copy, Search, User, BarChart3, Send, Layers
+    Camera, Sliders, Volume2, VolumeX, Copy, Search, User, BarChart3, Send, Layers, Gift
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
 import { AdminAnalyticsView } from '../components/AdminAnalyticsView';
 import { AdminMarketingView } from '../components/AdminMarketingView';
 import { CategoryAdminManager } from '../components/CategoryAdminManager';
+import { AdminLoyaltyView } from '../components/AdminLoyaltyView';
 import { normalizeCouponCode } from '../utils/couponUtils';
 
 export const AdminPage: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState('');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
-    const [activeTab, setActiveTab] = useState<'analytics' | 'orders' | 'menu' | 'categories' | 'additions' | 'stories' | 'coupons' | 'marketing' | 'settings'>('analytics');
+    const [activeTab, setActiveTab] = useState<'analytics' | 'orders' | 'menu' | 'categories' | 'additions' | 'stories' | 'coupons' | 'loyalty' | 'marketing' | 'settings'>('analytics');
 
     useEffect(() => {
         if (localStorage.getItem('jamr_admin_auth') === 'true') {
@@ -119,6 +120,7 @@ export const AdminPage: React.FC = () => {
                         { id: 'additions', label: 'تخصيص الوجبات', icon: <Sliders size={16} /> },
                         { id: 'stories', label: 'القصص والعروض', icon: <ImageIcon size={16} /> },
                         { id: 'coupons', label: 'كوبونات الخصم', icon: <TicketPercent size={16} /> },
+                        { id: 'loyalty', label: 'نظام الولاء والنقاط 🌟', icon: <Gift size={16} /> },
                         { id: 'marketing', label: 'التسويق والإشعارات 📢', icon: <Send size={16} /> },
                         { id: 'settings', label: 'الفروع والإعدادات', icon: <SettingsIcon size={16} /> }
                     ].map(tab => (
@@ -146,6 +148,7 @@ export const AdminPage: React.FC = () => {
                 {activeTab === 'additions' && <AdminAdditionsView />}
                 {activeTab === 'stories' && <AdminStoriesView />}
                 {activeTab === 'coupons' && <AdminCouponsView />}
+                {activeTab === 'loyalty' && <AdminLoyaltyView />}
                 {activeTab === 'marketing' && <AdminMarketingView />}
                 {activeTab === 'settings' && <AdminSettingsView />}
             </main>
