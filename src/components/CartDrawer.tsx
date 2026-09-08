@@ -334,7 +334,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         loyaltyPointsEarned > 0 ? `[LOYALTY_EARNED:${loyaltyPointsEarned}]` : ''
       ].filter(Boolean).join('\n');
 
-      const order: Order = {
+      const orderPayload: any = {
         branch,
         order_type: orderType,
         customer_name: formData.name,
@@ -347,14 +347,21 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         pickup_time: orderType === 'pickup' && formData.pickupTime ? formData.pickupTime : undefined,
         delivery_fee: deliveryFee,
         distance_km: deliveryRules.distanceKm,
-        ...({
-          discount_amount: discountAmount + loyaltyDiscountAmount, // merge both discounts visually in total/subtotal
-          promo_code: appliedPromo?.code || null
-        } as any)
+        discount_amount: discountAmount + loyaltyDiscountAmount, // merge both discounts visually in total/subtotal
+        promo_code: appliedPromo?.code || null
       };
 
-      const { data, error } = await supabase.from('orders').insert([order]).select('id, created_at, status').single();
-      if (error) throw error;
+      let insertRes = await supabase.from('orders').insert([orderPayload]).select('id, created_at, status').single();
+
+      // If missing distance_km column in database schema cache, retry without distance_km property
+      if (insertRes.error && (insertRes.error.message?.includes('distance_km') || insertRes.error.details?.includes('distance_km'))) {
+        const fallbackPayload = { ...orderPayload };
+        delete fallbackPayload.distance_km;
+        insertRes = await supabase.from('orders').insert([fallbackPayload]).select('id, created_at, status').single();
+      }
+
+      if (insertRes.error) throw insertRes.error;
+      const data = insertRes.data;
 
       // Update coupon usage if a valid promo was applied
       if (appliedPromo) {

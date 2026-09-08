@@ -4,8 +4,8 @@
 
 // Default coordinates for branches if not set in DB
 export const DEFAULT_BRANCH_COORDINATES: Record<string, { lat: number; lng: number }> = {
-  'السويدي الغربي': { lat: 24.5937, lng: 46.6111 },
-  'طويق': { lat: 24.5772, lng: 46.5412 }
+  'السويدي الغربي': { lat: 24.5761708, lng: 46.6288971 },
+  'طويق': { lat: 24.5593042, lng: 46.5714602 }
 };
 
 /**
