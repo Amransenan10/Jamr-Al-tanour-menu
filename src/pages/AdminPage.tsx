@@ -506,6 +506,20 @@ const AdminOrdersView = () => {
                             <tbody className="divide-y divide-white/5">
                                 {orders.map(order => {
                                     const isExpanded = selectedOrderId === order.id;
+                                    const cleanNotes = order.notes
+                                        ?.replace(/\[DISTANCE:[^\]]+\]/g, '')
+                                        ?.replace(/\[LOYALTY_USED:\d+\]/g, '')
+                                        ?.replace(/\[LOYALTY_EARNED:\d+\]/g, '')
+                                        ?.trim();
+
+                                    const distanceMatch = order.notes?.match(/\[DISTANCE:([^\]]+)\]/);
+                                    const loyaltyUsedMatch = order.notes?.match(/\[LOYALTY_USED:(\d+)\]/);
+                                    const loyaltyEarnedMatch = order.notes?.match(/\[LOYALTY_EARNED:(\d+)\]/);
+
+                                    const distanceText = distanceMatch ? distanceMatch[1] : null;
+                                    const loyaltyUsed = loyaltyUsedMatch ? parseInt(loyaltyUsedMatch[1]) : 0;
+                                    const loyaltyEarned = loyaltyEarnedMatch ? parseInt(loyaltyEarnedMatch[1]) : 0;
+
                                     return (
                                         <React.Fragment key={order.id}>
                                             <tr 
@@ -585,13 +599,25 @@ const AdminOrdersView = () => {
                                                                     <p className="text-xs"><span className="text-gray-400">فرع التحضير:</span> <span className="font-bold">{order.branch}</span></p>
                                                                     <p className="text-xs"><span className="text-gray-400">طريقة الاستلام:</span> <span className="font-bold">{order.order_type === 'delivery' ? '🚗 توصيل للموقع' : '🚶 استلام مباشر'}</span></p>
                                                                     {order.location && (
-                                                                        <p className="text-xs"><span className="text-gray-405">العنوان:</span> <span className="font-bold text-blue-450 break-all">{order.location}</span></p>
+                                                                        <p className="text-xs"><span className="text-gray-400">العنوان:</span> <span className="font-bold text-blue-400 break-all">{order.location}</span></p>
                                                                     )}
-                                                                    {order.notes && (
-                                                                        <p className="text-xs"><span className="text-gray-400">ملاحظات الطلب:</span> <span className="text-yellow-405 bg-yellow-400/5 px-2 py-0.5 rounded inline-block font-bold">{order.notes}</span></p>
+                                                                    {distanceText && (
+                                                                        <p className="text-xs"><span className="text-gray-400">مسافة التوصيل:</span> <span className="font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded inline-block font-mono">📍 يبعد {distanceText}</span></p>
+                                                                    )}
+                                                                    {loyaltyUsed > 0 && (
+                                                                        <p className="text-xs"><span className="text-gray-400">نقاط ولاء مستخدمة:</span> <span className="font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded inline-block">🌟 {loyaltyUsed} نقطةخصم</span></p>
+                                                                    )}
+                                                                    {loyaltyEarned > 0 && (
+                                                                        <p className="text-xs"><span className="text-gray-400">نقاط ولاء مكتسبة:</span> <span className="font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded inline-block">🎁 +{loyaltyEarned} نقطة</span></p>
+                                                                    )}
+                                                                    {cleanNotes && (
+                                                                        <p className="text-xs"><span className="text-gray-400">ملاحظات الطلب:</span> <span className="text-yellow-400 bg-yellow-400/5 px-2 py-0.5 rounded inline-block font-bold">{cleanNotes}</span></p>
                                                                     )}
                                                                     {order.promo_code && (
-                                                                        <p className="text-xs"><span className="text-gray-400 font-bold">كوبون خصم:</span> <span className="font-mono text-green-400 bg-green-500/10 px-2 py-0.5 rounded font-bold">{order.promo_code} (وفّر: {order.discount_amount} ر.س)</span></p>
+                                                                        <p className="text-xs"><span className="text-gray-400 font-bold">كوبون خصم:</span> <span className="font-mono text-green-400 bg-green-500/10 px-2 py-0.5 rounded font-bold">{order.promo_code}</span></p>
+                                                                    )}
+                                                                    {order.discount_amount > 0 && (
+                                                                        <p className="text-xs"><span className="text-gray-400 font-bold">إجمالي الخصم المطبق:</span> <span className="font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded font-bold">{order.discount_amount} ر.س</span></p>
                                                                     )}
                                                                     
                                                                     <div className="pt-2 border-t border-white/5 space-y-2">
@@ -614,6 +640,63 @@ const AdminOrdersView = () => {
                                                                                             toast.error('فشل تحديث الحالة');
                                                                                         } else {
                                                                                             toast.success(`تم تحديث حالة الطلب إلى: ${s.label}`);
+                                                                                            
+                                                                                            // Sync loyalty points on completion
+                                                                                            if (s.status === 'completed' && order.status !== 'completed' && order.phone) {
+                                                                                                const diff = loyaltyEarned - loyaltyUsed;
+                                                                                                if (diff !== 0 || loyaltyUsed > 0) {
+                                                                                                    try {
+                                                                                                        const { data: customer } = await supabaseAdmin
+                                                                                                            .from('customers')
+                                                                                                            .select('points_balance')
+                                                                                                            .eq('phone_number', order.phone)
+                                                                                                            .single();
+
+                                                                                                        if (customer) {
+                                                                                                            await supabaseAdmin
+                                                                                                                .from('customers')
+                                                                                                                .update({ points_balance: Math.max(0, (customer.points_balance || 0) + diff) })
+                                                                                                                .eq('phone_number', order.phone);
+                                                                                                        } else if (diff > 0) {
+                                                                                                            await supabaseAdmin
+                                                                                                                .from('customers')
+                                                                                                                .insert([{
+                                                                                                                    phone_number: order.phone,
+                                                                                                                    full_name: order.customer_name || 'عميل المنيو',
+                                                                                                                    points_balance: diff
+                                                                                                                }]);
+                                                                                                        }
+
+                                                                                                        if (loyaltyUsed > 0) {
+                                                                                                            await supabaseAdmin.from('transactions').insert([{
+                                                                                                                customer_phone: order.phone,
+                                                                                                                type: 'redeem',
+                                                                                                                amount: order.total_price || 0,
+                                                                                                                points_earned: 0,
+                                                                                                                points_redeemed: loyaltyUsed,
+                                                                                                                notes: `خصم نقاط طلب من لوحة الأدمن`,
+                                                                                                                staff_id: 'الأدمن',
+                                                                                                                created_at: new Date().toISOString()
+                                                                                                            }]);
+                                                                                                        }
+                                                                                                        if (loyaltyEarned > 0) {
+                                                                                                            await supabaseAdmin.from('transactions').insert([{
+                                                                                                                customer_phone: order.phone,
+                                                                                                                type: 'earn',
+                                                                                                                amount: order.total_price || 0,
+                                                                                                                points_earned: loyaltyEarned,
+                                                                                                                points_redeemed: 0,
+                                                                                                                notes: `كسب نقاط طلب من لوحة الأدمن`,
+                                                                                                                staff_id: 'الأدمن',
+                                                                                                                created_at: new Date().toISOString()
+                                                                                                            }]);
+                                                                                                        }
+                                                                                                    } catch (err) {
+                                                                                                        console.error('Loyalty sync error:', err);
+                                                                                                    }
+                                                                                                }
+                                                                                            }
+
                                                                                             setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: s.status } : o));
                                                                                             fetchStats();
                                                                                         }

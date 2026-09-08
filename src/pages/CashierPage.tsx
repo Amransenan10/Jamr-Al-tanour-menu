@@ -763,6 +763,32 @@ export const CashierPage: React.FC = () => {
                                 points_balance: diff
                             }]);
                     }
+
+                    if (usedPoints > 0) {
+                        await supabaseAdmin.from('transactions').insert([{
+                            customer_phone: order.phone,
+                            type: 'redeem',
+                            amount: order.total_price || 0,
+                            points_earned: 0,
+                            points_redeemed: usedPoints,
+                            notes: `استبدال نقاط خصم للطلب من الكاشير`,
+                            staff_id: branch || 'الكاشير',
+                            created_at: new Date().toISOString()
+                        }]);
+                    }
+                    if (earnedPoints > 0) {
+                        await supabaseAdmin.from('transactions').insert([{
+                            customer_phone: order.phone,
+                            type: 'earn',
+                            amount: order.total_price || 0,
+                            points_earned: earnedPoints,
+                            points_redeemed: 0,
+                            notes: `كسب نقاط من الطلب في الكاشير`,
+                            staff_id: branch || 'الكاشير',
+                            created_at: new Date().toISOString()
+                        }]);
+                    }
+
                     toast.success('تمت مزامنة نقاط الولاء للعميل بنجاح');
                 } catch (e) {
                     console.error('Failed to sync loyalty points:', e);
