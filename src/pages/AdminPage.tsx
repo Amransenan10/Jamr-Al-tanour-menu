@@ -6,7 +6,7 @@ import {
     LayoutDashboard, KeyRound, ShoppingBag, Settings as SettingsIcon,
     UtensilsCrossed, LogOut, Loader2, Plus, Edit2, Trash2, CheckCircle2,
     X, Store, Clock, RefreshCw, Upload, TicketPercent, Image as ImageIcon,
-    Camera, Sliders, Volume2, VolumeX, Copy, Search, User, BarChart3, Send, Layers, Gift
+    Camera, Sliders, Volume2, VolumeX, Copy, Search, User, BarChart3, Send, Layers, Gift, MapPin
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -15,6 +15,7 @@ import { AdminMarketingView } from '../components/AdminMarketingView';
 import { CategoryAdminManager } from '../components/CategoryAdminManager';
 import { AdminLoyaltyView } from '../components/AdminLoyaltyView';
 import { normalizeCouponCode } from '../utils/couponUtils';
+import { extractCoordinatesFromLocation } from '../utils/distanceUtils';
 
 export const AdminPage: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -1111,6 +1112,7 @@ const AdminMenuView = () => {
 
 const AdminSettingsView = () => {
     const [branches, setBranches] = useState<any[]>([]);
+    const [storeSettingsList, setStoreSettingsList] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     
     // App settings state
@@ -1130,12 +1132,14 @@ const AdminSettingsView = () => {
 
     const fetchSettings = async () => {
         setLoading(true);
-        const [branchesRes, appRes] = await Promise.all([
+        const [branchesRes, appRes, storeRes] = await Promise.all([
             supabase.from('branch_credentials').select('*'),
-            supabase.from('app_settings').select('*').eq('id', 1).single()
+            supabase.from('app_settings').select('*').eq('id', 1).single(),
+            supabase.from('store_settings').select('*')
         ]);
         
         if (branchesRes.data) setBranches(branchesRes.data.filter(b => b.branch_name !== 'admin'));
+        if (storeRes.data) setStoreSettingsList(storeRes.data);
         if (appRes.data) {
             setAppSettings({
                 announcement_text: appRes.data.announcement_text || '',
@@ -1162,6 +1166,39 @@ const AdminSettingsView = () => {
         } catch {
             toast.error('حدث خطأ أثناء التحديث');
         }
+    };
+
+    const handleBranchLocationSave = async (branchName: string, lat: number | null, lng: number | null, mapUrl?: string) => {
+        try {
+            const { error } = await supabaseAdmin.from('store_settings').update({
+                latitude: lat,
+                longitude: lng,
+                google_maps_url: mapUrl || null
+            }).eq('branch_name', branchName);
+            if (error) throw error;
+            toast.success(`تم حفظ موقع فرع ${branchName} بنجاح`);
+            fetchSettings();
+        } catch {
+            toast.error('حدث خطأ أثناء حفظ موقع الفرع');
+        }
+    };
+
+    const handleCaptureLocation = (branchName: string) => {
+        if (!navigator.geolocation) {
+            toast.error('المتصفح لا يدعم التقاط الموقع الجغرافي');
+            return;
+        }
+        toast('جاري التقاط إحداثيات موقع الفرع...', { icon: '📍' });
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                handleBranchLocationSave(branchName, lat, lng, `https://www.google.com/maps?q=${lat},${lng}`);
+            },
+            () => {
+                toast.error('تعذر الوصول لموقعك الجغرافي، يرجى تفعيل الـ GPS بالمتصفح');
+            }
+        );
     };
     
     const handleSaveAppSettings = async (e: React.FormEvent) => {
@@ -1315,29 +1352,70 @@ const AdminSettingsView = () => {
 
                 {/* Branches Settings */}
                 <div className="bg-zinc-900 border border-white/5 rounded-2xl p-6">
-                    <h3 className="text-lg font-black mb-6 flex items-center gap-2"><Store className="text-gray-400"/> إعدادات الفروع وحسابات الكاشير</h3>
+                    <h3 className="text-lg font-black mb-6 flex items-center gap-2"><Store className="text-gray-400"/> إعدادات الفروع والمواقع الجغرافية</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {branches.map(b => (
-                            <div key={b.branch_name} className="bg-zinc-800/50 border border-white/5 rounded-xl p-5 space-y-4">
-                                <h4 className="text-base font-bold flex items-center gap-2">{b.branch_name}</h4>
-                                <div className="space-y-2">
-                                    <p className="text-sm text-gray-400">كلمة مرور لكاشير الفرع:</p>
-                                    <div className="flex gap-2">
-                                        <input 
-                                            type="text" 
-                                            defaultValue={b.password} 
-                                            onBlur={(e) => {
-                                                if (e.target.value !== b.password) {
-                                                    handlePasswordChange(b.branch_name, e.target.value);
-                                                }
-                                            }}
-                                            className="flex-1 bg-zinc-800 text-white rounded-lg px-3 py-2 text-sm font-mono border border-transparent focus:border-primary outline-none transition-colors" 
-                                        />
-                                        <div className="text-[10px] text-gray-500 self-center">تعديل مباشر</div>
+                        {branches.map(b => {
+                            const storeSetting = storeSettingsList.find(s => s.branch_name === b.branch_name);
+                            return (
+                                <div key={b.branch_name} className="bg-zinc-800/50 border border-white/5 rounded-xl p-5 space-y-4">
+                                    <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                                        <h4 className="text-base font-bold flex items-center gap-2 text-primary">{b.branch_name}</h4>
+                                        <button 
+                                            type="button"
+                                            onClick={() => handleCaptureLocation(b.branch_name)}
+                                            className="text-xs bg-primary/10 text-primary hover:bg-primary hover:text-white px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1"
+                                            title="يلتقط الإحداثيات فورياً من جهازك أثناء تواجدك في الفرع"
+                                        >
+                                            <MapPin size={14} /> التقاط موقع الفرع الحالي 📍
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <p className="text-sm text-gray-400">كلمة مرور لكاشير الفرع:</p>
+                                        <div className="flex gap-2">
+                                            <input 
+                                                type="text" 
+                                                defaultValue={b.password} 
+                                                onBlur={(e) => {
+                                                    if (e.target.value !== b.password) {
+                                                        handlePasswordChange(b.branch_name, e.target.value);
+                                                    }
+                                                }}
+                                                className="flex-1 bg-zinc-800 text-white rounded-lg px-3 py-2 text-sm font-mono border border-transparent focus:border-primary outline-none transition-colors" 
+                                            />
+                                            <div className="text-[10px] text-gray-500 self-center">تعديل مباشر</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2 pt-2 border-t border-white/5">
+                                        <p className="text-xs font-bold text-gray-400">إحداثيات الفرع (خط العرض والطول / رابط خرائط قوقل):</p>
+                                        <div className="space-y-2">
+                                            <input 
+                                                type="text" 
+                                                placeholder="رابط Google Maps أو إحداثيات (مثال: 24.5937, 46.6111)"
+                                                defaultValue={storeSetting?.google_maps_url || (storeSetting?.latitude ? `${storeSetting.latitude}, ${storeSetting.longitude}` : '')}
+                                                onBlur={(e) => {
+                                                    const val = e.target.value.trim();
+                                                    if (!val) return;
+                                                    const coords = extractCoordinatesFromLocation(val);
+                                                    if (coords) {
+                                                        handleBranchLocationSave(b.branch_name, coords.lat, coords.lng, val.startsWith('http') ? val : `https://www.google.com/maps?q=${coords.lat},${coords.lng}`);
+                                                    } else {
+                                                        toast.error('صيغة الإحداثيات غير صحيحة، يرجى كتابة الإحداثيات كـ lat,lng أو وضع رابط قوقل ماب');
+                                                    }
+                                                }}
+                                                className="w-full bg-zinc-800 text-white rounded-lg px-3 py-2 text-xs font-mono border border-transparent focus:border-primary outline-none"
+                                            />
+                                            {storeSetting?.latitude && (
+                                                <p className="text-[10px] text-emerald-400">
+                                                    إحداثيات مسجلة: {storeSetting.latitude}, {storeSetting.longitude}
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
                 </>

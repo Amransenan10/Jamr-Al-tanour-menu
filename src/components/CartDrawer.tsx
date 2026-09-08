@@ -8,6 +8,7 @@ import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { saveOrderLocally } from '../utils/orderStorage';
 import { normalizeCouponCode } from '../utils/couponUtils';
+import { getDeliveryPricingRules } from '../utils/distanceUtils';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -131,7 +132,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
     }
   };
 
-  const baseDeliveryFee = orderType === 'delivery' ? 5 : 0;
+  const deliveryRules = orderType === 'delivery'
+    ? getDeliveryPricingRules(formData.location, branch, storeSettings?.latitude, storeSettings?.longitude)
+    : { distanceKm: null, deliveryFee: 0, minOrderValue: 20, isAllowed: true, tierLabel: '' };
+
+  const baseDeliveryFee = orderType === 'delivery' ? deliveryRules.deliveryFee : 0;
   let deliveryFee = baseDeliveryFee;
   
   let discountAmount = 0;
@@ -277,6 +282,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
       return;
     }
 
+    if (orderType === 'delivery') {
+      if (!deliveryRules.isAllowed) {
+        alert(deliveryRules.statusMessage || 'عذراً، موقعك خارج نطاق التوصيل المسموح (أقصى حد 10 كم). يرجى اختيار الاستلام من الفرع.');
+        return;
+      }
+      if (totalPrice < deliveryRules.minOrderValue) {
+        alert(`عذراً، الحد الأدنى لطلب التوصيل لهذه المنطقة (${deliveryRules.distanceKm || ''} كم) هو ${deliveryRules.minOrderValue} ر.س.`);
+        return;
+      }
+    }
+
     if (orderType === 'delivery' && storeSettings?.is_delivery_active === false) {
       alert('عذراً، خدمة التوصيل مغلقة حالياً من قبل المطعم. يرجى اختيار الاستلام أو المحاولة لاحقاً.');
       return;
@@ -313,6 +329,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
 
       const orderNotes = [
         formData.notes,
+        deliveryRules.distanceKm ? `[DISTANCE:${deliveryRules.distanceKm}km]` : '',
         pointsToDeduct > 0 ? `[LOYALTY_USED:${pointsToDeduct}]` : '',
         loyaltyPointsEarned > 0 ? `[LOYALTY_EARNED:${loyaltyPointsEarned}]` : ''
       ].filter(Boolean).join('\n');
@@ -328,9 +345,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         items: cart,
         status: 'new',
         pickup_time: orderType === 'pickup' && formData.pickupTime ? formData.pickupTime : undefined,
-        // Typecasting below to bypass strict type checking temporarily, assuming the 'orders' table supports these columns per our recent migration
+        delivery_fee: deliveryFee,
+        distance_km: deliveryRules.distanceKm,
         ...({
-          delivery_fee: deliveryFee,
           discount_amount: discountAmount + loyaltyDiscountAmount, // merge both discounts visually in total/subtotal
           promo_code: appliedPromo?.code || null
         } as any)
@@ -532,6 +549,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                             className="w-full pr-14 pl-4 py-3.5 bg-gray-50 dark:bg-white/5 rounded-2xl border-none focus:ring-2 focus:ring-primary/50 outline-none text-sm font-medium"
                           />
                         </div>
+                        {formData.location && deliveryRules.tierLabel && (
+                          <div className={cn(
+                            "text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 mt-1",
+                            !deliveryRules.isAllowed ? "bg-red-500/10 text-red-500 border border-red-500/20" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                          )}>
+                            <span>📍 {deliveryRules.tierLabel}</span>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-1.5">
@@ -726,9 +751,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                   </div>
                 )}
 
-                {step === 'checkout' && orderType === 'delivery' && totalPrice < 20 && (
+                {step === 'checkout' && orderType === 'delivery' && !deliveryRules.isAllowed && (
+                  <div className="text-red-500 bg-red-500/10 p-3 rounded-2xl text-xs font-bold text-center border border-red-500/20 leading-relaxed">
+                    🚫 {deliveryRules.statusMessage || 'عذراً، موقعك خارج نطاق التوصيل المسموح (أقصى حد 10 كم). يرجى تغيير خيار الطلب إلى الاستلام من الفرع.'}
+                  </div>
+                )}
+
+                {step === 'checkout' && orderType === 'delivery' && deliveryRules.isAllowed && totalPrice < deliveryRules.minOrderValue && (
                   <div className="text-red-500 bg-red-500/10 p-2.5 rounded-xl text-xs font-bold text-center border border-red-500/20">
-                    عذراً، الحد الأدنى لطلب التوصيل هو 20 ر.س (25 ر.س شامل التوصيل)
+                    عذراً، الحد الأدنى لطلب التوصيل {deliveryRules.distanceKm ? `لهذه المنطقة (${deliveryRules.distanceKm} كم)` : ''} هو {deliveryRules.minOrderValue} ر.س
                   </div>
                 )}
 
@@ -752,18 +783,19 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                       رجوع
                     </button>
                     <button
-                      disabled={storeStatus === 'closed' || !orderType || (orderType === 'delivery' && totalPrice < 20) || !formData.name || !formData.phone || (orderType === 'delivery' && !formData.location)}
+                      disabled={storeStatus === 'closed' || !orderType || (orderType === 'delivery' && (!deliveryRules.isAllowed || totalPrice < deliveryRules.minOrderValue)) || !formData.name || !formData.phone || (orderType === 'delivery' && !formData.location)}
                       onClick={() => setStep('review')}
                       className={cn(
                         "flex-[2] py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all disabled:opacity-50",
                         storeStatus === 'closed' ? "bg-red-500/50 text-white cursor-not-allowed" : 
                         (!orderType) ? "bg-zinc-800 text-gray-500 cursor-not-allowed" :
-                        (orderType === 'delivery' && totalPrice < 20) ? "bg-zinc-800 text-gray-500 cursor-not-allowed" :
+                        (orderType === 'delivery' && !deliveryRules.isAllowed) ? "bg-zinc-800 text-gray-500 cursor-not-allowed" :
+                        (orderType === 'delivery' && totalPrice < deliveryRules.minOrderValue) ? "bg-zinc-800 text-gray-500 cursor-not-allowed" :
                         (!formData.name || !formData.phone) ? "bg-zinc-800 text-gray-500 cursor-not-allowed cursor-pointer" :
                         "bg-primary text-white shadow-xl shadow-primary/30 hover:scale-[1.02] active:scale-95"
                       )}
                     >
-                      {storeStatus === 'closed' ? 'المطعم مغلق' : !orderType ? 'اختر نوع الطلب' : (!formData.name || !formData.phone) ? 'أكمل البيانات' : 'مراجعة الطلب'}
+                      {storeStatus === 'closed' ? 'المطعم مغلق' : !orderType ? 'اختر نوع الطلب' : (orderType === 'delivery' && !deliveryRules.isAllowed) ? 'خارج نطاق التوصيل' : (orderType === 'delivery' && totalPrice < deliveryRules.minOrderValue) ? 'لم تصل للحد الأدنى' : (!formData.name || !formData.phone) ? 'أكمل البيانات' : 'مراجعة الطلب'}
                     </button>
                   </div>
                 ) : (

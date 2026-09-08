@@ -117,6 +117,8 @@ export interface Order {
   discount_amount?: number;
   promo_code?: string;
   pickup_time?: string;
+  delivery_fee?: number;
+  distance_km?: number | null;
 }
 
 export interface StoreSettings {
@@ -124,4 +126,7 @@ export interface StoreSettings {
   status: 'open' | 'busy' | 'closed';
   is_delivery_active: boolean;
   is_pickup_active: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
+  google_maps_url?: string | null;
 }

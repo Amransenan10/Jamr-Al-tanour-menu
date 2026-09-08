@@ -122,12 +122,20 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                         {(order as any).order_type === 'delivery' ? <Bike size={12} /> : <Coffee size={12} />}
                         {(order as any).order_type === 'delivery' ? 'توصيل' : 'استلام'}
                     </span>
-                    {order.pickup_time && (
-                        <span className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl font-black bg-amber-500/20 text-amber-500 border border-amber-500/30 animate-pulse">
-                            <Clock size={12} />
-                            وقت الاستلام: {order.pickup_time}
+                    {(order as any).order_type === 'delivery' && (order as any).delivery_fee !== undefined && (
+                        <span className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-xl font-bold bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                            رسوم التوصيل: {(order as any).delivery_fee} ر.س
                         </span>
                     )}
+                    {(() => {
+                        const distMatch = order.notes?.match(/\[DISTANCE:([\d.]+)km\]/);
+                        const dist = (order as any).distance_km || (distMatch ? distMatch[1] : null);
+                        return dist ? (
+                            <span className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-xl font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                                📍 يبعد {dist} كم
+                            </span>
+                        ) : null;
+                    })()}
                     {order.phone && (
                         <a href={`tel:${order.phone}`} className="flex items-center gap-2 text-sm font-black px-4 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 transition-colors shadow-sm" title="اتصال بالعميل">
                             <Phone size={14} className="animate-pulse" /> <span className="tracking-widest" dir="ltr">{order.phone}</span>
