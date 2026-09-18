@@ -27,8 +27,13 @@ export function calculateHaversineDistance(
       Math.sin(dLon / 2) *
       Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c;
-  return Math.round(distance * 100) / 100; // Round to 2 decimal places
+  const straightDistance = R * c;
+
+  // Real-world driving route factor (road curvature & street routing in city, ~1.45x straight line)
+  const ROAD_FACTOR = 1.45;
+  const estimatedDrivingDistance = straightDistance * ROAD_FACTOR;
+
+  return Math.round(estimatedDrivingDistance * 10) / 10; // Round to 1 decimal place (e.g. 5.8 km)
 }
 
 /**

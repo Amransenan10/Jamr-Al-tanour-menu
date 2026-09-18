@@ -392,8 +392,8 @@ export const CashierPage: React.FC = () => {
     const [isLoyaltyProcessing, setIsLoyaltyProcessing] = useState(false);
     const [loyaltyConfig, setLoyaltyConfig] = useState({
         is_enabled: true,
-        earning_rate: 10,
-        redemption_rate: 5,
+        earning_rate: 1,
+        redemption_rate: 10,
         min_points_to_redeem: 5
     });
     const [menuProducts, setMenuProducts] = useState<any[]>([]);
@@ -407,8 +407,8 @@ export const CashierPage: React.FC = () => {
             if (data) {
                 setLoyaltyConfig({
                     is_enabled: data.is_enabled ?? true,
-                    earning_rate: Number(data.earning_rate) || 10,
-                    redemption_rate: Number(data.redemption_rate) || 5,
+                    earning_rate: Number(data.earning_rate) || 1,
+                    redemption_rate: Number(data.redemption_rate) || 10,
                     min_points_to_redeem: Number(data.min_points_to_redeem) || 5
                 });
             }

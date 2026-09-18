@@ -47,8 +47,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
   const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
   const [loyaltyConfig, setLoyaltyConfig] = useState({
     is_enabled: true,
-    earning_rate: 10,
-    redemption_rate: 5,
+    earning_rate: 1,
+    redemption_rate: 10,
     min_points_to_redeem: 5
   });
 
@@ -62,8 +62,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         if (cfg) {
           setLoyaltyConfig({
             is_enabled: cfg.is_enabled ?? true,
-            earning_rate: Number(cfg.earning_rate) || 10,
-            redemption_rate: Number(cfg.redemption_rate) || 5,
+            earning_rate: Number(cfg.earning_rate) || 1,
+            redemption_rate: Number(cfg.redemption_rate) || 10,
             min_points_to_redeem: Number(cfg.min_points_to_redeem) || 5
           });
         }
@@ -151,8 +151,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
   }
 
   // Loyalty Discount & Points Dynamic Calculations
-  const redemptionRate = loyaltyConfig.redemption_rate || 5;
-  const earningRate = loyaltyConfig.earning_rate || 10;
+  const redemptionRate = loyaltyConfig.redemption_rate || 10;
+  const earningRate = loyaltyConfig.earning_rate || 1;
   const minPointsToRedeem = loyaltyConfig.min_points_to_redeem || 5;
 
   let maxLoyaltyDiscount = loyaltyConfig.is_enabled ? Math.floor(loyaltyPoints / redemptionRate) : 0;

@@ -45,8 +45,8 @@ export const AdminLoyaltyView: React.FC = () => {
     // Config state
     const [config, setConfig] = useState<LoyaltyConfig>({
         is_enabled: true,
-        earning_rate: 10,
-        redemption_rate: 5,
+        earning_rate: 1,
+        redemption_rate: 10,
         min_points_to_redeem: 5,
         welcome_bonus_points: 0
     });
@@ -107,8 +107,8 @@ export const AdminLoyaltyView: React.FC = () => {
             if (data) {
                 setConfig({
                     is_enabled: data.is_enabled ?? true,
-                    earning_rate: Number(data.earning_rate) || 10,
-                    redemption_rate: Number(data.redemption_rate) || 5,
+                    earning_rate: Number(data.earning_rate) || 1,
+                    redemption_rate: Number(data.redemption_rate) || 10,
                     min_points_to_redeem: Number(data.min_points_to_redeem) || 5,
                     welcome_bonus_points: Number(data.welcome_bonus_points) || 0
                 });
@@ -183,22 +183,63 @@ export const AdminLoyaltyView: React.FC = () => {
             const payload = {
                 id: 1,
                 is_enabled: config.is_enabled,
-                earning_rate: Math.max(1, Number(config.earning_rate) || 10),
-                redemption_rate: Math.max(1, Number(config.redemption_rate) || 5),
+                earning_rate: Math.max(0.1, Number(config.earning_rate) || 1),
+                redemption_rate: Math.max(1, Number(config.redemption_rate) || 10),
                 min_points_to_redeem: Math.max(0, Number(config.min_points_to_redeem) || 5),
                 welcome_bonus_points: Math.max(0, Number(config.welcome_bonus_points) || 0),
                 updated_at: new Date().toISOString()
             };
 
-            const { error } = await supabaseAdmin
-                .from('loyalty_config')
-                .upsert([payload]);
+            let saveError: any = null;
 
-            if (error) throw error;
+            // 1. Try supabaseAdmin upsert
+            const adminRes = await supabaseAdmin
+                .from('loyalty_config')
+                .upsert([payload], { onConflict: 'id' });
+
+            if (adminRes.error) {
+                console.warn('supabaseAdmin upsert issue:', adminRes.error);
+                saveError = adminRes.error;
+
+                // 2. Fallback to standard supabase client upsert
+                const publicRes = await supabase
+                    .from('loyalty_config')
+                    .upsert([payload], { onConflict: 'id' });
+
+                if (publicRes.error) {
+                    console.warn('supabase client upsert issue:', publicRes.error);
+
+                    // 3. Fallback to direct update
+                    const updateRes = await supabaseAdmin
+                        .from('loyalty_config')
+                        .update(payload)
+                        .eq('id', 1);
+
+                    if (updateRes.error) {
+                        const publicUpdateRes = await supabase
+                            .from('loyalty_config')
+                            .update(payload)
+                            .eq('id', 1);
+                        saveError = publicUpdateRes.error;
+                    } else {
+                        saveError = null;
+                    }
+                } else {
+                    saveError = null;
+                }
+            } else {
+                saveError = null;
+            }
+
+            if (saveError) {
+                throw saveError;
+            }
+
             toast.success('تم حفظ إعدادات نظام الولاء بنجاح 🌟');
+            fetchConfig();
         } catch (err: any) {
             console.error('Save config error:', err);
-            toast.error('حدث خطأ أثناء حفظ الإعدادات');
+            toast.error('حدث خطأ أثناء حفظ الإعدادات: ' + (err?.message || 'يرجى التأكد من صلاحيات الجداول'));
         } finally {
             setSavingConfig(false);
         }
