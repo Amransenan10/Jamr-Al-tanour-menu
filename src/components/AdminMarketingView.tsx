@@ -42,7 +42,7 @@ export const AdminMarketingView: React.FC = () => {
 
   // Form State for Seasonal Event Engine
   const [eventForm, setEventForm] = useState<SeasonalEventSettings>({
-    event_active: false,
+    event_active: true,
     event_preset: 'saudi_national_day',
     event_title: 'اليوم الوطني السعودي 🇸🇦',
     event_subtitle: 'نحتفل معكم باليوم الوطني! استمتع بأشهى الأطباق بخصم حصري ومميز',
@@ -199,6 +199,7 @@ export const AdminMarketingView: React.FC = () => {
 
     setEventForm(prev => ({
       ...prev,
+      event_active: true,
       event_preset: preset,
       event_title: title,
       event_subtitle: subtitle,

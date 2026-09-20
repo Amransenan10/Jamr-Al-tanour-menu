@@ -32,7 +32,17 @@ import { initOneSignal } from './utils/oneSignalService';
 
 const parseAppSettings = (data: any) => {
   if (!data) return {};
-  let parsed = { ...data };
+  
+  let localObj: any = {};
+  const savedLocal = typeof window !== 'undefined' ? localStorage.getItem('jamr_app_settings') : null;
+  if (savedLocal) {
+    try {
+      localObj = JSON.parse(savedLocal);
+    } catch (e) {}
+  }
+
+  // Merge DB data OVER localObj so DB is always the primary source of truth
+  let parsed = { ...localObj, ...data };
   
   const subStr = data.popular_subtitle || data.announcement_text || '';
   const match = typeof subStr === 'string' ? subStr.match(/\[CONFIG:(.*?)\]/) : null;
@@ -49,18 +59,10 @@ const parseAppSettings = (data: any) => {
     parsed.popular_subtitle = parsed.popular_subtitle.replace(/\[CONFIG:.*?\]/g, '').trim();
   }
 
-  const savedLocal = typeof window !== 'undefined' ? localStorage.getItem('jamr_app_settings') : null;
-  if (savedLocal) {
-    try {
-      const localObj = JSON.parse(savedLocal);
-      parsed = { ...parsed, ...localObj };
-    } catch (e) {}
-  }
-
   parsed.announcement_active = parsed.announcement_active === undefined ? true : Boolean(parsed.announcement_active);
   parsed.offers_active = parsed.offers_active === undefined ? true : Boolean(parsed.offers_active);
   parsed.wheel_active = parsed.wheel_active === undefined ? true : Boolean(parsed.wheel_active);
-  parsed.event_active = Boolean(parsed.event_active);
+  parsed.event_active = parsed.event_active === undefined ? true : Boolean(parsed.event_active);
   parsed.event_show_confetti = parsed.event_show_confetti === undefined ? true : Boolean(parsed.event_show_confetti);
   parsed.event_show_modal = parsed.event_show_modal === undefined ? true : Boolean(parsed.event_show_modal);
 
