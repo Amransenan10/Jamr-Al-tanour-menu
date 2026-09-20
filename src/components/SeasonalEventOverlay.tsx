@@ -203,7 +203,8 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
   useEffect(() => {
     if (!isActive || !showModal) return;
 
-    const storageKey = `jamr_event_dismissed_${preset}_${promoCode}`;
+    const eventTs = settings?.event_timestamp || '';
+    const storageKey = `jamr_event_dismissed_${preset}_${promoCode}_${eventTs}`;
     const dismissed = localStorage.getItem(storageKey);
     
     if (!dismissed) {
@@ -213,11 +214,12 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
       }, 700);
       return () => clearTimeout(timer);
     }
-  }, [isActive, showModal, preset, promoCode]);
+  }, [isActive, showModal, preset, promoCode, settings?.event_timestamp]);
 
   const handleClose = () => {
     setIsOpen(false);
-    const storageKey = `jamr_event_dismissed_${preset}_${promoCode}`;
+    const eventTs = settings?.event_timestamp || '';
+    const storageKey = `jamr_event_dismissed_${preset}_${promoCode}_${eventTs}`;
     localStorage.setItem(storageKey, 'true');
   };
 

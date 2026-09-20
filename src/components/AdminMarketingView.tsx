@@ -219,7 +219,8 @@ export const AdminMarketingView: React.FC = () => {
         event_subtitle: (eventForm.event_subtitle || 'نحتفل معكم باليوم الوطني!').trim(),
         event_promo_code: (eventForm.event_promo_code || 'SAUDI').trim().toUpperCase(),
         event_show_confetti: eventForm.event_show_confetti,
-        event_show_modal: eventForm.event_show_modal
+        event_show_modal: eventForm.event_show_modal,
+        event_timestamp: Date.now()
       };
 
       // 1. LocalStorage instant persistence

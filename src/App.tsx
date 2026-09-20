@@ -624,6 +624,7 @@ export default function App() {
             onSearch={setSearchQuery}
             onSideMenuOpen={() => setIsSideMenuOpen(true)}
             logoUrl={appSettings?.logo_url || ''}
+            eventSettings={appSettings}
           />
 
           {storeStatus === 'closed' && (
