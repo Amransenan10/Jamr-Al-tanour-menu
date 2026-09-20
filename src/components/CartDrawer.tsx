@@ -181,7 +181,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
       // Check local storage first for quick feedback
       const usedPromos: string[] = JSON.parse(localStorage.getItem('jamr_used_promos') || '[]');
       if (usedPromos.some(p => normalizeCouponCode(p) === normalizedInput)) {
-        setPromoError('لقد قمت باستخدام كود الخصم هذا مسبقاً');
+        setPromoError('لا يمكنك استخدام هذا الكود مرة أخرى');
         return;
       }
 
@@ -222,7 +222,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
 
       // Check max uses
       if (data.max_uses && data.current_uses >= data.max_uses) {
-          setPromoError('تم الوصول للحد الأقصى لاستخدام هذا الكود');
+          setPromoError('لا يمكنك استخدام هذا الكود مرة أخرى');
           return;
       }
 
@@ -252,7 +252,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
           .limit(1);
           
         if (previousOrders && previousOrders.length > 0) {
-          setPromoError('لقد قمت باستخدام كود الخصم هذا مسبقاً برقم الجوال المدخل');
+          setPromoError('لا يمكنك استخدام هذا الكود مرة أخرى');
           return;
         }
       }
@@ -320,7 +320,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
           .limit(1);
           
         if (previousOrders && previousOrders.length > 0) {
-          alert('لقد قمت باستخدام كود الخصم هذا مسبقاً برقم الجوال المدخل');
+          alert('عذراً، لا يمكنك استخدام هذا الكود مرة أخرى');
           setLoading(false);
           setAppliedPromo(null);
           return;
