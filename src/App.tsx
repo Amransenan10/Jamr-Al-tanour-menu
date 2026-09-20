@@ -8,6 +8,7 @@ import { ProductModal } from './components/ProductModal';
 import { CartDrawer } from './components/CartDrawer';
 import { InstallPWA } from './components/InstallPWA';
 import { AnnouncementBanner } from './components/AnnouncementBanner';
+import { SeasonalEventOverlay } from './components/SeasonalEventOverlay';
 import { SocialLinks } from './components/SocialLinks';
 import { SideMenuDrawer } from './components/SideMenuDrawer';
 import { StoriesStrip } from './components/StoriesStrip';
@@ -51,6 +52,9 @@ const parseAppSettings = (data: any) => {
   parsed.announcement_active = parsed.announcement_active === undefined ? true : Boolean(parsed.announcement_active);
   parsed.offers_active = parsed.offers_active === undefined ? true : Boolean(parsed.offers_active);
   parsed.wheel_active = parsed.wheel_active === undefined ? true : Boolean(parsed.wheel_active);
+  parsed.event_active = Boolean(parsed.event_active);
+  parsed.event_show_confetti = parsed.event_show_confetti === undefined ? true : Boolean(parsed.event_show_confetti);
+  parsed.event_show_modal = parsed.event_show_modal === undefined ? true : Boolean(parsed.event_show_modal);
 
   return parsed;
 };
@@ -585,7 +589,12 @@ export default function App() {
       <CartProvider>
         <div className="min-h-screen pb-20">
           <Toaster />
-          <AnnouncementBanner text={appSettings?.announcement_text || ''} isActive={Boolean(appSettings?.announcement_active)} />
+          <SeasonalEventOverlay settings={appSettings} />
+          <AnnouncementBanner 
+            text={appSettings?.announcement_text || ''} 
+            isActive={Boolean(appSettings?.announcement_active)}
+            eventSettings={appSettings}
+          />
           
           <Header
             selectedBranch={selectedBranch}

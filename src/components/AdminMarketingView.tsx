@@ -4,10 +4,13 @@ import { supabaseAdmin } from '../lib/supabaseAdmin';
 import { sendOneSignalPushNotification } from '../utils/oneSignalService';
 import { 
   Send, Bell, Users, Crown, MessageSquare, Sparkles, 
-  Search, Copy, CheckCircle2, Loader2, RefreshCw, Ticket, ExternalLink
+  Search, Copy, CheckCircle2, Loader2, RefreshCw, Ticket, ExternalLink,
+  Calendar, Flag, Gift, Check, ToggleLeft, ToggleRight, Layers, Flame
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
+import { SeasonalEventSettings, EventPreset } from '../types';
+import { getPresetDetails } from './SeasonalEventOverlay';
 
 interface CustomerAggregated {
   phone: string;
@@ -19,9 +22,10 @@ interface CustomerAggregated {
 }
 
 export const AdminMarketingView: React.FC = () => {
-  const [subView, setSubView] = useState<'broadcast' | 'vip'>('broadcast');
+  const [subView, setSubView] = useState<'broadcast' | 'vip' | 'events'>('broadcast');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [savingEvents, setSavingEvents] = useState(false);
   const [subscribersCount, setSubscribersCount] = useState(0);
   const [broadcasts, setBroadcasts] = useState<any[]>([]);
   const [customers, setCustomers] = useState<CustomerAggregated[]>([]);
@@ -34,6 +38,17 @@ export const AdminMarketingView: React.FC = () => {
     message: '',
     promo_code: '',
     url: ''
+  });
+
+  // Form State for Seasonal Event Engine
+  const [eventForm, setEventForm] = useState<SeasonalEventSettings>({
+    event_active: false,
+    event_preset: 'saudi_national_day',
+    event_title: 'اليوم الوطني السعودي 94 🇸🇦',
+    event_subtitle: 'نحتفل معكم باليوم الوطني 94! استمتع بأشهى الأطباق بخصم حصري ومميز',
+    event_promo_code: 'SAUDI94',
+    event_show_confetti: true,
+    event_show_modal: true
   });
 
   useEffect(() => {
@@ -51,7 +66,6 @@ export const AdminMarketingView: React.FC = () => {
       if (!subErr && subCount !== null) {
         setSubscribersCount(subCount);
       } else {
-        // Fallback check if table is empty or being created
         setSubscribersCount(subCount || 0);
       }
 
@@ -62,7 +76,26 @@ export const AdminMarketingView: React.FC = () => {
         .order('created_at', { ascending: false });
       if (bData) setBroadcasts(bData);
 
-      // 3. Aggregate Orders to get Customer VIP list with customer names
+      // 3. Fetch App Settings for Seasonal Event Engine
+      const { data: appSettings } = await supabase
+        .from('app_settings')
+        .select('*')
+        .eq('id', 1)
+        .maybeSingle();
+
+      if (appSettings) {
+        setEventForm({
+          event_active: Boolean(appSettings.event_active),
+          event_preset: (appSettings.event_preset as EventPreset) || 'saudi_national_day',
+          event_title: appSettings.event_title || 'اليوم الوطني السعودي 94 🇸🇦',
+          event_subtitle: appSettings.event_subtitle || 'نحتفل معكم باليوم الوطني 94! استمتع بأشهى الأطباق بخصم حصري ومميز',
+          event_promo_code: appSettings.event_promo_code || 'SAUDI94',
+          event_show_confetti: appSettings.event_show_confetti ?? true,
+          event_show_modal: appSettings.event_show_modal ?? true
+        });
+      }
+
+      // 4. Aggregate Orders to get Customer VIP list with customer names
       const { data: ordersData } = await supabaseAdmin
         .from('orders')
         .select('phone, customer_name, total_price, created_at')
@@ -112,7 +145,6 @@ export const AdminMarketingView: React.FC = () => {
           };
         });
 
-        // Sort by total orders descending
         aggregated.sort((a, b) => b.orderCount - a.orderCount);
         setCustomers(aggregated);
       }
@@ -140,10 +172,8 @@ export const AdminMarketingView: React.FC = () => {
         target_group: 'all'
       };
 
-      // Try inserting with supabaseAdmin first, fallback to supabase
       let res = await supabaseAdmin.from('broadcast_notifications').insert([payload]).select();
       if (res.error) {
-        console.warn('supabaseAdmin insert error, trying supabase fallback:', res.error);
         res = await supabase.from('broadcast_notifications').insert([payload]).select();
       }
 
@@ -151,7 +181,6 @@ export const AdminMarketingView: React.FC = () => {
 
       const created = res.data && res.data[0];
 
-      // Trigger OneSignal Web Push to background devices
       sendOneSignalPushNotification({
         title: notifForm.title.trim(),
         message: notifForm.message.trim(),
@@ -169,8 +198,99 @@ export const AdminMarketingView: React.FC = () => {
     }
   };
 
+  const handlePresetSelect = (preset: EventPreset) => {
+    const details = getPresetDetails(preset);
+    let title = details.badge;
+    let subtitle = '';
+    let promo = '';
+
+    switch (preset) {
+      case 'saudi_national_day':
+        title = 'اليوم الوطني السعودي 94 🇸🇦';
+        subtitle = 'نحتفل معكم باليوم الوطني 94! استمتع بأشهر الأطباق والوجبات بخصم خاص';
+        promo = 'SAUDI94';
+        break;
+      case 'founding_day':
+        title = 'نحتفل بيوم التأسيس 🇸🇦 1727م';
+        subtitle = 'يوم بدينا! استمتع بأصالة المذاق والتراث مع خصم خاص بمناسبة يوم التأسيس';
+        promo = 'FOUNDING';
+        break;
+      case 'back_to_school':
+        title = 'موسم العودة للمدارس 🎒📚';
+        subtitle = 'بداية جديدة وتفوق! خصم حصري وجبات العائلات والطلاب مع عودة المدارس';
+        promo = 'SCHOOL';
+        break;
+      case 'ramadan_eid':
+        title = 'موسم رمضان والعيد المبارك 🌙✨';
+        subtitle = 'مبارك عليكم الشهر والعيد! اطلب أشهر الوجبات الرمضانية واستفد من العرض';
+        promo = 'EID2026';
+        break;
+      case 'custom':
+      default:
+        title = 'عرض احتفالي خاص 🔥';
+        subtitle = 'استمتع بعرضنا المميز لفترة محدودة على المنيو!';
+        promo = 'SPECIAL';
+        break;
+    }
+
+    setEventForm(prev => ({
+      ...prev,
+      event_preset: preset,
+      event_title: title,
+      event_subtitle: subtitle,
+      event_promo_code: promo
+    }));
+  };
+
+  const handleSaveEventSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingEvents(true);
+
+    try {
+      const payload = {
+        id: 1,
+        event_active: eventForm.event_active,
+        event_preset: eventForm.event_preset,
+        event_title: eventForm.event_title.trim(),
+        event_subtitle: eventForm.event_subtitle.trim(),
+        event_promo_code: eventForm.event_promo_code.trim().toUpperCase(),
+        event_show_confetti: eventForm.event_show_confetti,
+        event_show_modal: eventForm.event_show_modal,
+        updated_at: new Date().toISOString()
+      };
+
+      // 1. Try Upsert in DB
+      let res = await supabaseAdmin.from('app_settings').upsert(payload);
+      if (res.error) {
+        console.warn('supabaseAdmin upsert error, trying supabase fallback:', res.error);
+        res = await supabase.from('app_settings').upsert(payload);
+      }
+
+      // 2. Broadcast realtime update to active client instances
+      try {
+        await supabase.channel('jamr_realtime_channel').send({
+          type: 'broadcast',
+          event: 'settings_changed',
+          payload
+        });
+      } catch (bcErr) {
+        console.warn('Realtime broadcast error:', bcErr);
+      }
+
+      if (eventForm.event_active) {
+        toast.success(`تم تفعيل ثيم احتفال (${eventForm.event_title}) بنجاح على المتجر! 🇸🇦🎉`);
+      } else {
+        toast.success('تم حفظ إعدادات الموسم (الوضع الحالي: معطل)');
+      }
+    } catch (error: any) {
+      console.error('Error saving event settings:', error);
+      toast.error(error?.message || 'حدث خطأ عند حفظ إعدادات الموسم');
+    } finally {
+      setSavingEvents(false);
+    }
+  };
+
   const formatWhatsAppLink = (phone: string, customerName?: string, customerBadge?: string) => {
-    // Format phone to international 966 standard
     let cleaned = phone.replace(/\D/g, '');
     if (cleaned.startsWith('05')) {
       cleaned = '966' + cleaned.substring(1);
@@ -200,11 +320,24 @@ export const AdminMarketingView: React.FC = () => {
 
   const vipCount = customers.filter(c => c.badge === 'vip').length;
   const preferredCount = customers.filter(c => c.badge === 'preferred').length;
+  const currentPresetDetails = getPresetDetails(eventForm.event_preset);
 
   return (
     <div className="space-y-6 text-right" dir="rtl">
       {/* Top Banner Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-zinc-900 border border-white/5 p-4 rounded-2xl flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-gray-400">حالة ثيم المناسبة</p>
+            <h3 className={cn("text-lg font-black mt-1 flex items-center gap-1", eventForm.event_active ? "text-emerald-400" : "text-gray-500")}>
+              {eventForm.event_active ? '🟢 مفعل الآن' : '⚪ غير مفعل'}
+            </h3>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+            <Sparkles size={20} />
+          </div>
+        </div>
+
         <div className="bg-zinc-900 border border-white/5 p-4 rounded-2xl flex items-center justify-between">
           <div>
             <p className="text-xs font-bold text-gray-400">مشتركي الإشعارات</p>
@@ -234,20 +367,26 @@ export const AdminMarketingView: React.FC = () => {
             <Users size={20} />
           </div>
         </div>
-
-        <div className="bg-zinc-900 border border-white/5 p-4 rounded-2xl flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold text-gray-400">الإشعارات المرسلة</p>
-            <h3 className="text-2xl font-black text-emerald-400 mt-1">{broadcasts.length}</h3>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-            <Send size={20} />
-          </div>
-        </div>
       </div>
 
       {/* Main Mode Navigation */}
-      <div className="flex gap-2 border-b border-white/10 pb-3">
+      <div className="flex gap-2 border-b border-white/10 pb-3 flex-wrap">
+        <button
+          onClick={() => setSubView('events')}
+          className={cn(
+            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm cursor-pointer relative overflow-hidden",
+            subView === 'events'
+              ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20 font-black"
+              : "bg-zinc-900 text-gray-400 hover:bg-zinc-800"
+          )}
+        >
+          <Sparkles size={18} className="animate-pulse" />
+          <span>إدارة المواسم والاحتفالات (اليوم الوطني 🇸🇦)</span>
+          {eventForm.event_active && (
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+          )}
+        </button>
+
         <button
           onClick={() => setSubView('broadcast')}
           className={cn(
@@ -276,11 +415,247 @@ export const AdminMarketingView: React.FC = () => {
 
         <button
           onClick={fetchData}
-          className="mr-auto p-2 bg-zinc-900 hover:bg-zinc-800 text-gray-400 rounded-xl transition-colors"
+          className="mr-auto p-2 bg-zinc-900 hover:bg-zinc-800 text-gray-400 rounded-xl transition-colors cursor-pointer"
         >
           <RefreshCw size={18} className={loading ? "animate-spin text-primary" : ""} />
         </button>
       </div>
+
+      {/* SubView 0: Seasonal & Events Manager Engine */}
+      {subView === 'events' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Controls Form */}
+          <div className="lg:col-span-2 bg-zinc-900 p-6 rounded-3xl border border-white/5 space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg text-white">نظام محرك الاحتفالات والمواسم</h3>
+                  <p className="text-xs text-gray-400">تفعيل وتغيير طابع المتجر للمناسبات الوطنية والترويجية بضغطة زر</p>
+                </div>
+              </div>
+
+              {/* Master Toggle Switch */}
+              <button
+                type="button"
+                onClick={() => setEventForm(prev => ({ ...prev, event_active: !prev.event_active }))}
+                className={cn(
+                  "px-4 py-2 rounded-2xl font-black text-xs flex items-center gap-2 transition-all cursor-pointer shadow-md",
+                  eventForm.event_active
+                    ? "bg-emerald-500 text-black shadow-emerald-500/30"
+                    : "bg-zinc-800 text-gray-400 hover:text-white"
+                )}
+              >
+                {eventForm.event_active ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                <span>{eventForm.event_active ? 'ثيم المناسبة: مفعل 🟢' : 'ثيم المناسبة: معطل ⚪'}</span>
+              </button>
+            </div>
+
+            {/* Event Presets Quick Selector */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-300 block">اختر ثيم المناسبة القادمة (القوالب الجاهزة):</label>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => handlePresetSelect('saudi_national_day')}
+                  className={cn(
+                    "p-3 rounded-2xl border text-xs font-black flex flex-col items-center gap-1.5 transition-all cursor-pointer text-center",
+                    eventForm.event_preset === 'saudi_national_day'
+                      ? "bg-emerald-950/80 border-emerald-500 text-emerald-300 ring-2 ring-emerald-500/50 shadow-lg"
+                      : "bg-zinc-800/60 border-white/5 text-gray-400 hover:bg-zinc-800"
+                  )}
+                >
+                  <span className="text-xl">🇸🇦</span>
+                  <span>اليوم الوطني 94</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handlePresetSelect('founding_day')}
+                  className={cn(
+                    "p-3 rounded-2xl border text-xs font-black flex flex-col items-center gap-1.5 transition-all cursor-pointer text-center",
+                    eventForm.event_preset === 'founding_day'
+                      ? "bg-amber-950/80 border-amber-500 text-amber-300 ring-2 ring-amber-500/50 shadow-lg"
+                      : "bg-zinc-800/60 border-white/5 text-gray-400 hover:bg-zinc-800"
+                  )}
+                >
+                  <span className="text-xl">🏛️</span>
+                  <span>يوم التأسيس</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handlePresetSelect('back_to_school')}
+                  className={cn(
+                    "p-3 rounded-2xl border text-xs font-black flex flex-col items-center gap-1.5 transition-all cursor-pointer text-center",
+                    eventForm.event_preset === 'back_to_school'
+                      ? "bg-blue-950/80 border-blue-500 text-blue-300 ring-2 ring-blue-500/50 shadow-lg"
+                      : "bg-zinc-800/60 border-white/5 text-gray-400 hover:bg-zinc-800"
+                  )}
+                >
+                  <span className="text-xl">🎒</span>
+                  <span>العودة للمدارس</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handlePresetSelect('ramadan_eid')}
+                  className={cn(
+                    "p-3 rounded-2xl border text-xs font-black flex flex-col items-center gap-1.5 transition-all cursor-pointer text-center",
+                    eventForm.event_preset === 'ramadan_eid'
+                      ? "bg-purple-950/80 border-purple-500 text-purple-300 ring-2 ring-purple-500/50 shadow-lg"
+                      : "bg-zinc-800/60 border-white/5 text-gray-400 hover:bg-zinc-800"
+                  )}
+                >
+                  <span className="text-xl">🌙</span>
+                  <span>رمضان والعيد</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handlePresetSelect('custom')}
+                  className={cn(
+                    "p-3 rounded-2xl border text-xs font-black flex flex-col items-center gap-1.5 transition-all cursor-pointer text-center",
+                    eventForm.event_preset === 'custom'
+                      ? "bg-orange-950/80 border-orange-500 text-orange-300 ring-2 ring-orange-500/50 shadow-lg"
+                      : "bg-zinc-800/60 border-white/5 text-gray-400 hover:bg-zinc-800"
+                  )}
+                >
+                  <span className="text-xl">🎨</span>
+                  <span>عرض مخصص</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Event Details Form */}
+            <form onSubmit={handleSaveEventSettings} className="space-y-4 pt-2 border-t border-white/10">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-300">عنوان المناسبة / الاحتفال <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="مثال: اليوم الوطني السعودي 94 🇸🇦"
+                    value={eventForm.event_title}
+                    onChange={e => setEventForm({ ...eventForm, event_title: e.target.value })}
+                    className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm border border-transparent focus:border-emerald-500/50 outline-none font-bold"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-300">كود الخصم المرتبط بالموسم</label>
+                  <input
+                    type="text"
+                    placeholder="مثال: SAUDI94"
+                    value={eventForm.event_promo_code}
+                    onChange={e => setEventForm({ ...eventForm, event_promo_code: e.target.value.toUpperCase() })}
+                    className="w-full bg-zinc-800 text-amber-400 font-mono font-bold rounded-xl p-3 text-sm border border-transparent focus:border-emerald-500/50 outline-none uppercase"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-300">الوصف والنص الفرعي للتهنئة <span className="text-red-500">*</span></label>
+                <textarea
+                  required
+                  rows={2}
+                  placeholder="نص التهنئة وتفاصيل الخصم للزوار..."
+                  value={eventForm.event_subtitle}
+                  onChange={e => setEventForm({ ...eventForm, event_subtitle: e.target.value })}
+                  className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm border border-transparent focus:border-emerald-500/50 outline-none resize-none"
+                />
+              </div>
+
+              {/* Toggles for Effects */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <label className="flex items-center justify-between p-3.5 bg-zinc-800/80 rounded-xl border border-white/5 cursor-pointer hover:border-emerald-500/30 transition-all">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={18} className="text-emerald-400" />
+                    <span className="text-xs font-bold text-white">تفعيل قصاصات زينة الاحتفال (Confetti)</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={eventForm.event_show_confetti}
+                    onChange={e => setEventForm({ ...eventForm, event_show_confetti: e.target.checked })}
+                    className="w-4 h-4 accent-emerald-500 cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-3.5 bg-zinc-800/80 rounded-xl border border-white/5 cursor-pointer hover:border-emerald-500/30 transition-all">
+                  <div className="flex items-center gap-2">
+                    <Gift size={18} className="text-amber-400" />
+                    <span className="text-xs font-bold text-white">تفعيل النافذة المنبثقة الترحيبية (Modal)</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={eventForm.event_show_modal}
+                    onChange={e => setEventForm({ ...eventForm, event_show_modal: e.target.checked })}
+                    className="w-4 h-4 accent-emerald-500 cursor-pointer"
+                  />
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={savingEvents}
+                className="w-full py-4 bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 text-black font-black text-base rounded-2xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20 cursor-pointer mt-4"
+              >
+                {savingEvents ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
+                <span>حفظ وتطبيق إعدادات ثيم المناسبة على المتجر 🚀</span>
+              </button>
+            </form>
+          </div>
+
+          {/* Live Preview Card */}
+          <div className="lg:col-span-1 bg-zinc-900 p-6 rounded-3xl border border-white/5 space-y-4">
+            <h4 className="font-black text-sm text-gray-300 flex items-center gap-2">
+              <span>معاينة حية للمظهر في الواجهة</span>
+              <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">Live</span>
+            </h4>
+
+            {/* Top Ribbon Banner Preview */}
+            <div className={`p-3.5 rounded-2xl bg-gradient-to-r ${currentPresetDetails.colors.gradient} text-white border border-white/10 shadow-lg space-y-1`}>
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{currentPresetDetails.icon}</span>
+                <p className="font-black text-xs text-white truncate">
+                  {eventForm.event_title || currentPresetDetails.badge}
+                </p>
+              </div>
+              <p className="text-[11px] text-gray-200 line-clamp-2 leading-relaxed">
+                {eventForm.event_subtitle}
+              </p>
+              {eventForm.event_promo_code && (
+                <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-black/40 text-amber-300 font-mono text-[10px] font-black rounded border border-amber-400/30">
+                  <Ticket size={12} />
+                  <span>كود: {eventForm.event_promo_code}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Popup Mini Preview */}
+            <div className={`p-5 rounded-3xl bg-gradient-to-b ${currentPresetDetails.colors.gradient} text-white border border-white/10 text-center space-y-3 relative overflow-hidden shadow-2xl`}>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-[11px] font-black text-amber-300">
+                <span>{currentPresetDetails.icon}</span>
+                <span>{currentPresetDetails.badge}</span>
+              </div>
+              <h5 className="font-black text-base text-white">{eventForm.event_title}</h5>
+              <p className="text-xs text-gray-200 leading-relaxed line-clamp-2">{eventForm.event_subtitle}</p>
+              
+              {eventForm.event_promo_code && (
+                <div className="p-2.5 bg-black/40 rounded-xl border border-amber-500/30 font-mono text-sm font-black text-amber-400">
+                  {eventForm.event_promo_code}
+                </div>
+              )}
+
+              <div className={`py-2 rounded-xl text-xs font-black ${currentPresetDetails.colors.btnBg}`}>
+                اطلب واستفد من الخصم الان
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SubView 1: Broadcast Notification Form */}
       {subView === 'broadcast' && (
@@ -332,7 +707,7 @@ export const AdminMarketingView: React.FC = () => {
               <button
                 type="submit"
                 disabled={sending}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black rounded-xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
+                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black rounded-xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer"
               >
                 {sending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                 <span>إرسال لجميع المشتركين 🚀</span>
@@ -370,7 +745,6 @@ export const AdminMarketingView: React.FC = () => {
                       </span>
                     </div>
 
-                    {/* Action buttons: Repeat / Re-send notification */}
                     <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
                       <button
                         onClick={() => {
@@ -433,7 +807,6 @@ export const AdminMarketingView: React.FC = () => {
       {/* SubView 2: VIP Customer WhatsApp List */}
       {subView === 'vip' && (
         <div className="bg-zinc-900 rounded-3xl border border-white/5 overflow-hidden space-y-4 p-6">
-          {/* Controls & Search */}
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
             <div className="relative w-full sm:w-72">
               <Search size={18} className="absolute right-3 top-3 text-gray-500" />
@@ -468,7 +841,6 @@ export const AdminMarketingView: React.FC = () => {
             </div>
           </div>
 
-          {/* Customers Table */}
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-right">
               <thead className="bg-zinc-800/60 text-gray-400 text-xs">

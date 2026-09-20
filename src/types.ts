@@ -130,3 +130,19 @@ export interface StoreSettings {
   longitude?: number | null;
   google_maps_url?: string | null;
 }
+
+export type EventPreset = 'saudi_national_day' | 'founding_day' | 'back_to_school' | 'ramadan_eid' | 'custom';
+
+export interface SeasonalEventSettings {
+  event_active: boolean;
+  event_preset: EventPreset;
+  event_title: string;
+  event_subtitle: string;
+  event_promo_code: string;
+  event_banner_url?: string;
+  event_show_confetti: boolean;
+  event_show_modal: boolean;
+  event_accent_color?: string;
+  event_secondary_color?: string;
+}
+

@@ -11,7 +11,7 @@ interface State {
 }
 
 export class ErrorBoundary extends React.Component<Props, State> {
-  override state: State = {
+  state: State = {
     hasError: false,
     error: null,
     errorInfo: null
@@ -21,12 +21,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, error, errorInfo: null };
   }
 
-  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
     this.setState({ error, errorInfo });
   }
 
-  override render() {
+  render() {
     if (this.state.hasError) {
       return (
         <div style={{ padding: 20, background: '#121212', color: 'red', height: '100vh', paddingBottom: 100, overflow: 'auto', textAlign: 'left', direction: 'ltr' }}>
