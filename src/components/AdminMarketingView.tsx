@@ -76,39 +76,39 @@ export const AdminMarketingView: React.FC = () => {
         .order('created_at', { ascending: false });
       if (bData) setBroadcasts(bData);
 
-      // 3. Fetch App Settings for Seasonal Event Engine
-      const { data: appSettings } = await supabase
+      // 3. Fetch App Settings for Seasonal Event Engine - DB IS THE ONLY SOURCE OF TRUTH
+      const { data: appSettingsRaw, error: settingsErr } = await supabase
         .from('app_settings')
         .select('*')
         .eq('id', 1)
         .maybeSingle();
 
-      let parsedSettings = appSettings ? { ...appSettings } : {};
-      const subStr = parsedSettings.popular_subtitle || parsedSettings.announcement_text || '';
-      const match = typeof subStr === 'string' ? subStr.match(/\[CONFIG:(.*?)\]/) : null;
+      console.log('DEBUG AdminMarketing: DB app_settings raw:', appSettingsRaw, 'error:', settingsErr);
+
+      let parsedSettings: any = appSettingsRaw ? { ...appSettingsRaw } : {};
+
+      // Extract from config tag in popular_subtitle if event fields not directly stored
+      const subStr = parsedSettings.popular_subtitle || '';
+      const match = typeof subStr === 'string' ? subStr.match(/\[CONFIG:([\s\S]*?)\]\s*$/) : null;
       if (match && match[1]) {
         try {
           const extraConfig = JSON.parse(match[1]);
+          // Config tag merges OVER raw DB columns (more specific/newer)
           parsedSettings = { ...parsedSettings, ...extraConfig };
+          console.log('DEBUG AdminMarketing: extracted config tag:', extraConfig);
         } catch (e) {
           console.error('Error parsing config tag:', e);
         }
       }
 
-      const savedLocal = localStorage.getItem('jamr_app_settings');
-      if (savedLocal) {
-        try {
-          const localObj = JSON.parse(savedLocal);
-          parsedSettings = { ...parsedSettings, ...localObj };
-        } catch (e) {}
-      }
+      console.log('DEBUG AdminMarketing: final parsedSettings:', parsedSettings);
 
       setEventForm({
         event_active: Boolean(parsedSettings.event_active),
         event_preset: (parsedSettings.event_preset as EventPreset) || 'saudi_national_day',
-        event_title: parsedSettings.event_title || 'اليوم الوطني السعودي 94 🇸🇦',
-        event_subtitle: parsedSettings.event_subtitle || 'نحتفل معكم باليوم الوطني 94! استمتع بأشهى الأطباق بخصم حصري ومميز',
-        event_promo_code: parsedSettings.event_promo_code || 'SAUDI94',
+        event_title: parsedSettings.event_title || 'اليوم الوطني السعودي 🇸🇦',
+        event_subtitle: parsedSettings.event_subtitle || 'نحتفل معكم باليوم الوطني! استمتع بأشهى الأطباق بخصم حصري ومميز',
+        event_promo_code: parsedSettings.event_promo_code || 'SAUDI',
         event_show_confetti: parsedSettings.event_show_confetti ?? true,
         event_show_modal: parsedSettings.event_show_modal ?? true
       });

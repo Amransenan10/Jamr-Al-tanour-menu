@@ -35,21 +35,26 @@ const parseAppSettings = (data: any) => {
   if (!data) return {};
   let parsed = { ...data };
   
-  // Extract extra config from config tag if stored in popular_subtitle
+  // Try to extract config tag from popular_subtitle (fallback storage method)
   const subStr = data.popular_subtitle || '';
-  const match = typeof subStr === 'string' ? subStr.match(/\[CONFIG:(.*?)\]/) : null;
-  if (match && match[1]) {
-    try {
-      const extraConfig = JSON.parse(match[1]);
-      // config tag fields win over raw DB columns
-      parsed = { ...parsed, ...extraConfig };
-    } catch (e) {
-      console.error('Error parsing config tag:', e);
+  if (typeof subStr === 'string' && subStr.includes('[CONFIG:')) {
+    const startIdx = subStr.indexOf('[CONFIG:') + 8;
+    const endIdx = subStr.lastIndexOf(']');
+    if (startIdx > 8 && endIdx > startIdx) {
+      const jsonStr = subStr.substring(startIdx, endIdx);
+      try {
+        const extraConfig = JSON.parse(jsonStr);
+        // event fields from config-tag override raw DB columns (more specific/newer)
+        parsed = { ...parsed, ...extraConfig };
+        console.log('DEBUG parseAppSettings: extracted config tag ok', extraConfig);
+      } catch (e) {
+        console.error('Error parsing config tag JSON:', e, 'raw:', jsonStr.slice(0, 100));
+      }
     }
   }
 
   if (typeof parsed.popular_subtitle === 'string') {
-    parsed.popular_subtitle = parsed.popular_subtitle.replace(/\[CONFIG:.*?\]/g, '').trim();
+    parsed.popular_subtitle = parsed.popular_subtitle.replace(/\[CONFIG:[\s\S]*?\]/, '').trim();
   }
 
   parsed.announcement_active = parsed.announcement_active === undefined ? true : Boolean(parsed.announcement_active);
@@ -59,6 +64,7 @@ const parseAppSettings = (data: any) => {
   parsed.event_show_confetti = parsed.event_show_confetti === undefined ? true : Boolean(parsed.event_show_confetti);
   parsed.event_show_modal = parsed.event_show_modal === undefined ? true : Boolean(parsed.event_show_modal);
 
+  console.log('DEBUG parseAppSettings: final result event_active=', parsed.event_active, 'title=', parsed.event_title);
   return parsed;
 };
 
