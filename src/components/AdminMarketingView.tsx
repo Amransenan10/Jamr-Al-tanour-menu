@@ -44,9 +44,9 @@ export const AdminMarketingView: React.FC = () => {
   const [eventForm, setEventForm] = useState<SeasonalEventSettings>({
     event_active: false,
     event_preset: 'saudi_national_day',
-    event_title: 'اليوم الوطني السعودي 94 🇸🇦',
-    event_subtitle: 'نحتفل معكم باليوم الوطني 94! استمتع بأشهى الأطباق بخصم حصري ومميز',
-    event_promo_code: 'SAUDI94',
+    event_title: 'اليوم الوطني السعودي 🇸🇦',
+    event_subtitle: 'نحتفل معكم باليوم الوطني! استمتع بأشهى الأطباق بخصم حصري ومميز',
+    event_promo_code: 'SAUDI',
     event_show_confetti: true,
     event_show_modal: true
   });
@@ -83,71 +83,35 @@ export const AdminMarketingView: React.FC = () => {
         .eq('id', 1)
         .maybeSingle();
 
-      if (appSettings) {
-        setEventForm({
-          event_active: Boolean(appSettings.event_active),
-          event_preset: (appSettings.event_preset as EventPreset) || 'saudi_national_day',
-          event_title: appSettings.event_title || 'اليوم الوطني السعودي 94 🇸🇦',
-          event_subtitle: appSettings.event_subtitle || 'نحتفل معكم باليوم الوطني 94! استمتع بأشهى الأطباق بخصم حصري ومميز',
-          event_promo_code: appSettings.event_promo_code || 'SAUDI94',
-          event_show_confetti: appSettings.event_show_confetti ?? true,
-          event_show_modal: appSettings.event_show_modal ?? true
-        });
+      let parsedSettings = appSettings ? { ...appSettings } : {};
+      const subStr = parsedSettings.popular_subtitle || parsedSettings.announcement_text || '';
+      const match = typeof subStr === 'string' ? subStr.match(/\[CONFIG:(.*?)\]/) : null;
+      if (match && match[1]) {
+        try {
+          const extraConfig = JSON.parse(match[1]);
+          parsedSettings = { ...parsedSettings, ...extraConfig };
+        } catch (e) {
+          console.error('Error parsing config tag:', e);
+        }
       }
 
-      // 4. Aggregate Orders to get Customer VIP list with customer names
-      const { data: ordersData } = await supabaseAdmin
-        .from('orders')
-        .select('phone, customer_name, total_price, created_at')
-        .not('phone', 'is', null);
-
-      if (ordersData) {
-        const customerMap: Record<string, { name?: string; count: number; total: number; lastDate: string }> = {};
-
-        ordersData.forEach(ord => {
-          const phone = ord.phone?.trim();
-          if (!phone || phone.length < 8) return;
-
-          if (!customerMap[phone]) {
-            customerMap[phone] = { 
-              name: ord.customer_name?.trim() || undefined, 
-              count: 0, 
-              total: 0, 
-              lastDate: ord.created_at 
-            };
-          } else if (ord.customer_name?.trim() && !customerMap[phone].name) {
-            customerMap[phone].name = ord.customer_name.trim();
-          }
-
-          customerMap[phone].count += 1;
-          customerMap[phone].total += (ord.total_price || 0);
-
-          if (new Date(ord.created_at) > new Date(customerMap[phone].lastDate)) {
-            customerMap[phone].lastDate = ord.created_at;
-            if (ord.customer_name?.trim()) {
-              customerMap[phone].name = ord.customer_name.trim();
-            }
-          }
-        });
-
-        const aggregated: CustomerAggregated[] = Object.entries(customerMap).map(([phone, data]) => {
-          let badge: 'vip' | 'preferred' | 'new' = 'new';
-          if (data.count >= 5) badge = 'vip';
-          else if (data.count >= 3) badge = 'preferred';
-
-          return {
-            phone,
-            name: data.name,
-            orderCount: data.count,
-            totalSpent: data.total,
-            lastOrderDate: data.lastDate,
-            badge
-          };
-        });
-
-        aggregated.sort((a, b) => b.orderCount - a.orderCount);
-        setCustomers(aggregated);
+      const savedLocal = localStorage.getItem('jamr_app_settings');
+      if (savedLocal) {
+        try {
+          const localObj = JSON.parse(savedLocal);
+          parsedSettings = { ...parsedSettings, ...localObj };
+        } catch (e) {}
       }
+
+      setEventForm({
+        event_active: Boolean(parsedSettings.event_active),
+        event_preset: (parsedSettings.event_preset as EventPreset) || 'saudi_national_day',
+        event_title: parsedSettings.event_title || 'اليوم الوطني السعودي 94 🇸🇦',
+        event_subtitle: parsedSettings.event_subtitle || 'نحتفل معكم باليوم الوطني 94! استمتع بأشهى الأطباق بخصم حصري ومميز',
+        event_promo_code: parsedSettings.event_promo_code || 'SAUDI94',
+        event_show_confetti: parsedSettings.event_show_confetti ?? true,
+        event_show_modal: parsedSettings.event_show_modal ?? true
+      });
     } catch (e) {
       console.error('Error fetching marketing data:', e);
     } finally {
@@ -206,9 +170,9 @@ export const AdminMarketingView: React.FC = () => {
 
     switch (preset) {
       case 'saudi_national_day':
-        title = 'اليوم الوطني السعودي 94 🇸🇦';
-        subtitle = 'نحتفل معكم باليوم الوطني 94! استمتع بأشهر الأطباق والوجبات بخصم خاص';
-        promo = 'SAUDI94';
+        title = 'اليوم الوطني السعودي 🇸🇦';
+        subtitle = 'نحتفل معكم باليوم الوطني! استمتع بأشهر الأطباق والوجبات بخصم خاص';
+        promo = 'SAUDI';
         break;
       case 'founding_day':
         title = 'نحتفل بيوم التأسيس 🇸🇦 1727م';
@@ -247,31 +211,60 @@ export const AdminMarketingView: React.FC = () => {
     setSavingEvents(true);
 
     try {
-      const payload = {
-        id: 1,
+      const eventConfig = {
         event_active: eventForm.event_active,
         event_preset: eventForm.event_preset,
         event_title: eventForm.event_title.trim(),
         event_subtitle: eventForm.event_subtitle.trim(),
         event_promo_code: eventForm.event_promo_code.trim().toUpperCase(),
         event_show_confetti: eventForm.event_show_confetti,
-        event_show_modal: eventForm.event_show_modal,
+        event_show_modal: eventForm.event_show_modal
+      };
+
+      // 1. LocalStorage instant persistence
+      const currentLocal = localStorage.getItem('jamr_app_settings');
+      let localObj = currentLocal ? JSON.parse(currentLocal) : {};
+      const mergedLocal = { ...localObj, ...eventConfig };
+      localStorage.setItem('jamr_app_settings', JSON.stringify(mergedLocal));
+
+      // 2. Direct column upsert attempt
+      const directPayload = {
+        id: 1,
+        ...eventConfig,
         updated_at: new Date().toISOString()
       };
 
-      // 1. Try Upsert in DB
-      let res = await supabaseAdmin.from('app_settings').upsert(payload);
+      let res = await supabaseAdmin.from('app_settings').upsert(directPayload);
       if (res.error) {
-        console.warn('supabaseAdmin upsert error, trying supabase fallback:', res.error);
-        res = await supabase.from('app_settings').upsert(payload);
+        res = await supabase.from('app_settings').upsert(directPayload);
       }
 
-      // 2. Broadcast realtime update to active client instances
+      // 3. Fallback to Config Tag inside popular_subtitle if table lacks columns
+      if (res.error) {
+        console.warn('Direct column update failed, using config tag fallback:', res.error.message);
+        const configTag = `[CONFIG:${JSON.stringify(eventConfig)}]`;
+        const fallbackPayload = {
+          id: 1,
+          popular_subtitle: configTag,
+          updated_at: new Date().toISOString()
+        };
+        
+        res = await supabaseAdmin.from('app_settings').upsert(fallbackPayload);
+        if (res.error) {
+          res = await supabase.from('app_settings').upsert(fallbackPayload);
+        }
+      }
+
+      if (res.error) {
+        throw res.error;
+      }
+
+      // 4. Realtime broadcast update to all connected clients
       try {
         await supabase.channel('jamr_realtime_channel').send({
           type: 'broadcast',
           event: 'settings_changed',
-          payload
+          payload: eventConfig
         });
       } catch (bcErr) {
         console.warn('Realtime broadcast error:', bcErr);
@@ -280,7 +273,7 @@ export const AdminMarketingView: React.FC = () => {
       if (eventForm.event_active) {
         toast.success(`تم تفعيل ثيم احتفال (${eventForm.event_title}) بنجاح على المتجر! 🇸🇦🎉`);
       } else {
-        toast.success('تم حفظ إعدادات الموسم (الوضع الحالي: معطل)');
+        toast.success('تم حفظ إعدادات الموسم بنجاح! ⚡');
       }
     } catch (error: any) {
       console.error('Error saving event settings:', error);
@@ -468,7 +461,7 @@ export const AdminMarketingView: React.FC = () => {
                   )}
                 >
                   <span className="text-xl">🇸🇦</span>
-                  <span>اليوم الوطني 94</span>
+                  <span>اليوم الوطني</span>
                 </button>
 
                 <button
@@ -537,7 +530,7 @@ export const AdminMarketingView: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder="مثال: اليوم الوطني السعودي 94 🇸🇦"
+                    placeholder="مثال: اليوم الوطني السعودي 🇸🇦"
                     value={eventForm.event_title}
                     onChange={e => setEventForm({ ...eventForm, event_title: e.target.value })}
                     className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm border border-transparent focus:border-emerald-500/50 outline-none font-bold"
@@ -548,7 +541,7 @@ export const AdminMarketingView: React.FC = () => {
                   <label className="text-xs font-bold text-gray-300">كود الخصم المرتبط بالموسم</label>
                   <input
                     type="text"
-                    placeholder="مثال: SAUDI94"
+                    placeholder="مثال: SAUDI"
                     value={eventForm.event_promo_code}
                     onChange={e => setEventForm({ ...eventForm, event_promo_code: e.target.value.toUpperCase() })}
                     className="w-full bg-zinc-800 text-amber-400 font-mono font-bold rounded-xl p-3 text-sm border border-transparent focus:border-emerald-500/50 outline-none uppercase"

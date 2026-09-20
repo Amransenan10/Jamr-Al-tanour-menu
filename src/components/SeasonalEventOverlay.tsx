@@ -13,7 +13,7 @@ export const getPresetDetails = (preset: EventPreset = 'saudi_national_day') => 
   switch (preset) {
     case 'saudi_national_day':
       return {
-        badge: 'اليوم الوطني السعودي 94 🇸🇦',
+        badge: 'اليوم الوطني السعودي 🇸🇦',
         themeTitle: 'نحتفل بعز وفخر 🇸🇦',
         colors: {
           primary: '#006C35', // Saudi Palm Green
