@@ -129,22 +129,22 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
     };
     window.addEventListener('resize', handleResize);
 
-    const particleCount = 65;
+    const particleCount = 85;
     const colors = presetDetails.colors.particleColors;
     const particles = Array.from({ length: particleCount }, () => ({
       x: Math.random() * width,
       y: Math.random() * height - height,
-      size: Math.random() * 8 + 4,
+      size: Math.random() * 9 + 4,
       color: colors[Math.floor(Math.random() * colors.length)],
-      speedY: Math.random() * 3 + 1.5,
-      speedX: Math.random() * 2 - 1,
+      speedY: Math.random() * 3.5 + 2,
+      speedX: Math.random() * 2.5 - 1.25,
       rotation: Math.random() * 360,
-      rotationSpeed: Math.random() * 4 - 2,
-      shape: Math.random() > 0.4 ? 'rect' : 'circle'
+      rotationSpeed: Math.random() * 5 - 2.5,
+      shape: Math.random() > 0.6 ? 'rect' : Math.random() > 0.3 ? 'circle' : 'star'
     }));
 
     let startTime = Date.now();
-    const duration = 5000; // Run confetti for 5 seconds
+    const duration = 7000; // Run confetti for 7 seconds
 
     const render = () => {
       const elapsed = Date.now() - startTime;
@@ -161,7 +161,16 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
         ctx.fillStyle = p.color;
 
         if (p.shape === 'rect') {
-          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 1.5);
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 1.8);
+        } else if (p.shape === 'star') {
+          // Draw star shape
+          ctx.beginPath();
+          for (let i = 0; i < 5; i++) {
+            ctx.lineTo(Math.cos((18 + i * 72) * Math.PI / 180) * p.size, -Math.sin((18 + i * 72) * Math.PI / 180) * p.size);
+            ctx.lineTo(Math.cos((54 + i * 72) * Math.PI / 180) * (p.size / 2), -Math.sin((54 + i * 72) * Math.PI / 180) * (p.size / 2));
+          }
+          ctx.closePath();
+          ctx.fill();
         } else {
           ctx.beginPath();
           ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);

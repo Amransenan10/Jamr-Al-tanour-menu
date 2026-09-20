@@ -19,7 +19,7 @@ import { supabase } from './lib/supabaseClient';
 import { CartProvider } from './context/CartContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { Loader2, UtensilsCrossed, Navigation, AlertCircle, Clock, CheckCircle2, Bike, Utensils, FileText, Sparkles, Tag, ShieldAlert, ArrowDown, ChevronLeft } from 'lucide-react';
+import { Loader2, UtensilsCrossed, Navigation, AlertCircle, Clock, CheckCircle2, Bike, Utensils, FileText, Sparkles, Tag, ShieldAlert, ArrowDown, ChevronLeft, X } from 'lucide-react';
 import { BranchSelectorModal } from './components/BranchSelectorModal';
 import { FloatingCartButton } from './components/FloatingCartButton';
 import { useBackButton } from './hooks/useBackButton';
@@ -338,29 +338,40 @@ export default function App() {
 
     // Initial & Polling fetch of active order status
     const fetchActiveOrder = async (isSilent = false) => {
-      const { data } = await supabase
-        .from('orders')
-        .select('id, status, order_type')
-        .eq('id', savedOrderId)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('id, status, order_type')
+          .eq('id', savedOrderId)
+          .maybeSingle();
 
-      if (data) {
-        const hasSpun = localStorage.getItem(`jamr_wheel_spun_${data.id}`);
-        if (['completed', 'cancelled'].includes(data.status)) {
-          if (data.status === 'completed') {
-            localStorage.setItem('jamr_last_completed_order', data.id);
-          }
-          if (!hasSpun && data.status === 'completed') {
-            setActiveOrder(data);
-            setActiveOrderId(data.id);
+        if (data && data.status) {
+          const hasSpun = localStorage.getItem(`jamr_wheel_spun_${data.id}`);
+          if (['completed', 'cancelled'].includes(data.status)) {
+            if (data.status === 'completed') {
+              localStorage.setItem('jamr_last_completed_order', data.id);
+            }
+            if (!hasSpun && data.status === 'completed') {
+              setActiveOrder(data);
+              setActiveOrderId(data.id);
+            } else {
+              localStorage.removeItem('jamr_active_order');
+              setActiveOrderId(null);
+              setActiveOrder(null);
+            }
           } else {
-            localStorage.removeItem('jamr_active_order');
-            setActiveOrderId(null);
-            setActiveOrder(null);
+            processActiveOrderUpdate(data, prevAppOrderStatusRef.current === null);
           }
         } else {
-          processActiveOrderUpdate(data, prevAppOrderStatusRef.current === null);
+          // Order was deleted from Database or does not exist -> Clean up tracking bar immediately!
+          console.log('DEBUG: Active order deleted or not found in DB, clearing tracker.');
+          localStorage.removeItem('jamr_active_order');
+          localStorage.removeItem('jamr_last_completed_order');
+          setActiveOrderId(null);
+          setActiveOrder(null);
         }
+      } catch (e) {
+        console.error('Error fetching active order status:', e);
       }
     };
 
@@ -770,43 +781,59 @@ export default function App() {
                 exit={{ y: 100, opacity: 0, scale: 0.9 }}
                 className="fixed bottom-6 left-4 right-4 z-40 mx-auto max-w-sm"
               >
-                <Link
-                  to={`/track/${activeOrderId}`}
-                  className="bg-zinc-900 dark:bg-zinc-800 text-white p-4 rounded-3xl shadow-2xl border border-white/10 flex items-center justify-between hover:scale-[1.02] active:scale-95 transition-all group overflow-hidden relative"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-transparent to-primary/10 pointer-events-none" />
-                  <div className="flex items-center gap-3.5 relative z-10">
-                    <div className="w-12 h-12 bg-primary text-white rounded-2xl flex items-center justify-center text-xl font-bold shadow-lg shadow-primary/30 group-hover:rotate-12 transition-transform shrink-0">
-                      {activeOrder?.status === 'ready' ? (
-                        activeOrder.order_type === 'delivery' ? <Bike size={24} /> : <CheckCircle2 size={24} />
-                      ) : activeOrder?.status === 'preparing' ? (
-                        <Utensils size={24} />
-                      ) : activeOrder?.status === 'accepted' ? (
-                        <CheckCircle2 size={24} />
-                      ) : (
-                        <FileText size={24} />
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-black text-sm text-white">
-                          {activeOrder?.status === 'ready'
-                            ? (activeOrder.order_type === 'delivery' ? 'المندوب في الطريق إليك' : 'طلبك جاهز الآن للاستلام')
-                            : activeOrder?.status === 'preparing'
-                            ? 'جاري تحضير وجبتك في المطبخ'
-                            : activeOrder?.status === 'accepted'
-                            ? 'تم قبول طلبك، ستبدأ تحضيره قريباً'
-                            : 'تم استلام طلبك وجاري مراجعته'}
-                        </span>
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to={`/track/${activeOrderId}`}
+                      className="flex-1 flex items-center justify-between group overflow-hidden"
+                    >
+                      <div className="flex items-center gap-3.5 relative z-10">
+                        <div className="w-11 h-11 bg-primary text-white rounded-2xl flex items-center justify-center text-xl font-bold shadow-lg shadow-primary/30 group-hover:rotate-12 transition-transform shrink-0">
+                          {activeOrder?.status === 'ready' ? (
+                            activeOrder.order_type === 'delivery' ? <Bike size={22} /> : <CheckCircle2 size={22} />
+                          ) : activeOrder?.status === 'preparing' ? (
+                            <Utensils size={22} />
+                          ) : activeOrder?.status === 'accepted' ? (
+                            <CheckCircle2 size={22} />
+                          ) : (
+                            <FileText size={22} />
+                          )}
+                        </div>
+                        <div className="overflow-hidden">
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-xs sm:text-sm text-white truncate">
+                              {activeOrder?.status === 'ready'
+                                ? (activeOrder.order_type === 'delivery' ? 'المندوب في الطريق إليك' : 'طلبك جاهز للاستلام')
+                                : activeOrder?.status === 'preparing'
+                                ? 'جاري تحضير وجبتك في المطبخ'
+                                : activeOrder?.status === 'accepted'
+                                ? 'تم قبول طلبك، سيبدأ تحضيره'
+                                : 'تم استلام طلبك وجاري مراجعته'}
+                            </span>
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                          </div>
+                          <p className="text-[11px] text-gray-400 mt-0.5 font-medium flex items-center gap-1 truncate">
+                            <span>اضغط لتتبع الطلب</span>
+                            <Navigation size={10} className="rotate-45 text-primary" />
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-xs text-gray-400 mt-0.5 font-medium flex items-center gap-1">
-                        <span>اضغط لتتبع الطلب بالوقت الفعلي</span>
-                        <Navigation size={12} className="rotate-45 text-primary" />
-                      </p>
-                    </div>
+                    </Link>
+
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        localStorage.removeItem('jamr_active_order');
+                        localStorage.removeItem('jamr_last_completed_order');
+                        setActiveOrderId(null);
+                        setActiveOrder(null);
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-white bg-white/5 hover:bg-white/15 rounded-full transition-colors z-20 shrink-0 cursor-pointer"
+                      title="إغلاق التتبع"
+                    >
+                      <X size={16} />
+                    </button>
                   </div>
-                </Link>
               </motion.div>
             )}
           </AnimatePresence>
