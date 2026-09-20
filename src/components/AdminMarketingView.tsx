@@ -206,17 +206,17 @@ export const AdminMarketingView: React.FC = () => {
     }));
   };
 
-  const handleSaveEventSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveEventSettings = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e && e.preventDefault) e.preventDefault();
     setSavingEvents(true);
 
     try {
       const eventConfig = {
         event_active: eventForm.event_active,
         event_preset: eventForm.event_preset,
-        event_title: eventForm.event_title.trim(),
-        event_subtitle: eventForm.event_subtitle.trim(),
-        event_promo_code: eventForm.event_promo_code.trim().toUpperCase(),
+        event_title: (eventForm.event_title || 'اليوم الوطني السعودي 🇸🇦').trim(),
+        event_subtitle: (eventForm.event_subtitle || 'نحتفل معكم باليوم الوطني!').trim(),
+        event_promo_code: (eventForm.event_promo_code || 'SAUDI').trim().toUpperCase(),
         event_show_confetti: eventForm.event_show_confetti,
         event_show_modal: eventForm.event_show_modal
       };
@@ -227,39 +227,41 @@ export const AdminMarketingView: React.FC = () => {
       const mergedLocal = { ...localObj, ...eventConfig };
       localStorage.setItem('jamr_app_settings', JSON.stringify(mergedLocal));
 
-      // 2. Direct column upsert attempt
-      const directPayload = {
+      // 2. Prepare full payload with announcement fields & config tag
+      const configTag = `[CONFIG:${JSON.stringify(eventConfig)}]`;
+      const fullPayload = {
         id: 1,
+        announcement_active: eventConfig.event_active,
+        announcement_text: eventConfig.event_title,
+        popular_subtitle: configTag,
         ...eventConfig,
         updated_at: new Date().toISOString()
       };
 
-      let res = await supabaseAdmin.from('app_settings').upsert(directPayload);
+      // 3. Try direct column update on app_settings
+      let res = await supabaseAdmin.from('app_settings').upsert(fullPayload);
       if (res.error) {
-        res = await supabase.from('app_settings').upsert(directPayload);
+        res = await supabase.from('app_settings').upsert(fullPayload);
       }
 
-      // 3. Fallback to Config Tag inside popular_subtitle if table lacks columns
+      // 4. Fallback if direct columns don't exist yet
       if (res.error) {
-        console.warn('Direct column update failed, using config tag fallback:', res.error.message);
-        const configTag = `[CONFIG:${JSON.stringify(eventConfig)}]`;
+        console.warn('Direct column update error, saving via config tag fallback:', res.error);
         const fallbackPayload = {
           id: 1,
+          announcement_active: eventConfig.event_active,
+          announcement_text: eventConfig.event_title,
           popular_subtitle: configTag,
           updated_at: new Date().toISOString()
         };
-        
+
         res = await supabaseAdmin.from('app_settings').upsert(fallbackPayload);
         if (res.error) {
           res = await supabase.from('app_settings').upsert(fallbackPayload);
         }
       }
 
-      if (res.error) {
-        throw res.error;
-      }
-
-      // 4. Realtime broadcast update to all connected clients
+      // 5. Realtime broadcast update to all online clients
       try {
         await supabase.channel('jamr_realtime_channel').send({
           type: 'broadcast',
@@ -271,7 +273,7 @@ export const AdminMarketingView: React.FC = () => {
       }
 
       if (eventForm.event_active) {
-        toast.success(`تم تفعيل ثيم احتفال (${eventForm.event_title}) بنجاح على المتجر! 🇸🇦🎉`);
+        toast.success(`تم تفعيل وتطبيق ثيم (${eventConfig.event_title}) بنجاح على المتجر! 🇸🇦🎉`);
       } else {
         toast.success('تم حفظ إعدادات الموسم بنجاح! ⚡');
       }
@@ -591,7 +593,8 @@ export const AdminMarketingView: React.FC = () => {
               </div>
 
               <button
-                type="submit"
+                type="button"
+                onClick={handleSaveEventSettings}
                 disabled={savingEvents}
                 className="w-full py-4 bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 text-black font-black text-base rounded-2xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20 cursor-pointer mt-4"
               >

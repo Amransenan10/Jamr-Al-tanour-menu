@@ -49,6 +49,14 @@ const parseAppSettings = (data: any) => {
     parsed.popular_subtitle = parsed.popular_subtitle.replace(/\[CONFIG:.*?\]/g, '').trim();
   }
 
+  const savedLocal = typeof window !== 'undefined' ? localStorage.getItem('jamr_app_settings') : null;
+  if (savedLocal) {
+    try {
+      const localObj = JSON.parse(savedLocal);
+      parsed = { ...parsed, ...localObj };
+    } catch (e) {}
+  }
+
   parsed.announcement_active = parsed.announcement_active === undefined ? true : Boolean(parsed.announcement_active);
   parsed.offers_active = parsed.offers_active === undefined ? true : Boolean(parsed.offers_active);
   parsed.wheel_active = parsed.wheel_active === undefined ? true : Boolean(parsed.wheel_active);
