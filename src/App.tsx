@@ -31,24 +31,17 @@ import { showSystemNotification } from './utils/pushSubscription';
 import { initOneSignal } from './utils/oneSignalService';
 
 const parseAppSettings = (data: any) => {
+  // DB is the ONLY source of truth. No localStorage mixing here.
   if (!data) return {};
+  let parsed = { ...data };
   
-  let localObj: any = {};
-  const savedLocal = typeof window !== 'undefined' ? localStorage.getItem('jamr_app_settings') : null;
-  if (savedLocal) {
-    try {
-      localObj = JSON.parse(savedLocal);
-    } catch (e) {}
-  }
-
-  // Merge DB data OVER localObj so DB is always the primary source of truth
-  let parsed = { ...localObj, ...data };
-  
-  const subStr = data.popular_subtitle || data.announcement_text || '';
+  // Extract extra config from config tag if stored in popular_subtitle
+  const subStr = data.popular_subtitle || '';
   const match = typeof subStr === 'string' ? subStr.match(/\[CONFIG:(.*?)\]/) : null;
   if (match && match[1]) {
     try {
       const extraConfig = JSON.parse(match[1]);
+      // config tag fields win over raw DB columns
       parsed = { ...parsed, ...extraConfig };
     } catch (e) {
       console.error('Error parsing config tag:', e);
@@ -62,7 +55,7 @@ const parseAppSettings = (data: any) => {
   parsed.announcement_active = parsed.announcement_active === undefined ? true : Boolean(parsed.announcement_active);
   parsed.offers_active = parsed.offers_active === undefined ? true : Boolean(parsed.offers_active);
   parsed.wheel_active = parsed.wheel_active === undefined ? true : Boolean(parsed.wheel_active);
-  parsed.event_active = parsed.event_active === undefined ? true : Boolean(parsed.event_active);
+  parsed.event_active = parsed.event_active === undefined ? false : Boolean(parsed.event_active);
   parsed.event_show_confetti = parsed.event_show_confetti === undefined ? true : Boolean(parsed.event_show_confetti);
   parsed.event_show_modal = parsed.event_show_modal === undefined ? true : Boolean(parsed.event_show_modal);
 
@@ -477,12 +470,11 @@ export default function App() {
         setProducts(processedProducts);
         localStorage.setItem('jamr_prods_cache', JSON.stringify(processedProducts));
       }
-      const savedLocalSettings = localStorage.getItem('jamr_app_settings');
-      let localSettingsObj = {};
+      // Parse ONLY from DB - no localStorage mixing to prevent stale data for customers
       const parsedDbConfig = parseAppSettings(appSettingsRes.data || {});
-      const mergedSettings = { ...localSettingsObj, ...parsedDbConfig };
-      setAppSettings(mergedSettings);
-      localStorage.setItem('jamr_app_settings', JSON.stringify(mergedSettings));
+      setAppSettings(parsedDbConfig);
+      // Overwrite cache with fresh DB data so all subsequent loads are fresh
+      localStorage.setItem('jamr_app_settings', JSON.stringify(parsedDbConfig));
       if (storiesRes.data) {
         setStories(storiesRes.data);
         localStorage.setItem('jamr_stories_cache', JSON.stringify(storiesRes.data));

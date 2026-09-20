@@ -223,13 +223,7 @@ export const AdminMarketingView: React.FC = () => {
         event_timestamp: Date.now()
       };
 
-      // 1. LocalStorage instant persistence
-      const currentLocal = localStorage.getItem('jamr_app_settings');
-      let localObj = currentLocal ? JSON.parse(currentLocal) : {};
-      const mergedLocal = { ...localObj, ...eventConfig };
-      localStorage.setItem('jamr_app_settings', JSON.stringify(mergedLocal));
-
-      // 2. Prepare full payload with announcement fields & config tag
+      // 1. Prepare full payload — DB columns + config tag as backup fallback
       const configTag = `[CONFIG:${JSON.stringify(eventConfig)}]`;
       const fullPayload = {
         id: 1,
@@ -240,15 +234,16 @@ export const AdminMarketingView: React.FC = () => {
         updated_at: new Date().toISOString()
       };
 
-      // 3. Try direct column update on app_settings
+      // 2. Try DB upsert (admin client first, then public client as fallback)
       let res = await supabaseAdmin.from('app_settings').upsert(fullPayload);
       if (res.error) {
+        console.warn('Admin client failed, trying public client:', res.error);
         res = await supabase.from('app_settings').upsert(fullPayload);
       }
 
-      // 4. Fallback if direct columns don't exist yet
+      // 3. If columns don't exist yet, use minimal fallback payload  
       if (res.error) {
-        console.warn('Direct column update error, saving via config tag fallback:', res.error);
+        console.warn('Falling back to config tag only:', res.error);
         const fallbackPayload = {
           id: 1,
           announcement_active: eventConfig.event_active,
@@ -256,23 +251,25 @@ export const AdminMarketingView: React.FC = () => {
           popular_subtitle: configTag,
           updated_at: new Date().toISOString()
         };
-
         res = await supabaseAdmin.from('app_settings').upsert(fallbackPayload);
         if (res.error) {
           res = await supabase.from('app_settings').upsert(fallbackPayload);
         }
       }
 
-      // 5. Realtime broadcast update to all online clients
+      // 4. Broadcast FULL eventConfig so ALL connected clients (mobile + laptop) update instantly
       try {
         await supabase.channel('jamr_realtime_channel').send({
           type: 'broadcast',
           event: 'settings_changed',
-          payload: eventConfig
+          payload: { ...eventConfig }
         });
       } catch (bcErr) {
         console.warn('Realtime broadcast error:', bcErr);
       }
+
+      // 5. Update THIS admin device's local cache after successful persistence
+      localStorage.setItem('jamr_app_settings', JSON.stringify({ ...eventConfig }));
 
       if (eventForm.event_active) {
         toast.success(`تم تفعيل وتطبيق ثيم (${eventConfig.event_title}) بنجاح على المتجر! 🇸🇦🎉`);
