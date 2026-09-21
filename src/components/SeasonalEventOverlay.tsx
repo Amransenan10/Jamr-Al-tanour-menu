@@ -108,7 +108,7 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
   const showConfetti = settings?.event_show_confetti ?? true;
   const showModal = settings?.event_show_modal ?? true;
 
-  // Confetti Particle Engine (Zero external dependencies)
+  // Confetti Particle Engine (Zero external dependencies) — Runs for 30 seconds ONLY on menu open
   useEffect(() => {
     if (!isActive || !showConfetti) return;
 
@@ -143,12 +143,14 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
       shape: Math.random() > 0.6 ? 'rect' : Math.random() > 0.3 ? 'circle' : 'star'
     }));
 
-    let startTime = Date.now();
-    const duration = 30000; // Run confetti for 30 seconds for maximum celebration!
+    const startTime = Date.now();
+    const duration = 30000; // Run confetti for 30 seconds ONLY
 
     const render = () => {
       const elapsed = Date.now() - startTime;
       ctx.clearRect(0, 0, width, height);
+
+      let activeParticlesCount = 0;
 
       particles.forEach((p) => {
         p.y += p.speedY;
@@ -178,14 +180,24 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
         }
         ctx.restore();
 
+        // While within 30 seconds, reset particles when they fall off bottom
         if (p.y > height) {
-          p.y = -20;
-          p.x = Math.random() * width;
+          if (elapsed < duration) {
+            p.y = -20;
+            p.x = Math.random() * width;
+            activeParticlesCount++;
+          }
+        } else {
+          activeParticlesCount++;
         }
       });
 
-      // LOOP CONTINUOUSLY FOR EVER (Never stops while theme is active!)
-      animationFrameId = requestAnimationFrame(render);
+      // Continue render loop while within 30s OR while active particles finish falling
+      if (elapsed < duration || activeParticlesCount > 0) {
+        animationFrameId = requestAnimationFrame(render);
+      } else {
+        ctx.clearRect(0, 0, width, height);
+      }
     };
 
     render();
@@ -196,7 +208,7 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
     };
   }, [isActive, showConfetti, preset]);
 
-  // Modal Open Effect — OPENS ON EVERY MENU VISIT AND STAYS FOR 18 SECONDS (15-20s)
+  // Modal Open Effect — OPENS ON EVERY MENU VISIT AND STAYS FOR 30 SECONDS
   useEffect(() => {
     if (!isActive || !showModal) return;
 
@@ -205,10 +217,10 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
       setIsOpen(true);
     }, 300);
 
-    // Auto close modal after 18 seconds (15-20 seconds specified)
+    // Auto close modal after exactly 30 seconds
     const closeTimer = setTimeout(() => {
       setIsOpen(false);
-    }, 18300);
+    }, 30300);
 
     return () => {
       clearTimeout(openTimer);

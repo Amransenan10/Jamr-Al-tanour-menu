@@ -266,6 +266,20 @@ export default function App() {
     // fetchData handles menu/products/categories only in background if cache exists
     fetchData(savedBranch || 'السويدي الغربي', hasCache);
     fetchAppSettings();
+
+    // Auto-sync theme settings on tab focus / phone wake up & periodic safety poll
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchAppSettings();
+      }
+    };
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    const settingsPoll = setInterval(fetchAppSettings, 15000);
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(settingsPoll);
+    };
   }, []);
 
   // Real-time listener & fast polling for active order status updates on customer menu
