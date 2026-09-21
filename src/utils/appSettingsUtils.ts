@@ -148,6 +148,7 @@ export const saveAppSettings = async (newPartial: Record<string, any>) => {
       popular_subtitle:    updatedSub,
       offers_title:        merged.offers_title         || '',
       offers_active:       merged.offers_active,
+      event_active:        merged.event_active,
       updated_at:          new Date().toISOString()
     };
     res = await supabaseAdmin.from('app_settings').upsert(safePayload);
@@ -162,12 +163,18 @@ export const saveAppSettings = async (newPartial: Record<string, any>) => {
 
   // ── 6. Update local cache ────────────────────────────────────────────────────
   localStorage.setItem('jamr_app_settings', JSON.stringify(merged));
+  localStorage.setItem('jamr_theme_settings', JSON.stringify(merged));
 
   // ── 7. Broadcast to all active sessions (realtime) ──────────────────────────
   try {
     await supabase.channel('jamr_realtime_channel').send({
       type:    'broadcast',
       event:   'settings_changed',
+      payload: merged
+    });
+    await supabase.channel('jamr_realtime_channel').send({
+      type:    'broadcast',
+      event:   'theme_changed',
       payload: merged
     });
   } catch (bcErr) {

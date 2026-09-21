@@ -16,10 +16,10 @@ export const DEFAULT_THEME_SETTINGS: SeasonalEventSettings = {
 
 /**
  * Fetch theme settings cleanly.
- * Merges DB settings with local storage so stale DB responses never override user's active theme.
+ * DB is the single source of truth for all clients.
  */
 export const fetchThemeSettings = async (): Promise<SeasonalEventSettings> => {
-  // 1. Check local storage first
+  // Check local cache for offline/instant fallback
   let cached: SeasonalEventSettings | null = null;
   const rawCache = localStorage.getItem('jamr_theme_settings') || localStorage.getItem('jamr_app_settings');
   if (rawCache) {
@@ -29,46 +29,42 @@ export const fetchThemeSettings = async (): Promise<SeasonalEventSettings> => {
   }
 
   try {
-    // 2. Fetch app_settings from Supabase
-    const { data: appData } = await supabase
+    // Fetch app_settings row from Supabase
+    const { data: appData, error } = await supabase
       .from('app_settings')
       .select('*')
       .eq('id', 1)
       .maybeSingle();
 
-    if (appData) {
+    if (!error && appData) {
       const parsed = parseAppSettings(appData);
       if (parsed) {
-        // If DB has explicit event_active = true, force true.
-        // Otherwise trust cached state if set by Admin recently.
-        const dbActive = parsed.event_active === true;
-        const cachedActive = cached?.event_active === true;
-        const finalActive = dbActive || cachedActive;
-
+        const isEventActive = parsed.event_active === true;
         const merged: SeasonalEventSettings = {
-          event_active: finalActive,
-          event_preset: ((cachedActive ? cached?.event_preset : parsed.event_preset) || 'saudi_national_day') as EventPreset,
-          event_title: (cachedActive ? cached?.event_title : parsed.event_title) || DEFAULT_THEME_SETTINGS.event_title,
-          event_subtitle: (cachedActive ? cached?.event_subtitle : parsed.event_subtitle) || DEFAULT_THEME_SETTINGS.event_subtitle,
-          event_promo_code: (cachedActive ? cached?.event_promo_code : parsed.event_promo_code) || DEFAULT_THEME_SETTINGS.event_promo_code,
-          event_show_confetti: (cachedActive ? cached?.event_show_confetti : parsed.event_show_confetti) ?? true,
-          event_show_modal: (cachedActive ? cached?.event_show_modal : parsed.event_show_modal) ?? true,
-          event_timestamp: cached?.event_timestamp || Date.now()
+          event_active: isEventActive,
+          event_preset: ((parsed.event_preset || cached?.event_preset || 'saudi_national_day')) as EventPreset,
+          event_title: parsed.event_title || cached?.event_title || DEFAULT_THEME_SETTINGS.event_title,
+          event_subtitle: parsed.event_subtitle || cached?.event_subtitle || DEFAULT_THEME_SETTINGS.event_subtitle,
+          event_promo_code: parsed.event_promo_code || cached?.event_promo_code || DEFAULT_THEME_SETTINGS.event_promo_code,
+          event_show_confetti: parsed.event_show_confetti ?? cached?.event_show_confetti ?? true,
+          event_show_modal: parsed.event_show_modal ?? cached?.event_show_modal ?? true,
+          event_timestamp: parsed.event_timestamp || cached?.event_timestamp || Date.now()
         };
 
+        // Cache the fresh DB truth locally
+        localStorage.setItem('jamr_theme_settings', JSON.stringify(merged));
         return merged;
       }
     }
   } catch (err) {
-    console.error('[fetchThemeSettings] Error:', err);
+    console.error('[fetchThemeSettings] DB fetch error:', err);
   }
 
   return cached || DEFAULT_THEME_SETTINGS;
 };
 
 /**
- * Save theme settings cleanly. Writes to local storage first, broadcasts to all sessions,
- * and attempts DB upsert.
+ * Save theme settings cleanly to Supabase DB, update local storage, and broadcast to all sessions.
  */
 export const saveThemeSettings = async (settings: SeasonalEventSettings): Promise<SeasonalEventSettings> => {
   const fullSettings: SeasonalEventSettings = {
@@ -77,7 +73,7 @@ export const saveThemeSettings = async (settings: SeasonalEventSettings): Promis
     event_timestamp: Date.now()
   };
 
-  // 1. Immediately update local storage (instant local persistence)
+  // 1. Immediately update local storage
   localStorage.setItem('jamr_theme_settings', JSON.stringify(fullSettings));
   localStorage.setItem('jamr_app_settings', JSON.stringify(fullSettings));
 
@@ -95,7 +91,7 @@ export const saveThemeSettings = async (settings: SeasonalEventSettings): Promis
     });
   } catch (bcErr) {}
 
-  // 3. Schema-safe DB upsert
+  // 3. Prepare schema-safe DB payload with embedded CONFIG tag
   const configTag = `[CONFIG:${JSON.stringify(fullSettings)}]`;
 
   let existingSub = '';
@@ -112,6 +108,19 @@ export const saveThemeSettings = async (settings: SeasonalEventSettings): Promis
   const cleanSub = existingSub.replace(/\[CONFIG:[\s\S]*?\]/g, '').trim();
   const updatedSub = cleanSub ? `${cleanSub} ${configTag}` : configTag;
 
+  const fullPayload = {
+    id: 1,
+    popular_subtitle: updatedSub,
+    event_active: fullSettings.event_active,
+    event_preset: fullSettings.event_preset,
+    event_title: fullSettings.event_title,
+    event_subtitle: fullSettings.event_subtitle,
+    event_promo_code: fullSettings.event_promo_code,
+    event_show_confetti: fullSettings.event_show_confetti,
+    event_show_modal: fullSettings.event_show_modal,
+    updated_at: new Date().toISOString()
+  };
+
   const safePayload = {
     id: 1,
     popular_subtitle: updatedSub,
@@ -119,15 +128,39 @@ export const saveThemeSettings = async (settings: SeasonalEventSettings): Promis
     updated_at: new Date().toISOString()
   };
 
+  let dbSuccess = false;
+
+  // Try full payload with Admin client
   try {
-    if (supabaseAdmin) {
-      await supabaseAdmin.from('app_settings').upsert(safePayload);
+    const { error: fullAdminErr } = await supabaseAdmin.from('app_settings').upsert(fullPayload);
+    if (!fullAdminErr) {
+      dbSuccess = true;
     } else {
-      await supabase.from('app_settings').upsert(safePayload);
+      console.warn('[saveThemeSettings] Full admin upsert failed, trying safe payload:', fullAdminErr.message);
+      const { error: safeAdminErr } = await supabaseAdmin.from('app_settings').upsert(safePayload);
+      if (!safeAdminErr) dbSuccess = true;
     }
-  } catch (err) {
-    console.warn('[saveThemeSettings] DB upsert notice:', err);
+  } catch (e) {}
+
+  // Fallback to anon client if admin failed
+  if (!dbSuccess) {
+    try {
+      const { error: fullAnonErr } = await supabase.from('app_settings').upsert(fullPayload);
+      if (!fullAnonErr) {
+        dbSuccess = true;
+      } else {
+        const { error: safeAnonErr } = await supabase.from('app_settings').upsert(safePayload);
+        if (!safeAnonErr) dbSuccess = true;
+      }
+    } catch (e) {}
+  }
+
+  if (!dbSuccess) {
+    console.error('[saveThemeSettings] Warning: Failed to upsert theme settings to DB on all attempts.');
+  } else {
+    console.log(`[saveThemeSettings] DB upsert success → event_active=${fullSettings.event_active}`);
   }
 
   return fullSettings;
 };
+

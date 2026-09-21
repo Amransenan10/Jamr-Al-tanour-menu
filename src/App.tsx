@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-// Version: 2026-03-13-22-40
+// Version: 2026-09-21-19-45
 import { Header } from './components/Header';
 import { cn } from './lib/utils';
 import { CategoryBar } from './components/CategoryBar';
@@ -210,7 +210,13 @@ export default function App() {
         .on('broadcast', { event: 'settings_changed' }, (message) => {
           console.log('DEBUG: Instant broadcast settings update, event_active =', message.payload?.event_active);
           if (message.payload) {
-            // Broadcast carries the authoritative merged state – use it directly
+            setAppSettings(prev => ({ ...prev, ...message.payload }));
+            localStorage.setItem('jamr_app_settings', JSON.stringify({ ...message.payload }));
+          }
+        })
+        .on('broadcast', { event: 'theme_changed' }, (message) => {
+          console.log('DEBUG: Instant broadcast theme update, event_active =', message.payload?.event_active);
+          if (message.payload) {
             setAppSettings(prev => ({ ...prev, ...message.payload }));
             localStorage.setItem('jamr_app_settings', JSON.stringify({ ...message.payload }));
           }
