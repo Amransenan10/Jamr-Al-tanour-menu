@@ -184,11 +184,8 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
         }
       });
 
-      if (elapsed < duration) {
-        animationFrameId = requestAnimationFrame(render);
-      } else {
-        ctx.clearRect(0, 0, width, height);
-      }
+      // LOOP CONTINUOUSLY FOR EVER (Never stops while theme is active!)
+      animationFrameId = requestAnimationFrame(render);
     };
 
     render();
@@ -199,28 +196,18 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
     };
   }, [isActive, showConfetti, preset]);
 
-  // Modal Dismissal Session Check
+  // Modal Open Effect — OPENS EVERY TIME MENU IS VISITED / OPENED
   useEffect(() => {
     if (!isActive || !showModal) return;
 
-    const eventTs = settings?.event_timestamp || '';
-    const storageKey = `jamr_event_dismissed_${preset}_${promoCode}_${eventTs}`;
-    const dismissed = localStorage.getItem(storageKey);
-    
-    if (!dismissed) {
-      // Delay modal appearance slightly for smooth experience
-      const timer = setTimeout(() => {
-        setIsOpen(true);
-      }, 700);
-      return () => clearTimeout(timer);
-    }
-  }, [isActive, showModal, preset, promoCode, settings?.event_timestamp]);
+    const timer = setTimeout(() => {
+      setIsOpen(true);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [isActive, showModal, preset, promoCode]);
 
   const handleClose = () => {
     setIsOpen(false);
-    const eventTs = settings?.event_timestamp || '';
-    const storageKey = `jamr_event_dismissed_${preset}_${promoCode}_${eventTs}`;
-    localStorage.setItem(storageKey, 'true');
   };
 
   const handleCopyCode = () => {
