@@ -53,61 +53,89 @@ export const AdminMarketingView: React.FC = () => {
     event_show_modal: true
   });
 
-  useEffect(() => {
-    fetchData();
+  // Tracks whether user has manually changed the event form so DB re-reads don't override it
+  const userInteractedRef = React.useRef(false);
 
+  useEffect(() => {
+    fetchEventSettings();
+    fetchCustomersData();
+
+    // Realtime: customers/orders updates ONLY refresh customer list, NEVER eventForm
     const channel = supabase.channel('admin-marketing-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'push_subscriptions' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchCustomersData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, () => fetchCustomersData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'push_subscriptions' }, () => fetchCustomersData())
+      // Listen for settings changes and update eventForm ONLY if user hasn't interacted
+      .on('broadcast', { event: 'settings_changed' }, (msg) => {
+        if (!userInteractedRef.current && msg.payload) {
+          const p = msg.payload;
+          setEventForm(prev => ({
+            ...prev,
+            event_active:        Boolean(p.event_active),
+            event_preset:        p.event_preset        || prev.event_preset,
+            event_title:         p.event_title         || prev.event_title,
+            event_subtitle:      p.event_subtitle      || prev.event_subtitle,
+            event_promo_code:    p.event_promo_code    || prev.event_promo_code,
+            event_show_confetti: p.event_show_confetti ?? prev.event_show_confetti,
+            event_show_modal:    p.event_show_modal    ?? prev.event_show_modal,
+          }));
+        }
+      })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  /** Load event/seasonal settings from DB — called once on mount */
+  const fetchEventSettings = async () => {
     try {
-      // 1. Fetch Subscribers Count using supabaseAdmin to bypass RLS
-      const { count: subCount, error: subErr } = await supabaseAdmin
-        .from('push_subscriptions')
-        .select('*', { count: 'exact', head: true });
-      
-      if (!subErr && subCount !== null) {
-        setSubscribersCount(subCount);
-      } else {
-        setSubscribersCount(subCount || 0);
-      }
-
-      // 2. Fetch Broadcast History
-      const { data: bData } = await supabase
-        .from('broadcast_notifications')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (bData) setBroadcasts(bData);
-
-      // 3. Fetch App Settings for Seasonal Event Engine - DB IS THE ONLY SOURCE OF TRUTH
-      const { data: appSettingsRaw } = await supabase
+      const { data: appSettingsRaw } = await supabaseAdmin
         .from('app_settings')
         .select('*')
         .eq('id', 1)
         .maybeSingle();
 
-      const parsedSettings = parseAppSettings(appSettingsRaw);
+      // Fallback to anon client
+      const rawToUse = appSettingsRaw
+        || (await supabase.from('app_settings').select('*').eq('id', 1).maybeSingle()).data;
 
-      setEventForm({
-        event_active: Boolean(parsedSettings.event_active),
-        event_preset: (parsedSettings.event_preset as EventPreset) || 'saudi_national_day',
-        event_title: parsedSettings.event_title || 'اليوم الوطني السعودي 🇸🇦',
-        event_subtitle: parsedSettings.event_subtitle || 'نحتفل معكم باليوم الوطني! استمتع بأشهى الأطباق بخصم حصري ومميز',
-        event_promo_code: parsedSettings.event_promo_code || 'SAUDI',
-        event_show_confetti: parsedSettings.event_show_confetti ?? true,
-        event_show_modal: parsedSettings.event_show_modal ?? true
-      });
+      if (!rawToUse) return;
 
-      // 4. Fetch Orders & Loyalty Customers to build VIP marketing list
+      const parsedSettings = parseAppSettings(rawToUse);
+
+      // Only update form if user has not already interacted with it
+      if (!userInteractedRef.current) {
+        setEventForm({
+          event_active:        Boolean(parsedSettings.event_active),
+          event_preset:        (parsedSettings.event_preset as EventPreset) || 'saudi_national_day',
+          event_title:         parsedSettings.event_title         || 'اليوم الوطني السعودي 🇸🇦',
+          event_subtitle:      parsedSettings.event_subtitle      || 'نحتفل معكم باليوم الوطني! استمتع بأشهى الأطباق بخصم حصري ومميز',
+          event_promo_code:    parsedSettings.event_promo_code    || 'SAUDI',
+          event_show_confetti: parsedSettings.event_show_confetti ?? true,
+          event_show_modal:    parsedSettings.event_show_modal     ?? true
+        });
+      }
+    } catch (e) {
+      console.error('[AdminMarketingView] fetchEventSettings error:', e);
+    }
+  };
+
+  /** Load customers + subscribers — safe to call repeatedly via realtime */
+  const fetchCustomersData = async () => {
+    setLoading(true);
+    try {
+      // 1. Subscribers
+      const { count: subCount } = await supabaseAdmin
+        .from('push_subscriptions')
+        .select('*', { count: 'exact', head: true });
+      setSubscribersCount(subCount || 0);
+
+      // 2. Broadcast history
+      const { data: bData } = await supabase
+        .from('broadcast_notifications')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (bData) setBroadcasts(bData);
       const [ordersRes, loyaltyCustRes] = await Promise.all([
         supabaseAdmin.from('orders').select('*').order('created_at', { ascending: false }),
         supabaseAdmin.from('customers').select('*').order('points_balance', { ascending: false })
@@ -318,6 +346,9 @@ export const AdminMarketingView: React.FC = () => {
     if (e && e.preventDefault) e.preventDefault();
     setSavingEvents(true);
 
+    // Mark that user has explicitly interacted — prevent DB re-reads from overriding form
+    userInteractedRef.current = true;
+
     const targetActive = overrideActive !== undefined ? overrideActive : eventForm.event_active;
 
     try {
@@ -473,7 +504,7 @@ export const AdminMarketingView: React.FC = () => {
         </button>
 
         <button
-          onClick={fetchData}
+          onClick={() => { fetchEventSettings(); fetchCustomersData(); }}
           className="mr-auto p-2 bg-zinc-900 hover:bg-zinc-800 text-gray-400 rounded-xl transition-colors cursor-pointer"
         >
           <RefreshCw size={18} className={loading ? "animate-spin text-primary" : ""} />
