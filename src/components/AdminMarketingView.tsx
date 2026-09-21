@@ -12,6 +12,8 @@ import toast from 'react-hot-toast';
 import { SeasonalEventSettings, EventPreset } from '../types';
 import { getPresetDetails } from './SeasonalEventOverlay';
 
+import { parseAppSettings, saveAppSettings } from '../utils/appSettingsUtils';
+
 interface CustomerAggregated {
   phone: string;
   name?: string;
@@ -53,6 +55,16 @@ export const AdminMarketingView: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+
+    const channel = supabase.channel('admin-marketing-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'push_subscriptions' }, () => fetchData())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchData = async () => {
@@ -77,31 +89,13 @@ export const AdminMarketingView: React.FC = () => {
       if (bData) setBroadcasts(bData);
 
       // 3. Fetch App Settings for Seasonal Event Engine - DB IS THE ONLY SOURCE OF TRUTH
-      const { data: appSettingsRaw, error: settingsErr } = await supabase
+      const { data: appSettingsRaw } = await supabase
         .from('app_settings')
         .select('*')
         .eq('id', 1)
         .maybeSingle();
 
-      console.log('DEBUG AdminMarketing: DB app_settings raw:', appSettingsRaw, 'error:', settingsErr);
-
-      let parsedSettings: any = appSettingsRaw ? { ...appSettingsRaw } : {};
-
-      // Extract from config tag in popular_subtitle if event fields not directly stored
-      const subStr = parsedSettings.popular_subtitle || '';
-      const match = typeof subStr === 'string' ? subStr.match(/\[CONFIG:([\s\S]*?)\]\s*$/) : null;
-      if (match && match[1]) {
-        try {
-          const extraConfig = JSON.parse(match[1]);
-          // Config tag merges OVER raw DB columns (more specific/newer)
-          parsedSettings = { ...parsedSettings, ...extraConfig };
-          console.log('DEBUG AdminMarketing: extracted config tag:', extraConfig);
-        } catch (e) {
-          console.error('Error parsing config tag:', e);
-        }
-      }
-
-      console.log('DEBUG AdminMarketing: final parsedSettings:', parsedSettings);
+      const parsedSettings = parseAppSettings(appSettingsRaw);
 
       setEventForm({
         event_active: Boolean(parsedSettings.event_active),
@@ -112,6 +106,119 @@ export const AdminMarketingView: React.FC = () => {
         event_show_confetti: parsedSettings.event_show_confetti ?? true,
         event_show_modal: parsedSettings.event_show_modal ?? true
       });
+
+      // 4. Fetch Orders & Loyalty Customers to build VIP marketing list
+      const [ordersRes, loyaltyCustRes] = await Promise.all([
+        supabaseAdmin.from('orders').select('*').order('created_at', { ascending: false }),
+        supabaseAdmin.from('customers').select('*').order('points_balance', { ascending: false })
+      ]);
+
+      let rawOrders = ordersRes.data || [];
+      if (ordersRes.error) {
+        const fallbackOrders = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+        rawOrders = fallbackOrders.data || [];
+      }
+
+      let rawLoyaltyCust = loyaltyCustRes.data || [];
+      if (loyaltyCustRes.error) {
+        const fallbackCust = await supabase.from('customers').select('*').order('points_balance', { ascending: false });
+        rawLoyaltyCust = fallbackCust.data || [];
+      }
+
+      const customerMap: Record<string, {
+        phone: string;
+        name?: string;
+        orderCount: number;
+        totalSpent: number;
+        lastOrderDate: string;
+        pointsBalance: number;
+      }> = {};
+
+      rawOrders.forEach((o: any) => {
+        const rawPhone = o.phone || o.customer_phone || o.phone_number;
+        if (!rawPhone) return;
+        const cleanPhone = String(rawPhone).trim();
+        if (!cleanPhone) return;
+
+        if (!customerMap[cleanPhone]) {
+          customerMap[cleanPhone] = {
+            phone: cleanPhone,
+            name: o.customer_name || o.name || o.full_name || '',
+            orderCount: 0,
+            totalSpent: 0,
+            lastOrderDate: o.created_at || new Date().toISOString(),
+            pointsBalance: 0
+          };
+        }
+
+        const existing = customerMap[cleanPhone];
+        if (!existing.name && (o.customer_name || o.name || o.full_name)) {
+          existing.name = o.customer_name || o.name || o.full_name;
+        }
+
+        if (o.status !== 'cancelled') {
+          existing.orderCount += 1;
+          existing.totalSpent += Number(o.total_price) || 0;
+        }
+
+        if (new Date(o.created_at) > new Date(existing.lastOrderDate)) {
+          existing.lastOrderDate = o.created_at;
+        }
+      });
+
+      rawLoyaltyCust.forEach((c: any) => {
+        const rawPhone = c.phone_number || c.phone;
+        if (!rawPhone) return;
+        const cleanPhone = String(rawPhone).trim();
+        if (!cleanPhone) return;
+
+        if (!customerMap[cleanPhone]) {
+          customerMap[cleanPhone] = {
+            phone: cleanPhone,
+            name: c.full_name || c.name || '',
+            orderCount: 0,
+            totalSpent: 0,
+            lastOrderDate: c.updated_at || c.created_at || new Date().toISOString(),
+            pointsBalance: Number(c.points_balance) || 0
+          };
+        } else {
+          if (!customerMap[cleanPhone].name && c.full_name) {
+            customerMap[cleanPhone].name = c.full_name;
+          }
+          customerMap[cleanPhone].pointsBalance = Number(c.points_balance) || 0;
+        }
+      });
+
+      const aggregatedList: CustomerAggregated[] = Object.values(customerMap).map(c => {
+        let badge: 'vip' | 'preferred' | 'new' = 'new';
+        if (c.orderCount >= 3 || c.totalSpent >= 150 || c.pointsBalance >= 50) {
+          badge = 'vip';
+        } else if (c.orderCount >= 1 || c.totalSpent >= 50 || c.pointsBalance > 0) {
+          badge = 'preferred';
+        }
+
+        return {
+          phone: c.phone,
+          name: c.name || undefined,
+          orderCount: c.orderCount,
+          totalSpent: c.totalSpent,
+          lastOrderDate: c.lastOrderDate,
+          badge
+        };
+      });
+
+      aggregatedList.sort((a, b) => {
+        const badgeScore = { vip: 3, preferred: 2, new: 1 };
+        if (badgeScore[b.badge] !== badgeScore[a.badge]) {
+          return badgeScore[b.badge] - badgeScore[a.badge];
+        }
+        if (b.totalSpent !== a.totalSpent) {
+          return b.totalSpent - a.totalSpent;
+        }
+        return b.orderCount - a.orderCount;
+      });
+
+      setCustomers(aggregatedList);
     } catch (e) {
       console.error('Error fetching marketing data:', e);
     } finally {
@@ -207,13 +314,15 @@ export const AdminMarketingView: React.FC = () => {
     }));
   };
 
-  const handleSaveEventSettings = async (e?: React.FormEvent | React.MouseEvent) => {
+  const handleSaveEventSettings = async (e?: React.FormEvent | React.MouseEvent, overrideActive?: boolean) => {
     if (e && e.preventDefault) e.preventDefault();
     setSavingEvents(true);
 
+    const targetActive = overrideActive !== undefined ? overrideActive : eventForm.event_active;
+
     try {
       const eventConfig = {
-        event_active: eventForm.event_active,
+        event_active: targetActive,
         event_preset: eventForm.event_preset,
         event_title: (eventForm.event_title || 'اليوم الوطني السعودي 🇸🇦').trim(),
         event_subtitle: (eventForm.event_subtitle || 'نحتفل معكم باليوم الوطني!').trim(),
@@ -223,58 +332,14 @@ export const AdminMarketingView: React.FC = () => {
         event_timestamp: Date.now()
       };
 
-      // 1. Prepare full payload — DB columns + config tag as backup fallback
-      const configTag = `[CONFIG:${JSON.stringify(eventConfig)}]`;
-      const fullPayload = {
-        id: 1,
-        announcement_active: eventConfig.event_active,
-        announcement_text: eventConfig.event_title,
-        popular_subtitle: configTag,
-        ...eventConfig,
-        updated_at: new Date().toISOString()
-      };
+      await saveAppSettings(eventConfig);
 
-      // 2. Try DB upsert (admin client first, then public client as fallback)
-      let res = await supabaseAdmin.from('app_settings').upsert(fullPayload);
-      if (res.error) {
-        console.warn('Admin client failed, trying public client:', res.error);
-        res = await supabase.from('app_settings').upsert(fullPayload);
-      }
+      setEventForm(prev => ({ ...prev, event_active: targetActive }));
 
-      // 3. If columns don't exist yet, use minimal fallback payload  
-      if (res.error) {
-        console.warn('Falling back to config tag only:', res.error);
-        const fallbackPayload = {
-          id: 1,
-          announcement_active: eventConfig.event_active,
-          announcement_text: eventConfig.event_title,
-          popular_subtitle: configTag,
-          updated_at: new Date().toISOString()
-        };
-        res = await supabaseAdmin.from('app_settings').upsert(fallbackPayload);
-        if (res.error) {
-          res = await supabase.from('app_settings').upsert(fallbackPayload);
-        }
-      }
-
-      // 4. Broadcast FULL eventConfig so ALL connected clients (mobile + laptop) update instantly
-      try {
-        await supabase.channel('jamr_realtime_channel').send({
-          type: 'broadcast',
-          event: 'settings_changed',
-          payload: { ...eventConfig }
-        });
-      } catch (bcErr) {
-        console.warn('Realtime broadcast error:', bcErr);
-      }
-
-      // 5. Update THIS admin device's local cache after successful persistence
-      localStorage.setItem('jamr_app_settings', JSON.stringify({ ...eventConfig }));
-
-      if (eventForm.event_active) {
+      if (targetActive) {
         toast.success(`تم تفعيل وتطبيق ثيم (${eventConfig.event_title}) بنجاح على المتجر! 🇸🇦🎉`);
       } else {
-        toast.success('تم حفظ إعدادات الموسم بنجاح! ⚡');
+        toast.success('تم إيقاف وحفظ إعدادات الموسم بنجاح! ⚡');
       }
     } catch (error: any) {
       console.error('Error saving event settings:', error);
@@ -434,7 +499,11 @@ export const AdminMarketingView: React.FC = () => {
               {/* Master Toggle Switch */}
               <button
                 type="button"
-                onClick={() => setEventForm(prev => ({ ...prev, event_active: !prev.event_active }))}
+                onClick={() => {
+                  const nextVal = !eventForm.event_active;
+                  setEventForm(prev => ({ ...prev, event_active: nextVal }));
+                  handleSaveEventSettings(undefined, nextVal);
+                }}
                 className={cn(
                   "px-4 py-2 rounded-2xl font-black text-xs flex items-center gap-2 transition-all cursor-pointer shadow-md",
                   eventForm.event_active

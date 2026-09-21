@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '../lib/utils';
+import { parseAppSettings, saveAppSettings } from '../utils/appSettingsUtils';
 
 const DEFAULT_WHEEL_PRIZES = [
   { id: 1, label: 'خصم 10% عند الطلب', code: 'WHEEL10', type: 'discount', color: '#f59e0b' },
@@ -19,32 +20,6 @@ const DEFAULT_WHEEL_PRIZES = [
   { id: 7, label: 'وفّر 10 ر.س عند الطلب', code: 'SAVE10', type: 'discount', color: '#14b8a6' },
   { id: 8, label: 'حظ أوفير غداً', code: '', type: 'unlucky', color: '#6b7280' },
 ];
-
-const parseAppSettings = (data: any) => {
-  if (!data) return {};
-  let parsed = { ...data };
-  
-  const subStr = data.popular_subtitle || data.announcement_text || '';
-  const match = typeof subStr === 'string' ? subStr.match(/\[CONFIG:(.*?)\]/) : null;
-  if (match && match[1]) {
-    try {
-      const extraConfig = JSON.parse(match[1]);
-      parsed = { ...parsed, ...extraConfig };
-    } catch (e) {
-      console.error('Error parsing config tag:', e);
-    }
-  }
-
-  if (typeof parsed.popular_subtitle === 'string') {
-    parsed.popular_subtitle = parsed.popular_subtitle.replace(/\[CONFIG:.*?\]/g, '').trim();
-  }
-
-  parsed.announcement_active = parsed.announcement_active === undefined ? true : Boolean(parsed.announcement_active);
-  parsed.offers_active = parsed.offers_active === undefined ? true : Boolean(parsed.offers_active);
-  parsed.wheel_active = parsed.wheel_active === undefined ? true : Boolean(parsed.wheel_active);
-
-  return parsed;
-};
 
 export const CategoryAdminManager: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -232,57 +207,19 @@ export const CategoryAdminManager: React.FC = () => {
   const handleSaveAppSettings = async () => {
     setSaving(true);
     try {
-      // 1. Save locally for instant UI response
-      localStorage.setItem('jamr_app_settings', JSON.stringify(appSettings));
-
-      const configTag = `[CONFIG:${JSON.stringify({
+      const merged = await saveAppSettings({
+        announcement_text: appSettings.announcement_text || '',
         announcement_active: Boolean(appSettings.announcement_active),
+        popular_title: appSettings.popular_title || '',
+        popular_subtitle: appSettings.popular_subtitle || '',
+        offers_title: appSettings.offers_title || '',
         offers_active: Boolean(appSettings.offers_active),
         wheel_active: Boolean(appSettings.wheel_active),
         wheel_title: appSettings.wheel_title || 'عجلة الحظ والجوائز',
         wheel_prizes: appSettings.wheel_prizes || DEFAULT_WHEEL_PRIZES
-      })}]`;
-
-      const cleanSub = (appSettings.popular_subtitle || '').replace(/\[CONFIG:.*?\]/g, '').trim();
-      const updatedSub = cleanSub ? `${cleanSub} ${configTag}` : configTag;
-
-      // 2. Guaranteed payload with ONLY standard schema columns to prevent SQL column errors
-      const safeDbPayload: any = {
-        id: 1,
-        announcement_text: appSettings.announcement_text || '',
-        announcement_active: Boolean(appSettings.announcement_active),
-        popular_title: appSettings.popular_title || '',
-        popular_subtitle: updatedSub,
-        offers_title: appSettings.offers_title || '',
-        offers_active: Boolean(appSettings.offers_active)
-      };
-
-      // Guaranteed upsert into Supabase (will NOT error because all columns exist)
-      let { error: err1 } = await supabaseAdmin.from('app_settings').upsert([safeDbPayload]);
-      if (err1) {
-        console.error('Admin upsert failed, trying anon client:', err1);
-        await supabase.from('app_settings').upsert([safeDbPayload]);
-      }
-
-      // Optional attempt to update native columns if user ran migration
-      try {
-        await supabaseAdmin.from('app_settings').update({
-          wheel_active: appSettings.wheel_active ?? true,
-          wheel_title: appSettings.wheel_title || 'عجلة الحظ والجوائز',
-          wheel_prizes: typeof appSettings.wheel_prizes === 'object' ? JSON.stringify(appSettings.wheel_prizes) : (appSettings.wheel_prizes || JSON.stringify(DEFAULT_WHEEL_PRIZES))
-        }).eq('id', 1);
-      } catch (e) {
-        // Ignore column missing error since configTag handles it
-      }
-
-      // 3. Broadcast realtime update to ALL customer devices immediately
-      const channel = supabase.channel('jamr_realtime_channel');
-      channel.send({
-        type: 'broadcast',
-        event: 'settings_changed',
-        payload: appSettings
       });
 
+      setAppSettings(merged);
       toast.success('تم حفظ وتفعيل الإعدادات في قاعدة البيانات بنجاح! 🎉');
     } catch (err: any) {
       console.error('Save Settings Error:', err);
