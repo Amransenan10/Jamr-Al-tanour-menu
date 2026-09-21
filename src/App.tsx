@@ -198,14 +198,20 @@ export default function App() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, 
           (payload) => {
             console.log('DEBUG: App settings changed via DB:', payload);
-            const parsed = parseAppSettings(payload.new || {});
-            setAppSettings(prev => ({ ...prev, ...parsed }));
+            if (payload.new) {
+              const parsed = parseAppSettings(payload.new);
+              console.log('DEBUG: Parsed settings from DB change, event_active =', parsed.event_active);
+              setAppSettings(parsed);
+              localStorage.setItem('jamr_app_settings', JSON.stringify(parsed));
+            }
           }
         )
         .on('broadcast', { event: 'settings_changed' }, (message) => {
-          console.log('DEBUG: Instant broadcast settings update:', message.payload);
+          console.log('DEBUG: Instant broadcast settings update, event_active =', message.payload?.event_active);
           if (message.payload) {
+            // Broadcast carries the authoritative merged state – use it directly
             setAppSettings(prev => ({ ...prev, ...message.payload }));
+            localStorage.setItem('jamr_app_settings', JSON.stringify({ ...message.payload }));
           }
         })
         .subscribe();
@@ -241,7 +247,10 @@ export default function App() {
       } catch (e) { console.error('Cache parsing error', e); }
     }
 
+    // fetchData handles menu/products/categories only
+    // fetchAppSettings loads settings SEPARATELY to avoid race conditions
     fetchData(savedBranch || 'السويدي الغربي');
+    fetchAppSettings();
   }, []);
 
   // Real-time listener & fast polling for active order status updates on customer menu
@@ -377,6 +386,25 @@ export default function App() {
     setStoreSettings(data || { branch_name: targetBranch, status: 'open', is_delivery_active: true, is_pickup_active: true });
   };
 
+  // Dedicated settings loader – NEVER called inside fetchData to prevent race conditions
+  const fetchAppSettings = async () => {
+    try {
+      const { data, error } = await supabase.from('app_settings').select('*').eq('id', 1).maybeSingle();
+      if (error) {
+        console.warn('DEBUG: fetchAppSettings error:', error);
+        return;
+      }
+      if (data) {
+        const parsed = parseAppSettings(data);
+        console.log('DEBUG: fetchAppSettings loaded, event_active =', parsed.event_active);
+        setAppSettings(parsed);
+        localStorage.setItem('jamr_app_settings', JSON.stringify(parsed));
+      }
+    } catch (e) {
+      console.error('DEBUG: fetchAppSettings exception:', e);
+    }
+  };
+
   const fetchData = async (overrideBranch?: string) => {
     console.log('DEBUG: Starting fetchData...');
     setLoading(true);
@@ -384,7 +412,9 @@ export default function App() {
     try {
       const startTime = Date.now();
       const currentSelectedBranch = overrideBranch || selectedBranch || 'السويدي الغربي';
-      const [catsRes, prodsRes, statusRes, appSettingsRes, storiesRes] = await Promise.all([
+      // NOTE: app_settings is intentionally NOT fetched here to prevent overwriting
+      // realtime-updated state. Use fetchAppSettings() for that.
+      const [catsRes, prodsRes, statusRes, storiesRes] = await Promise.all([
         supabase
           .from('categories')
           .select('*')
@@ -398,7 +428,6 @@ export default function App() {
           .select('*')
           .eq('branch_name', currentSelectedBranch)
           .maybeSingle(),
-        supabase.from('app_settings').select('*').single(),
         (async () => {
           try {
             const res = await supabase.from('stories').select('*').eq('is_active', true).order('created_at', { ascending: false });
@@ -439,11 +468,6 @@ export default function App() {
         setProducts(processedProducts);
         localStorage.setItem('jamr_prods_cache', JSON.stringify(processedProducts));
       }
-      // Parse ONLY from DB - no localStorage mixing to prevent stale data for customers
-      const parsedDbConfig = parseAppSettings(appSettingsRes.data || {});
-      setAppSettings(parsedDbConfig);
-      // Overwrite cache with fresh DB data so all subsequent loads are fresh
-      localStorage.setItem('jamr_app_settings', JSON.stringify(parsedDbConfig));
       if (storiesRes.data) {
         setStories(storiesRes.data);
         localStorage.setItem('jamr_stories_cache', JSON.stringify(storiesRes.data));
