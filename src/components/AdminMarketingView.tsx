@@ -367,7 +367,8 @@ export const AdminMarketingView: React.FC = () => {
     // Mark that user has explicitly interacted — prevent DB re-reads from overriding form
     userInteractedRef.current = true;
 
-    const targetActive = overrideActive !== undefined ? overrideActive : eventForm.event_active;
+    // When clicking the main Save & Apply button (overrideActive is undefined), FORCE targetActive to true!
+    const targetActive = overrideActive !== undefined ? overrideActive : true;
 
     try {
       const eventConfig = {
