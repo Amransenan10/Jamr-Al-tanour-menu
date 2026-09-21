@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 import { supabaseAdmin } from '../lib/supabaseAdmin';
 import { SeasonalEventSettings, EventPreset } from '../types';
+import { parseAppSettings } from './appSettingsUtils';
 
 export const DEFAULT_THEME_SETTINGS: SeasonalEventSettings = {
   event_active: false,
@@ -15,11 +16,13 @@ export const DEFAULT_THEME_SETTINGS: SeasonalEventSettings = {
 
 /**
  * Fetch theme settings cleanly.
+ * Uses standard supabase client so it works for unauthenticated customer devices.
  */
 export const fetchThemeSettings = async (): Promise<SeasonalEventSettings> => {
   try {
-    // 1. Try dedicated 'event_settings' table first
-    const { data: dedicatedData, error: dedicatedErr } = await supabaseAdmin
+    // 1. Try dedicated 'event_settings' table if created
+    const client = supabaseAdmin || supabase;
+    const { data: dedicatedData, error: dedicatedErr } = await client
       .from('event_settings')
       .select('*')
       .eq('id', 1)
@@ -38,45 +41,25 @@ export const fetchThemeSettings = async (): Promise<SeasonalEventSettings> => {
       };
     }
 
-    // 2. Fallback to app_settings CONFIG tag
-    const { data: appData } = await supabaseAdmin
+    // 2. Fetch app_settings via standard client (accessible to all customers)
+    const { data: appData } = await supabase
       .from('app_settings')
       .select('*')
       .eq('id', 1)
       .maybeSingle();
 
-    const raw = appData || (await supabase.from('app_settings').select('*').eq('id', 1).maybeSingle()).data;
-    if (raw) {
-      const subStr = raw.popular_subtitle || raw.announcement_text || '';
-      if (typeof subStr === 'string' && subStr.includes('[CONFIG:')) {
-        const startIdx = subStr.indexOf('[CONFIG:') + 8;
-        const endIdx = subStr.lastIndexOf(']');
-        if (startIdx > 8 && endIdx > startIdx) {
-          try {
-            const extraConfig = JSON.parse(subStr.substring(startIdx, endIdx));
-            return {
-              event_active: Boolean(extraConfig.event_active),
-              event_preset: extraConfig.event_preset || 'saudi_national_day',
-              event_title: extraConfig.event_title || DEFAULT_THEME_SETTINGS.event_title,
-              event_subtitle: extraConfig.event_subtitle || DEFAULT_THEME_SETTINGS.event_subtitle,
-              event_promo_code: extraConfig.event_promo_code || DEFAULT_THEME_SETTINGS.event_promo_code,
-              event_show_confetti: extraConfig.event_show_confetti ?? true,
-              event_show_modal: extraConfig.event_show_modal ?? true,
-              event_timestamp: extraConfig.event_timestamp || Date.now()
-            };
-          } catch (e) {}
-        }
-      }
-      if (raw.event_active !== undefined) {
+    if (appData) {
+      const parsed = parseAppSettings(appData);
+      if (parsed && (parsed.event_active !== undefined || parsed.event_title)) {
         return {
-          event_active: Boolean(raw.event_active),
-          event_preset: raw.event_preset || 'saudi_national_day',
-          event_title: raw.event_title || DEFAULT_THEME_SETTINGS.event_title,
-          event_subtitle: raw.event_subtitle || DEFAULT_THEME_SETTINGS.event_subtitle,
-          event_promo_code: raw.event_promo_code || DEFAULT_THEME_SETTINGS.event_promo_code,
-          event_show_confetti: raw.event_show_confetti ?? true,
-          event_show_modal: raw.event_show_modal ?? true,
-          event_timestamp: Date.now()
+          event_active: Boolean(parsed.event_active),
+          event_preset: (parsed.event_preset as EventPreset) || 'saudi_national_day',
+          event_title: parsed.event_title || DEFAULT_THEME_SETTINGS.event_title,
+          event_subtitle: parsed.event_subtitle || DEFAULT_THEME_SETTINGS.event_subtitle,
+          event_promo_code: parsed.event_promo_code || DEFAULT_THEME_SETTINGS.event_promo_code,
+          event_show_confetti: parsed.event_show_confetti ?? true,
+          event_show_modal: parsed.event_show_modal ?? true,
+          event_timestamp: parsed.event_timestamp || Date.now()
         };
       }
     }
@@ -84,17 +67,22 @@ export const fetchThemeSettings = async (): Promise<SeasonalEventSettings> => {
     console.error('[fetchThemeSettings] Error:', err);
   }
 
-  // Fallback to local storage or defaults
-  const cached = localStorage.getItem('jamr_theme_settings');
+  // 3. Fallback to local storage
+  const cached = localStorage.getItem('jamr_theme_settings') || localStorage.getItem('jamr_app_settings');
   if (cached) {
-    try { return JSON.parse(cached); } catch (e) {}
+    try {
+      const parsed = JSON.parse(cached);
+      if (parsed && (parsed.event_title || parsed.event_active !== undefined)) {
+        return parsed;
+      }
+    } catch (e) {}
   }
 
   return DEFAULT_THEME_SETTINGS;
 };
 
 /**
- * Save theme settings cleanly. Writes to both event_settings table and app_settings fallback,
+ * Save theme settings cleanly. Schema-safe: writes popular_subtitle with CONFIG tag to app_settings,
  * updates local storage, and broadcasts realtime event.
  */
 export const saveThemeSettings = async (settings: SeasonalEventSettings): Promise<SeasonalEventSettings> => {
@@ -104,9 +92,43 @@ export const saveThemeSettings = async (settings: SeasonalEventSettings): Promis
     event_timestamp: Date.now()
   };
 
-  // 1. Try upserting to dedicated 'event_settings' table
+  const configTag = `[CONFIG:${JSON.stringify(fullSettings)}]`;
+
+  // 1. Get existing popular_subtitle
+  let existingSub = '';
   try {
-    const payload = {
+    const client = supabaseAdmin || supabase;
+    const { data } = await client
+      .from('app_settings')
+      .select('popular_subtitle')
+      .eq('id', 1)
+      .maybeSingle();
+    existingSub = data?.popular_subtitle || '';
+  } catch (e) {}
+
+  const cleanSub = existingSub.replace(/\[CONFIG:[\s\S]*?\]/g, '').trim();
+  const updatedSub = cleanSub ? `${cleanSub} ${configTag}` : configTag;
+
+  // 2. Schema-safe upsert to app_settings (only standard columns, guaranteed to succeed)
+  const safePayload = {
+    id: 1,
+    popular_subtitle: updatedSub,
+    updated_at: new Date().toISOString()
+  };
+
+  let writeErr: any = null;
+  if (supabaseAdmin) {
+    const res = await supabaseAdmin.from('app_settings').upsert(safePayload);
+    writeErr = res.error;
+  }
+  if (!supabaseAdmin || writeErr) {
+    await supabase.from('app_settings').upsert(safePayload);
+  }
+
+  // 3. Try dedicated event_settings table if available
+  try {
+    const client = supabaseAdmin || supabase;
+    await client.from('event_settings').upsert({
       id: 1,
       event_active: fullSettings.event_active,
       event_preset: fullSettings.event_preset,
@@ -117,47 +139,23 @@ export const saveThemeSettings = async (settings: SeasonalEventSettings): Promis
       event_show_modal: fullSettings.event_show_modal,
       event_timestamp: fullSettings.event_timestamp,
       updated_at: new Date().toISOString()
-    };
-    await supabaseAdmin.from('event_settings').upsert(payload);
-  } catch (err) {
-    console.warn('[saveThemeSettings] event_settings upsert error:', err);
-  }
-
-  // 2. Also save to app_settings CONFIG tag for complete backward compatibility
-  try {
-    const configTag = `[CONFIG:${JSON.stringify(fullSettings)}]`;
-    const { data: rawApp } = await supabaseAdmin.from('app_settings').select('popular_subtitle').eq('id', 1).maybeSingle();
-    const cleanSub = (rawApp?.popular_subtitle || '').replace(/\[CONFIG:[\s\S]*?\]/g, '').trim();
-    const updatedSub = cleanSub ? `${cleanSub} ${configTag}` : configTag;
-
-    await supabaseAdmin.from('app_settings').upsert({
-      id: 1,
-      popular_subtitle: updatedSub,
-      event_active: fullSettings.event_active,
-      event_preset: fullSettings.event_preset,
-      event_title: fullSettings.event_title,
-      event_subtitle: fullSettings.event_subtitle,
-      event_promo_code: fullSettings.event_promo_code,
-      updated_at: new Date().toISOString()
     });
-  } catch (err) {
-    console.warn('[saveThemeSettings] app_settings sync error:', err);
-  }
+  } catch (e) {}
 
-  // 3. Cache locally
+  // 4. Update local cache
   localStorage.setItem('jamr_theme_settings', JSON.stringify(fullSettings));
   localStorage.setItem('jamr_app_settings', JSON.stringify(fullSettings));
 
-  // 4. Realtime Broadcast
+  // 5. Broadcast to all active client devices
   try {
     await supabase.channel('jamr_realtime_channel').send({
       type: 'broadcast',
-      event: 'settings_changed',
+      event: 'theme_changed',
       payload: fullSettings
     });
     await supabase.channel('jamr_realtime_channel').send({
       type: 'broadcast',
-      event: 'theme_changed',
+      event: 'settings_changed',
       payload: fullSettings
     });
   } catch (bcErr) {}
