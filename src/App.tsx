@@ -30,6 +30,7 @@ import { PushSubscriptionBanner } from './components/PushSubscriptionBanner';
 import { showSystemNotification } from './utils/pushSubscription';
 import { initOneSignal } from './utils/oneSignalService';
 import { parseAppSettings } from './utils/appSettingsUtils';
+import { fetchThemeSettings } from './utils/themeSettingsUtils';
 
 export default function App() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -394,20 +395,13 @@ export default function App() {
     setStoreSettings(data || { branch_name: targetBranch, status: 'open', is_delivery_active: true, is_pickup_active: true });
   };
 
-  // Dedicated settings loader – NEVER called inside fetchData to prevent race conditions
+  // Dedicated settings loader – uses isolated themeSettingsUtils
   const fetchAppSettings = async () => {
     try {
-      const { data, error } = await supabase.from('app_settings').select('*').eq('id', 1).maybeSingle();
-      if (error) {
-        console.warn('DEBUG: fetchAppSettings error:', error);
-        return;
-      }
-      if (data) {
-        const parsed = parseAppSettings(data);
-        console.log('DEBUG: fetchAppSettings loaded, event_active =', parsed.event_active);
-        setAppSettings(parsed);
-        localStorage.setItem('jamr_app_settings', JSON.stringify(parsed));
-      }
+      const themeData = await fetchThemeSettings();
+      console.log('DEBUG: fetchAppSettings loaded via fetchThemeSettings, event_active =', themeData.event_active);
+      setAppSettings(themeData);
+      localStorage.setItem('jamr_app_settings', JSON.stringify(themeData));
     } catch (e) {
       console.error('DEBUG: fetchAppSettings exception:', e);
     }

@@ -144,5 +144,6 @@ export interface SeasonalEventSettings {
   event_show_modal: boolean;
   event_accent_color?: string;
   event_secondary_color?: string;
+  event_timestamp?: number;
 }
 
