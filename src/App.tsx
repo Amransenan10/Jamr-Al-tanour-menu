@@ -234,22 +234,30 @@ export default function App() {
     const savedOrderId = localStorage.getItem('jamr_active_order');
     if (savedOrderId) setActiveOrderId(savedOrderId);
 
-    // Stale-While-Revalidate: Load cache first for instant display
+    // Stale-While-Revalidate: Load cache first for instant 0ms display
     const cachedCats = localStorage.getItem('jamr_cats_cache');
     const cachedProds = localStorage.getItem('jamr_prods_cache');
     const cachedStories = localStorage.getItem('jamr_stories_cache');
+    const cachedSettings = localStorage.getItem('jamr_app_settings');
+
+    let hasCache = false;
     if (cachedCats && cachedProds) {
       try {
-        setCategories(JSON.parse(cachedCats));
-        setProducts(JSON.parse(cachedProds));
-        if (cachedStories) setStories(JSON.parse(cachedStories));
-        setLoading(false);
+        const parsedCats = JSON.parse(cachedCats);
+        const parsedProds = JSON.parse(cachedProds);
+        if (Array.isArray(parsedCats) && parsedCats.length > 0) {
+          setCategories(parsedCats);
+          setProducts(parsedProds);
+          if (cachedStories) setStories(JSON.parse(cachedStories));
+          if (cachedSettings) setAppSettings(JSON.parse(cachedSettings));
+          setLoading(false);
+          hasCache = true;
+        }
       } catch (e) { console.error('Cache parsing error', e); }
     }
 
-    // fetchData handles menu/products/categories only
-    // fetchAppSettings loads settings SEPARATELY to avoid race conditions
-    fetchData(savedBranch || 'السويدي الغربي');
+    // fetchData handles menu/products/categories only in background if cache exists
+    fetchData(savedBranch || 'السويدي الغربي', hasCache);
     fetchAppSettings();
   }, []);
 
@@ -405,9 +413,11 @@ export default function App() {
     }
   };
 
-  const fetchData = async (overrideBranch?: string) => {
-    console.log('DEBUG: Starting fetchData...');
-    setLoading(true);
+  const fetchData = async (overrideBranch?: string, isSilent = false) => {
+    console.log('DEBUG: Starting fetchData, isSilent =', isSilent);
+    if (!isSilent) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const startTime = Date.now();
