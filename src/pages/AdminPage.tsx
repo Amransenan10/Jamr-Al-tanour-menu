@@ -16,6 +16,7 @@ import { CategoryAdminManager } from '../components/CategoryAdminManager';
 import { AdminLoyaltyView } from '../components/AdminLoyaltyView';
 import { normalizeCouponCode } from '../utils/couponUtils';
 import { extractCoordinatesFromLocation } from '../utils/distanceUtils';
+import { saveAppSettings } from '../utils/appSettingsUtils';
 
 export const AdminPage: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -1288,8 +1289,7 @@ const AdminSettingsView = () => {
         e.preventDefault();
         setIsSavingApp(true);
         try {
-            const { error } = await supabaseAdmin.from('app_settings').update(appSettings).eq('id', 1);
-            if (error) throw error;
+            await saveAppSettings(appSettings);
             toast.success('تم حفظ الإعدادات العامة بنجاح');
         } catch (err) {
             toast.error('حدث خطأ أثناء حفظ الإعدادات');
@@ -1314,8 +1314,7 @@ const AdminSettingsView = () => {
                 .getPublicUrl(fileName);
             const newSettings = { ...appSettings, logo_url: publicUrl };
             setAppSettings(newSettings);
-            const { error } = await supabaseAdmin.from('app_settings').update({ logo_url: publicUrl }).eq('id', 1);
-            if (error) throw error;
+            await saveAppSettings({ logo_url: publicUrl });
             toast.success('تم تحديث اللوجو بنجاح لجميع المستخدمين فوراً');
         } catch (err) {
             console.error(err);
