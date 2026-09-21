@@ -209,8 +209,18 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
   }, [isActive, showConfetti, preset]);
 
   // Modal Open Effect — OPENS ON EVERY MENU VISIT AND STAYS FOR 30 SECONDS
+  const modalOpenedForTimestampRef = useRef<number | null>(null);
+
   useEffect(() => {
-    if (!isActive || !showModal) return;
+    if (!isActive || !showModal) {
+      setIsOpen(false);
+      modalOpenedForTimestampRef.current = null;
+      return;
+    }
+
+    const currentTimestamp = settings?.event_timestamp || 1;
+    if (modalOpenedForTimestampRef.current === currentTimestamp) return;
+    modalOpenedForTimestampRef.current = currentTimestamp;
 
     // Open modal smoothly
     const openTimer = setTimeout(() => {
@@ -226,7 +236,7 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
       clearTimeout(openTimer);
       clearTimeout(closeTimer);
     };
-  }, [isActive, showModal, preset, promoCode]);
+  }, [isActive, showModal, settings?.event_timestamp, settings?.event_preset, settings?.event_promo_code]);
 
   const handleClose = () => {
     setIsOpen(false);
