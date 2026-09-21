@@ -38,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
     <header className={cn(
       "sticky top-0 z-40 backdrop-blur-md transition-all border-b",
       isEventActive 
-        ? "bg-gradient-to-r from-emerald-950/90 via-zinc-900/90 to-emerald-950/90 border-emerald-500/40 text-white"
+        ? `bg-gradient-to-r ${presetDetails?.colors.gradient || 'from-emerald-950 via-zinc-900 to-emerald-950'} text-white border-b border-white/10 shadow-lg`
         : "bg-white/80 dark:bg-charcoal/80 border-gray-100 dark:border-white/5"
     )}>
       <div className="container mx-auto px-4 py-3">

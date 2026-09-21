@@ -144,7 +144,7 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
     }));
 
     let startTime = Date.now();
-    const duration = 7000; // Run confetti for 7 seconds
+    const duration = 30000; // Run confetti for 30 seconds for maximum celebration!
 
     const render = () => {
       const elapsed = Date.now() - startTime;
