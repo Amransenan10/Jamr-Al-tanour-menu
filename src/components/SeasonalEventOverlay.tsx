@@ -196,14 +196,24 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
     };
   }, [isActive, showConfetti, preset]);
 
-  // Modal Open Effect — OPENS EVERY TIME MENU IS VISITED / OPENED
+  // Modal Open Effect — OPENS ON EVERY MENU VISIT AND STAYS FOR 18 SECONDS (15-20s)
   useEffect(() => {
     if (!isActive || !showModal) return;
 
-    const timer = setTimeout(() => {
+    // Open modal smoothly
+    const openTimer = setTimeout(() => {
       setIsOpen(true);
-    }, 400);
-    return () => clearTimeout(timer);
+    }, 300);
+
+    // Auto close modal after 18 seconds (15-20 seconds specified)
+    const closeTimer = setTimeout(() => {
+      setIsOpen(false);
+    }, 18300);
+
+    return () => {
+      clearTimeout(openTimer);
+      clearTimeout(closeTimer);
+    };
   }, [isActive, showModal, preset, promoCode]);
 
   const handleClose = () => {
@@ -225,11 +235,11 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
 
   return (
     <>
-      {/* Canvas for Celebration Confetti Effects */}
+      {/* Canvas for Celebration Confetti Effects - z-[130] so particles fall OVER the modal */}
       {showConfetti && (
         <canvas
           ref={canvasRef}
-          className="fixed inset-0 pointer-events-none z-[100]"
+          className="fixed inset-0 pointer-events-none z-[130]"
           style={{ width: '100vw', height: '100vh' }}
         />
       )}
@@ -244,7 +254,7 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={handleClose}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              className="absolute inset-0 bg-black/80 backdrop-blur-md cursor-pointer"
             />
 
             {/* Modal Box */}
@@ -253,7 +263,7 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.85, opacity: 0, y: 30 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className={`relative w-full max-w-lg rounded-3xl bg-gradient-to-b ${presetDetails.colors.gradient} text-white p-6 sm:p-8 shadow-2xl border border-white/10 overflow-hidden text-center space-y-6 z-10`}
+              className={`relative w-full max-w-lg rounded-3xl bg-gradient-to-b ${presetDetails.colors.gradient} text-white p-6 sm:p-8 shadow-2xl border border-white/20 overflow-hidden text-center space-y-6 z-10`}
             >
               {/* Background Glow Effect */}
               <div
@@ -265,10 +275,12 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
                 style={{ backgroundColor: presetDetails.colors.accent, opacity: 0.3 }}
               />
 
-              {/* Close Button */}
+              {/* Prominent Close Button X */}
               <button
+                type="button"
                 onClick={handleClose}
-                className="absolute top-4 left-4 p-2 text-gray-400 hover:text-white bg-white/5 hover:bg-white/15 rounded-full transition-colors z-20 cursor-pointer"
+                className="absolute top-4 left-4 w-9 h-9 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center transition-all cursor-pointer z-20 border border-white/20 shadow-lg hover:scale-110 active:scale-95"
+                title="إغلاق"
               >
                 <X size={20} />
               </button>
