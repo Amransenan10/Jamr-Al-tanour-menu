@@ -297,7 +297,8 @@ export const AdminMarketingView: React.FC = () => {
     }
   };
 
-  const handlePresetSelect = (preset: EventPreset) => {
+  const handlePresetSelect = async (preset: EventPreset) => {
+    userInteractedRef.current = true;
     const details = getPresetDetails(preset);
     let title = details.badge;
     let subtitle = '';
@@ -332,14 +333,31 @@ export const AdminMarketingView: React.FC = () => {
         break;
     }
 
-    setEventForm(prev => ({
-      ...prev,
+    const updatedForm = {
       event_active: true,
       event_preset: preset,
       event_title: title,
       event_subtitle: subtitle,
-      event_promo_code: promo
-    }));
+      event_promo_code: promo,
+      event_show_confetti: eventForm.event_show_confetti ?? true,
+      event_show_modal: eventForm.event_show_modal ?? true
+    };
+
+    setEventForm(updatedForm);
+
+    try {
+      setSavingEvents(true);
+      await saveAppSettings({
+        ...updatedForm,
+        event_timestamp: Date.now()
+      });
+      toast.success(`تم تفعيل وتطبيق ثيم (${title}) بنجاح على المتجر! 🇸🇦🎉`);
+    } catch (err: any) {
+      console.error('Auto save preset error:', err);
+      toast.error('حدث خطأ أثناء تفعيل الثيم تلقائياً');
+    } finally {
+      setSavingEvents(false);
+    }
   };
 
   const handleSaveEventSettings = async (e?: React.FormEvent | React.MouseEvent, overrideActive?: boolean) => {
