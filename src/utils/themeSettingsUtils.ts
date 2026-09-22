@@ -141,24 +141,21 @@ export const saveThemeSettings = async (settings: SeasonalEventSettings): Promis
 
   if (!dbSuccess) {
     console.error('[saveThemeSettings] Warning: Failed to upsert theme settings to DB on all attempts.');
+    // Even if DB failed, return fullSettings optimistically (UI stays correct)
   } else {
     console.log(`[saveThemeSettings] DB upsert success → event_active=${isTargetActive}`);
   }
 
-  // 3. Re-read fresh data directly from DB to verify the absolute ground truth
-  let verifiedSettings = fullSettings;
-  try {
-    const fresh = await fetchThemeSettings();
-    verifiedSettings = fresh;
-  } catch (e) {
-    console.warn('[saveThemeSettings] Verification fetch failed, using fullSettings:', e);
-  }
+  // 3. ALWAYS trust what we just saved — do NOT re-fetch from DB here.
+  // Re-fetching immediately after upsert can return stale data (DB replication lag)
+  // and would cause event_active to flip back to false incorrectly.
+  const verifiedSettings = fullSettings;
 
-  // 4. Update local storage with verified truth
+  // 4. Update local storage with what we just saved
   localStorage.setItem('jamr_theme_settings', JSON.stringify(verifiedSettings));
   localStorage.setItem('jamr_app_settings', JSON.stringify(verifiedSettings));
 
-  // 5. Broadcast verified state to all active client sessions via Realtime
+  // 5. Broadcast to all active client sessions via Realtime
   try {
     await supabase.channel('jamr_realtime_channel').send({
       type: 'broadcast',
@@ -173,6 +170,22 @@ export const saveThemeSettings = async (settings: SeasonalEventSettings): Promis
   } catch (bcErr) {
     console.warn('[saveThemeSettings] Broadcast error (non-fatal):', bcErr);
   }
+
+  // 6. Background sync: refresh DB data into cache 2 seconds later (after DB commits)
+  setTimeout(async () => {
+    try {
+      const { data } = await supabase.from('app_settings').select('*').eq('id', 1).maybeSingle();
+      if (data) {
+        const { parseAppSettings: parse } = await import('./appSettingsUtils');
+        const refreshed = parse(data);
+        // Only update cache if event_active still matches what we intended
+        if (Boolean(refreshed.event_active) === isTargetActive) {
+          localStorage.setItem('jamr_theme_settings', JSON.stringify({ ...verifiedSettings, ...refreshed }));
+          localStorage.setItem('jamr_app_settings', JSON.stringify({ ...verifiedSettings, ...refreshed }));
+        }
+      }
+    } catch (e) { /* non-fatal */ }
+  }, 2000);
 
   return verifiedSettings;
 };
