@@ -32,13 +32,13 @@ export const AdminThemeView: React.FC = () => {
   const handleToggle = async () => {
     const nextState = !themeForm.event_active;
     const updated = { ...themeForm, event_active: nextState };
-    setThemeForm(updated);
+    setSaving(true);
 
     try {
-      setSaving(true);
-      await saveThemeSettings(updated);
-      if (nextState) {
-        toast.success(`تم تفعيل وتطبيق الثيم (${updated.event_title}) بنجاح على المتجر! 🟢🎉`);
+      const verified = await saveThemeSettings(updated);
+      setThemeForm(verified);
+      if (verified.event_active) {
+        toast.success(`تم تفعيل وتطبيق الثيم (${verified.event_title}) بنجاح على المتجر! 🟢🎉`);
       } else {
         toast.success('تم إيقاف تفعيل الثيم في المتجر بنجاح ⚪');
       }
@@ -94,12 +94,12 @@ export const AdminThemeView: React.FC = () => {
       event_timestamp: Date.now()
     };
 
-    setThemeForm(updated);
+    setSaving(true);
 
     try {
-      setSaving(true);
-      await saveThemeSettings(updated);
-      toast.success(`تم تفعيل وتطبيق ثيم (${title}) بنجاح على المتجر! 🇸🇦🎉`);
+      const verified = await saveThemeSettings(updated);
+      setThemeForm(verified);
+      toast.success(`تم تفعيل وتطبيق ثيم (${verified.event_title}) بنجاح على المتجر! 🇸🇦🎉`);
     } catch (err) {
       toast.error('حدث خطأ أثناء حفظ الثيم التلقائي');
     } finally {
@@ -121,9 +121,9 @@ export const AdminThemeView: React.FC = () => {
         event_timestamp: Date.now()
       };
 
-      await saveThemeSettings(updated);
-      setThemeForm(updated);
-      toast.success(`تم حفظ وتفعيل ثيم (${updated.event_title}) بنجاح على المتجر! 🚀✨`);
+      const verified = await saveThemeSettings(updated);
+      setThemeForm(verified);
+      toast.success(`تم حفظ وتفعيل ثيم (${verified.event_title}) بنجاح على المتجر! 🚀✨`);
     } catch (err) {
       toast.error('حدث خطأ أثناء تطبيق إعدادات الثيم');
     } finally {

@@ -12,6 +12,7 @@ export const parseAppSettings = (data: any) => {
 
   // Start with raw DB row
   let parsed = { ...data };
+  let extraConfig: any = null;
 
   // Extract CONFIG tag from popular_subtitle (or announcement_text as legacy)
   const subStr = data.popular_subtitle || data.announcement_text || '';
@@ -20,9 +21,7 @@ export const parseAppSettings = (data: any) => {
     const endIdx   = subStr.lastIndexOf(']');
     if (startIdx > 8 && endIdx > startIdx) {
       try {
-        const extraConfig = JSON.parse(subStr.substring(startIdx, endIdx));
-        // CONFIG TAG *WINS* — it is written by saveAppSettings with the latest merged state
-        // Native columns can be stale, missing, or blocked by RLS
+        extraConfig = JSON.parse(subStr.substring(startIdx, endIdx));
         parsed = { ...parsed, ...extraConfig };
       } catch (e) {
         console.error('[parseAppSettings] Failed to parse CONFIG tag:', e);
@@ -39,8 +38,14 @@ export const parseAppSettings = (data: any) => {
   parsed.announcement_active = parsed.announcement_active === undefined ? true  : Boolean(parsed.announcement_active);
   parsed.offers_active       = parsed.offers_active === undefined       ? true  : Boolean(parsed.offers_active);
   parsed.wheel_active        = parsed.wheel_active === undefined        ? true  : Boolean(parsed.wheel_active);
-  // event_active: MUST be explicitly true — never default to true
-  parsed.event_active        = parsed.event_active === true || String(parsed.event_active) === 'true';
+
+  // event_active: True if native column is true OR if CONFIG tag specifies event_active = true
+  const nativeActive = data.event_active === true || String(data.event_active) === 'true';
+  const configActive = extraConfig ? (extraConfig.event_active === true || String(extraConfig.event_active) === 'true') : false;
+  
+  // If either source has explicitly set event_active to true, it is active
+  parsed.event_active = Boolean(configActive || nativeActive);
+
   parsed.event_show_confetti = parsed.event_show_confetti === undefined ? true  : Boolean(parsed.event_show_confetti);
   parsed.event_show_modal    = parsed.event_show_modal === undefined    ? true  : Boolean(parsed.event_show_modal);
 

@@ -204,6 +204,7 @@ export default function App() {
               console.log('DEBUG: Parsed settings from DB change, event_active =', parsed.event_active);
               setAppSettings(parsed);
               localStorage.setItem('jamr_app_settings', JSON.stringify(parsed));
+              localStorage.setItem('jamr_theme_settings', JSON.stringify(parsed));
             }
           }
         )
@@ -212,6 +213,7 @@ export default function App() {
           if (message.payload) {
             setAppSettings(prev => ({ ...prev, ...message.payload }));
             localStorage.setItem('jamr_app_settings', JSON.stringify({ ...message.payload }));
+            localStorage.setItem('jamr_theme_settings', JSON.stringify({ ...message.payload }));
           }
         })
         .on('broadcast', { event: 'theme_changed' }, (message) => {
@@ -219,6 +221,7 @@ export default function App() {
           if (message.payload) {
             setAppSettings(prev => ({ ...prev, ...message.payload }));
             localStorage.setItem('jamr_app_settings', JSON.stringify({ ...message.payload }));
+            localStorage.setItem('jamr_theme_settings', JSON.stringify({ ...message.payload }));
           }
         })
         .subscribe();
@@ -245,7 +248,7 @@ export default function App() {
     const cachedCats = localStorage.getItem('jamr_cats_cache');
     const cachedProds = localStorage.getItem('jamr_prods_cache');
     const cachedStories = localStorage.getItem('jamr_stories_cache');
-    const cachedSettings = localStorage.getItem('jamr_app_settings');
+    const rawSettingsCache = localStorage.getItem('jamr_theme_settings') || localStorage.getItem('jamr_app_settings');
 
     let hasCache = false;
     if (cachedCats && cachedProds) {
@@ -256,7 +259,7 @@ export default function App() {
           setCategories(parsedCats);
           setProducts(parsedProds);
           if (cachedStories) setStories(JSON.parse(cachedStories));
-          if (cachedSettings) setAppSettings(JSON.parse(cachedSettings));
+          if (rawSettingsCache) setAppSettings(JSON.parse(rawSettingsCache));
           setLoading(false);
           hasCache = true;
         }
