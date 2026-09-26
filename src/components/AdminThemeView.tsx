@@ -90,7 +90,7 @@ export const AdminThemeView: React.FC = () => {
       event_preset: preset,
       event_title: title,
       event_subtitle: subtitle,
-      event_promo_code: promo,
+      event_promo_code: promo || null, // Optional — leave empty for no promo code
       event_timestamp: Date.now()
     };
 
@@ -117,7 +117,7 @@ export const AdminThemeView: React.FC = () => {
         event_active: true, // Clicking Save & Apply forces active to true
         event_title: (themeForm.event_title || 'اليوم الوطني السعودي 🇸🇦').trim(),
         event_subtitle: (themeForm.event_subtitle || 'نحتفل معكم باليوم الوطني!').trim(),
-        event_promo_code: (themeForm.event_promo_code || 'SAUDI').trim().toUpperCase(),
+        event_promo_code: themeForm.event_promo_code ? themeForm.event_promo_code.trim().toUpperCase() : null, // Optional
         event_timestamp: Date.now()
       };
 
@@ -271,14 +271,20 @@ export const AdminThemeView: React.FC = () => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-300">كود الخصم المرتبط بالموسم</label>
+                <label className="text-xs font-bold text-gray-300 flex items-center gap-2">
+                  كود الخصم المرتبط بالموسم
+                  <span className="text-[10px] font-semibold text-gray-500 bg-zinc-700 px-1.5 py-0.5 rounded-full">اختياري</span>
+                </label>
                 <input
                   type="text"
-                  placeholder="مثال: SAUDI"
-                  value={themeForm.event_promo_code}
-                  onChange={e => setThemeForm({ ...themeForm, event_promo_code: e.target.value.toUpperCase() })}
-                  className="w-full bg-zinc-800 text-amber-400 font-mono font-bold rounded-xl p-3 text-sm border border-transparent focus:border-emerald-500/50 outline-none uppercase"
+                  placeholder="اتركه فارغاً إذا لا يوجد كود خصم"
+                  value={themeForm.event_promo_code || ''}
+                  onChange={e => setThemeForm({ ...themeForm, event_promo_code: e.target.value.toUpperCase() || null })}
+                  className="w-full bg-zinc-800 text-amber-400 font-mono font-bold rounded-xl p-3 text-sm border border-transparent focus:border-amber-500/50 outline-none uppercase placeholder:normal-case placeholder:text-gray-600 placeholder:font-sans placeholder:font-normal"
                 />
+                {!themeForm.event_promo_code && (
+                  <p className="text-[10px] text-gray-600">لن يظهر قسم الخصم للعملاء</p>
+                )}
               </div>
             </div>
 

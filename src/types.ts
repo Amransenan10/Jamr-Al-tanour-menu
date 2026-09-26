@@ -138,7 +138,7 @@ export interface SeasonalEventSettings {
   event_preset: EventPreset;
   event_title: string;
   event_subtitle: string;
-  event_promo_code: string;
+  event_promo_code?: string | null;
   event_banner_url?: string;
   event_show_confetti: boolean;
   event_show_modal: boolean;

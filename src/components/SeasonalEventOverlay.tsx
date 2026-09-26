@@ -103,8 +103,8 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
   const presetDetails = getPresetDetails(preset);
 
   const title = settings?.event_title || presetDetails.badge;
-  const subtitle = settings?.event_subtitle || 'نحتفل معكم بالمناسبة السعيدة! استمتع بكود الخصم الحصري.';
-  const promoCode = settings?.event_promo_code || 'SAUDI94';
+  const subtitle = settings?.event_subtitle || 'نحتفل معكم بالمناسبة السعيدة!';
+  const promoCode = settings?.event_promo_code || null; // null = no promo code shown
   const showConfetti = settings?.event_show_confetti ?? true;
   const showModal = settings?.event_show_modal ?? true;
 
@@ -361,13 +361,13 @@ export const SeasonalEventOverlay: React.FC<SeasonalEventOverlayProps> = ({
               <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
                 <button
                   onClick={() => {
-                    handleCopyCode();
+                    if (promoCode) handleCopyCode();
                     handleClose();
                   }}
                   className={`w-full py-4 rounded-2xl font-black text-base transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 cursor-pointer ${presetDetails.colors.btnBg}`}
                 >
                   <Sparkles size={20} />
-                  <span>اطلب واستفد من الخصم الآن 🚀</span>
+                  <span>{promoCode ? 'اطلب واستفد من الخصم الآن 🚀' : 'اطلب واستمتع معنا 🚀'}</span>
                 </button>
               </div>
             </motion.div>

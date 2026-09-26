@@ -94,70 +94,29 @@ export const saveAppSettings = async (newPartial: Record<string, any>) => {
 
   console.log(`[saveAppSettings] Writing → event_active=${merged.event_active}`);
 
-  // ── 3. Build the CONFIG tag (single source of truth for all dynamic settings) ─
-  const configObject = {
-    announcement_active: merged.announcement_active,
-    offers_active:       merged.offers_active,
-    wheel_active:        merged.wheel_active,
-    wheel_title:         merged.wheel_title  || 'عجلة الحظ والجوائز',
-    wheel_prizes:        merged.wheel_prizes,
-    event_active:        merged.event_active,
-    event_preset:        merged.event_preset || 'saudi_national_day',
-    event_title:         merged.event_title  || 'اليوم الوطني السعودي 🇸🇦',
-    event_subtitle:      merged.event_subtitle || 'نحتفل معكم باليوم الوطني! استمتع بأشهى الأطباق بخصم حصري ومميز',
-    event_promo_code:    merged.event_promo_code || 'SAUDI',
-    event_show_confetti: merged.event_show_confetti,
-    event_show_modal:    merged.event_show_modal,
-    event_timestamp:     Date.now()          // always fresh timestamp
-  };
-
-  const configTag  = `[CONFIG:${JSON.stringify(configObject)}]`;
-  const cleanSub   = (currentSettings.popular_subtitle || '').replace(/\[CONFIG:[\s\S]*?\]/g, '').trim();
-  const updatedSub = cleanSub ? `${cleanSub} ${configTag}` : configTag;
-
-  // ── 4. Full DB payload ───────────────────────────────────────────────────────
+  // ── 3. Full DB payload using ONLY columns that exist in the schema ────────────
+  // NOTE: popular_subtitle does NOT exist in app_settings — never include it!
   const fullPayload: Record<string, any> = {
     id:                  1,
     announcement_text:   merged.announcement_text   || '',
     announcement_active: merged.announcement_active,
-    popular_title:       merged.popular_title        || '',
-    popular_subtitle:    updatedSub,               // CONFIG tag embedded here
-    offers_title:        merged.offers_title         || '',
     offers_active:       merged.offers_active,
-    event_active:        merged.event_active,       // native column (belt + suspenders)
-    event_preset:        configObject.event_preset,
-    event_title:         configObject.event_title,
-    event_subtitle:      configObject.event_subtitle,
-    event_promo_code:    configObject.event_promo_code,
-    event_show_confetti: configObject.event_show_confetti,
-    event_show_modal:    configObject.event_show_modal,
+    event_active:        merged.event_active,
+    event_preset:        merged.event_preset  || 'saudi_national_day',
+    event_title:         merged.event_title   || 'اليوم الوطني السعودي 🇸🇦',
+    event_subtitle:      merged.event_subtitle || 'نحتفل معكم باليوم الوطني!',
+    event_promo_code:    merged.event_promo_code || null, // null = optional, no promo code
+    event_show_confetti: Boolean(merged.event_show_confetti ?? true),
+    event_show_modal:    Boolean(merged.event_show_modal ?? true),
     updated_at:          new Date().toISOString()
   };
 
-  // ── 5. Upsert (admin → anon fallback) ───────────────────────────────────────
+  // ── 4. Upsert (admin → anon fallback) ────────────────────────────────────────
   let res = await supabaseAdmin.from('app_settings').upsert(fullPayload);
 
   if (res.error) {
     console.warn('[saveAppSettings] Admin upsert failed, trying anon:', res.error.message);
     res = await supabase.from('app_settings').upsert(fullPayload);
-  }
-
-  // If native event columns don't exist in schema, drop them and retry
-  if (res.error) {
-    console.warn('[saveAppSettings] Full payload failed, trying schema-safe payload:', res.error.message);
-    const safePayload: Record<string, any> = {
-      id:                  1,
-      announcement_text:   merged.announcement_text   || '',
-      announcement_active: merged.announcement_active,
-      popular_title:       merged.popular_title        || '',
-      popular_subtitle:    updatedSub,
-      offers_title:        merged.offers_title         || '',
-      offers_active:       merged.offers_active,
-      event_active:        merged.event_active,
-      updated_at:          new Date().toISOString()
-    };
-    res = await supabaseAdmin.from('app_settings').upsert(safePayload);
-    if (res.error) res = await supabase.from('app_settings').upsert(safePayload);
   }
 
   if (res.error) {
