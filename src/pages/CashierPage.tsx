@@ -798,8 +798,28 @@ export const CashierPage: React.FC = () => {
           }
         }
 
-        await supabaseAdmin.from('orders').update({ status: newStatus }).eq('id', id);
-        setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
+        // Save status change to Supabase database
+        let updateError: any = null;
+        const { error: adminErr } = await supabaseAdmin.from('orders').update({ status: newStatus }).eq('id', id);
+        if (adminErr) {
+            updateError = adminErr;
+            const { error: anonErr } = await supabase.from('orders').update({ status: newStatus }).eq('id', id);
+            if (!anonErr) {
+                updateError = null;
+            } else {
+                updateError = anonErr;
+            }
+        }
+
+        if (updateError) {
+            console.error('Failed to update order status:', updateError);
+            toast.error('لم يتم الحفظ في قاعدة البيانات: ' + (updateError.message || 'خطأ في الصلاحيات'));
+            // Refresh to revert optimistic state if update failed
+            fetchOrders(true);
+        } else {
+            setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
+            toast.success(`تم تحديث حالة الطلب إلى: ${STATUS_CONFIG[newStatus]?.label || newStatus}`);
+        }
         setUpdatingId(null);
     };
 
