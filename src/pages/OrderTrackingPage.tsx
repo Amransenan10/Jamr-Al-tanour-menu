@@ -3,8 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-    Loader2, CheckCircle2, Package, Clock, LogOut, FileText, MapPin, Phone,
-    ChefHat, UtensilsCrossed, CheckCircle, Store, AlertCircle, Bell
+    Loader2, CheckCircle2, Package, Clock, LogOut, FileText,
+    ChefHat, UtensilsCrossed, CheckCircle, Store, AlertCircle, Bell, Sparkles
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Order } from '../types';
@@ -12,7 +12,6 @@ import toast from 'react-hot-toast';
 import { updateStoredOrderStatus } from '../utils/orderStorage';
 import { notifyCustomerStatusChange, testCustomerNotificationAndSound, unlockCustomerAudio } from '../utils/customerNotifications';
 import { SpinWheelModal } from '../components/SpinWheelModal';
-import { Sparkles } from 'lucide-react';
 
 type OrderStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 
@@ -20,7 +19,7 @@ const STATUS_STEPS = [
     { id: 'new', label: 'تم الاستلام', icon: <FileText size={20} /> },
     { id: 'accepted', label: 'مقبول', icon: <CheckCircle size={20} /> },
     { id: 'preparing', label: 'قيد التحضير', icon: <ChefHat size={20} /> },
-    { id: 'ready', label: 'جاهز للاستلام/التوصيل', icon: <Package size={20} /> },
+    { id: 'ready', label: 'جاهز/في الطريق', icon: <Package size={20} /> },
     { id: 'completed', label: 'مكتمل', icon: <CheckCircle2 size={20} /> }
 ];
 
@@ -65,7 +64,6 @@ export const OrderTrackingPage: React.FC = () => {
                 duration: 5000,
                 icon: '🔔',
             });
-            // Trigger sound chime, vibration, and push notification
             notifyCustomerStatusChange(updatedOrder.status, stepMsg, updatedOrder.id);
         }
         prevStatusRef.current = updatedOrder.status;
@@ -84,7 +82,7 @@ export const OrderTrackingPage: React.FC = () => {
 
         const fetchOrderAndSettings = async (isSilent = false) => {
             if (!isSilent) setLoading(true);
-            
+
             const [orderRes, settingsRes] = await Promise.all([
                 supabase.from('orders').select('*').eq('id', id).single(),
                 supabase.from('app_settings').select('*').single()
@@ -95,13 +93,12 @@ export const OrderTrackingPage: React.FC = () => {
             }
 
             if (orderRes.error || !orderRes.data) {
-                console.error(orderRes.error);
                 if (!isSilent) setError('لم نتمكن من العثور على الطلب. قد يكون رقمه غير صحيح.');
             } else {
                 processOrderUpdate(orderRes.data, prevStatusRef.current === null);
 
-                // Auto-trigger wheel spin popup 1 second after landing ONLY on initial page load if not spun yet
-                if (!isSilent && !spun && (settingsRes.data?.wheel_active !== false)) {
+                // Auto-open wheel 1 second after landing on page (first time only, not spun yet)
+                if (!isSilent && !spun && settingsRes.data?.wheel_active !== false) {
                     setTimeout(() => {
                         setIsWheelOpen(true);
                     }, 1000);
@@ -112,12 +109,10 @@ export const OrderTrackingPage: React.FC = () => {
 
         fetchOrderAndSettings(false);
 
-        // Fast 3-second polling fallback to guarantee notification triggers even on mobile sleep
         const pollInterval = setInterval(() => {
             fetchOrderAndSettings(true);
         }, 3000);
 
-        // Subscribe to real-time changes
         const channel = supabase
             .channel(`order-${id}`)
             .on('postgres_changes',
@@ -162,31 +157,20 @@ export const OrderTrackingPage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-charcoal pt-6 pb-20 px-4">
-            <div className="max-w-xl mx-auto space-y-6">
+            <div className="max-w-xl mx-auto space-y-5">
 
                 {/* Header */}
                 <div className="text-center">
-                    <Link to="/" className="inline-block mb-4">
-                        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 mx-auto overflow-hidden border border-gray-100 dark:border-white/10 p-1">
+                    <Link to="/" className="inline-block mb-3">
+                        <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 mx-auto overflow-hidden border border-gray-100 dark:border-white/10 p-1">
                             <img src="/assets/logo.png" alt="جمر التنور" className="w-full h-full object-contain" />
                         </div>
                     </Link>
-                    <h1 className="text-2xl font-black text-gray-900 dark:text-white">تتبع طلبك</h1>
-                    <p className="text-gray-500 mt-1 text-sm font-medium">رقم الطلب: {order.id.slice(0, 8).toUpperCase()}</p>
-                    
-                    <button
-                        onClick={() => {
-                            testCustomerNotificationAndSound();
-                            toast.success('تم اختبار نغمة التنبيه والاهتزاز! 🎵', { icon: '🔔' });
-                        }}
-                        className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-bold transition-all border border-primary/20"
-                    >
-                        <Bell size={14} className="animate-pulse" />
-                        <span>اختبار نغمة التنبيه والاهتزاز 🎵</span>
-                    </button>
+                    <h1 className="text-xl font-black text-gray-900 dark:text-white">تتبع طلبك</h1>
+                    <p className="text-gray-500 mt-0.5 text-xs font-medium">رقم الطلب: {order.id.slice(0, 8).toUpperCase()}</p>
                 </div>
 
-                {/* Notification Permission Card (iOS & Android friendly prompt) */}
+                {/* Notification Permission Card */}
                 {notifPermission === 'default' && (
                     <motion.div
                         initial={{ opacity: 0, y: -10 }}
@@ -199,7 +183,7 @@ export const OrderTrackingPage: React.FC = () => {
                             </div>
                             <div>
                                 <p className="text-xs font-black">تفعيل التنبيهات الفورية 🔔</p>
-                                <p className="text-[11px] opacity-90 font-medium">احصل على تنبيه بالصوت والاهتزاز فور استلامك أو جاهزية وجبتك</p>
+                                <p className="text-[11px] opacity-90 font-medium">احصل على تنبيه فور جاهزية طلبك</p>
                             </div>
                         </div>
                         <button
@@ -211,19 +195,45 @@ export const OrderTrackingPage: React.FC = () => {
                     </motion.div>
                 )}
 
+                {/* 🎡 Spin Wheel Banner — PROMINENT at top */}
+                {appSettings?.wheel_active !== false && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.97 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 rounded-3xl p-5 text-center space-y-3 shadow-xl shadow-amber-500/30"
+                    >
+                        <div className="flex items-center justify-center gap-2 text-black font-black text-lg">
+                            <Sparkles size={22} className="animate-spin" />
+                            <span>🎡 هديتك بعد الطلب!</span>
+                        </div>
+                        <p className="text-xs text-black/80 font-bold">
+                            {hasSpunCurrentOrder
+                                ? '✅ شكراً! تم حفظ هديتك، استمتع بها في طلبك القادم 🎉'
+                                : 'مبروك طلبك! دوّر عجلة الحظ واكسب خصماً أو هدية لطلبك القادم 🎁'}
+                        </p>
+                        {!hasSpunCurrentOrder && (
+                            <button
+                                onClick={() => setIsWheelOpen(true)}
+                                className="px-8 py-3 bg-black text-amber-400 font-black text-sm rounded-2xl shadow-lg hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+                            >
+                                دوّر العجلة الآن! 🎡
+                            </button>
+                        )}
+                    </motion.div>
+                )}
+
                 {/* Tracking Card */}
                 <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-xl border border-gray-100 dark:border-white/5 overflow-hidden">
-
                     <div className="p-6 sm:p-8 bg-primary/5 border-b border-primary/10">
                         {isCancelled ? (
                             <div className="flex flex-col items-center text-center text-red-500 py-4">
                                 <LogOut size={48} className="mb-3" />
                                 <h2 className="text-2xl font-black">تم إلغاء الطلب</h2>
-                                <p className="text-sm mt-2 opacity-80">للأسف تم إلغاء هذا الطلب. نعتذر عن ذلك ونتمنى خدمتك في وقت لاحق.</p>
+                                <p className="text-sm mt-2 opacity-80">للأسف تم إلغاء هذا الطلب. نتمنى خدمتك في وقت لاحق.</p>
                             </div>
                         ) : (
                             <div className="relative">
-                                {/* Lines between steps */}
+                                {/* Progress line */}
                                 <div className="absolute top-5 right-[10%] left-[10%] h-1 bg-gray-200 dark:bg-white/10 rounded-full" dir="ltr">
                                     <motion.div
                                         className="h-full bg-primary rounded-full origin-left"
@@ -237,7 +247,6 @@ export const OrderTrackingPage: React.FC = () => {
                                     {STATUS_STEPS.map((step, index) => {
                                         const isCompleted = index <= currentStatusIndex;
                                         const isCurrent = index === currentStatusIndex;
-
                                         return (
                                             <div key={step.id} className="flex flex-col items-center relative gap-2">
                                                 <motion.div
@@ -262,17 +271,35 @@ export const OrderTrackingPage: React.FC = () => {
                                         );
                                     })}
                                 </div>
-                                <div className="h-6" /> {/* Spacer for labels */}
+                                <div className="h-6" />
                             </div>
                         )}
                     </div>
+
+                    {/* Status Description Banner */}
+                    {!isCancelled && (
+                        <div className={cn(
+                            "px-6 py-3 flex items-center justify-center gap-2 text-sm font-black text-center",
+                            order.status === 'new' && "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+                            order.status === 'accepted' && "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+                            order.status === 'preparing' && "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+                            order.status === 'ready' && "bg-green-500/10 text-green-600 dark:text-green-400",
+                            order.status === 'completed' && "bg-gray-100 dark:bg-white/5 text-gray-500",
+                        )}>
+                            {order.status === 'new' && '🔵 طلبك وصلنا وقيد المراجعة...'}
+                            {order.status === 'accepted' && '✅ تم قبول طلبك!'}
+                            {order.status === 'preparing' && '👨‍🍳 وجبتك تُحضَّر الآن في المطبخ...'}
+                            {order.status === 'ready' && (order.order_type === 'delivery' ? '🛵 المندوب في الطريق إليك!' : '✅ طلبك جاهز للاستلام!')}
+                            {order.status === 'completed' && '🎉 تم إتمام الطلب بنجاح!'}
+                        </div>
+                    )}
 
                     {/* Order Details */}
                     <div className="p-6 sm:p-8 space-y-6">
                         <div className="flex justify-between items-center pb-4 border-b border-gray-100 dark:border-white/5">
                             <div>
                                 <p className="text-gray-500 text-sm mb-1">الفرع</p>
-                                <p className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5 hover:text-primary">
+                                <p className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
                                     <Store size={16} className="text-primary" /> {order.branch}
                                 </p>
                             </div>
@@ -283,7 +310,7 @@ export const OrderTrackingPage: React.FC = () => {
                                 </p>
                                 {order.pickup_time && (
                                     <p className="text-xs text-amber-500 font-bold mt-1">
-                                        ⏱️ وقت الاستلام المحدد: {order.pickup_time}
+                                        ⏱️ وقت الاستلام: {order.pickup_time}
                                     </p>
                                 )}
                             </div>
@@ -313,34 +340,7 @@ export const OrderTrackingPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Spin Wheel Post-Order Banner if eligible */}
-                {(appSettings?.wheel_active !== false) && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 border border-amber-500/30 rounded-3xl p-5 text-center space-y-3 shadow-lg"
-                    >
-                        <div className="flex items-center justify-center gap-2 text-amber-500 font-black">
-                            <Sparkles size={20} className="animate-spin" />
-                            <span className="text-base">هدية خاصة بعد طلبك! 🎡</span>
-                        </div>
-                        <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">
-                            {hasSpunCurrentOrder 
-                                ? 'شكراً لتدوير العجلة! استمتع بهديتك في طلبك القادم 🎉' 
-                                : 'ألف مبروك إتمام الطلب! اضغط أدناه لتدوير عجلة الحظ وكسب هديتك لطلبك القادم 🎁'}
-                        </p>
-                        {!hasSpunCurrentOrder && (
-                            <button
-                                onClick={() => setIsWheelOpen(true)}
-                                className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 hover:brightness-110 active:scale-95 transition-all inline-flex items-center gap-2 cursor-pointer"
-                            >
-                                <span>تدوير عجلة الحظ الآن! 🎡</span>
-                            </button>
-                        )}
-                    </motion.div>
-                )}
-
-                <div className="text-center">
+                <div className="text-center pb-4">
                     <Link to="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-primary transition-colors font-bold text-sm">
                         <UtensilsCrossed size={16} /> العودة وتصفح المنيو
                     </Link>

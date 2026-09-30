@@ -6,11 +6,11 @@ echo ====================================
 echo   Deploying Updates to Vercel
 echo ====================================
 echo.
-echo [1/3] Staging files...
+echo [1/3] Staging all files...
 git add -A
 echo.
 echo [2/3] Committing...
-git commit -m "fix: order status update persistence and RLS policies"
+git commit -m "feat: phone validation, wheel banner at top, status description, order tracking improvements"
 echo.
 echo [3/3] Pushing to Vercel...
 git push origin main --force

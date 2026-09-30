@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { saveOrderLocally } from '../utils/orderStorage';
 import { normalizeCouponCode } from '../utils/couponUtils';
 import { getDeliveryPricingRules } from '../utils/distanceUtils';
+import { isValidSaudiPhone, normalizeSaudiPhone } from '../utils/phoneUtils';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -282,6 +283,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
       return;
     }
 
+    // Normalize phone before submitting (convert Arabic digits, fix 5xxxxxxxx → 05xxxxxxxx)
+    const normalizedPhone = normalizeSaudiPhone(formData.phone);
+    setFormData(prev => ({ ...prev, phone: normalizedPhone }));
+
     if (orderType === 'delivery') {
       if (!deliveryRules.isAllowed) {
         alert(deliveryRules.statusMessage || 'عذراً، موقعك خارج نطاق التوصيل المسموح (أقصى حد 10 كم). يرجى اختيار الاستلام من الفرع.');
@@ -530,9 +535,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                           value={formData.phone}
                           onChange={e => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                           placeholder="05xxxxxxxx"
-                          className="w-full pr-12 pl-4 py-3.5 bg-gray-50 dark:bg-white/5 rounded-2xl border-none focus:ring-2 focus:ring-primary/50 outline-none text-sm"
+                          className={cn(
+                            "w-full pr-12 pl-4 py-3.5 bg-gray-50 dark:bg-white/5 rounded-2xl border-2 focus:ring-2 focus:ring-primary/50 outline-none text-sm transition-colors",
+                            formData.phone.length > 0 && !isValidSaudiPhone(formData.phone)
+                              ? 'border-red-400 focus:ring-red-400/40'
+                              : 'border-transparent'
+                          )}
                         />
                       </div>
+                      {formData.phone.length > 0 && !isValidSaudiPhone(formData.phone) && (
+                        <p className="text-xs text-red-500 font-bold mr-2">⚠️ رقم الجوال غير صحيح (مثال: 0537895670)</p>
+                      )}
                     </div>
 
                     {orderType === 'delivery' ? (
