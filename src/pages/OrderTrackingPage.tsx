@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import { updateStoredOrderStatus } from '../utils/orderStorage';
 import { notifyCustomerStatusChange, testCustomerNotificationAndSound, unlockCustomerAudio } from '../utils/customerNotifications';
 import { SpinWheelModal } from '../components/SpinWheelModal';
+import { parseAppSettings } from '../utils/appSettingsUtils';
 
 type OrderStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 
@@ -88,8 +89,10 @@ export const OrderTrackingPage: React.FC = () => {
                 supabase.from('app_settings').select('*').single()
             ]);
 
+            let parsedSettings: any = {};
             if (settingsRes.data) {
-                setAppSettings(settingsRes.data);
+                parsedSettings = parseAppSettings(settingsRes.data);
+                setAppSettings(parsedSettings);
             }
 
             if (orderRes.error || !orderRes.data) {
@@ -98,7 +101,7 @@ export const OrderTrackingPage: React.FC = () => {
                 processOrderUpdate(orderRes.data, prevStatusRef.current === null);
 
                 // Auto-open wheel 1 second after landing on page (first time only, not spun yet)
-                if (!isSilent && !spun && settingsRes.data?.wheel_active !== false) {
+                if (!isSilent && !spun && parsedSettings?.wheel_active !== false) {
                     setTimeout(() => {
                         setIsWheelOpen(true);
                     }, 1000);

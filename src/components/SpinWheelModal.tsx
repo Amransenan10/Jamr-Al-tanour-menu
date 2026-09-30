@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Sparkles, Trophy, Gift, Copy, Check, Star, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -57,13 +57,21 @@ export const SpinWheelModal: React.FC<SpinWheelModalProps> = ({
 
   // Check if customer already spun for this specific order
   const wheelStorageKey = orderId ? `jamr_wheel_spun_${orderId}` : `jamr_wheel_spun_time`;
-  const [hasSpun, setHasSpun] = useState(() => {
+  const [hasSpun, setHasSpun] = useState(false);
+
+  useEffect(() => {
     const value = localStorage.getItem(wheelStorageKey);
-    if (!value) return false;
-    if (orderId) return true;
+    if (!value) {
+      setHasSpun(false);
+      return;
+    }
+    if (orderId) {
+      setHasSpun(true);
+      return;
+    }
     const hours = (Date.now() - parseInt(value)) / (1000 * 60 * 60);
-    return hours < 24;
-  });
+    setHasSpun(hours < 24);
+  }, [orderId, wheelStorageKey, isOpen]);
 
   if (!isOpen) return null;
 

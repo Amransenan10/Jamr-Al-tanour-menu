@@ -285,6 +285,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
 
     // Normalize phone before submitting (convert Arabic digits, fix 5xxxxxxxx → 05xxxxxxxx)
     const normalizedPhone = normalizeSaudiPhone(formData.phone);
+    if (!isValidSaudiPhone(normalizedPhone)) {
+      alert('عذراً، رقم الجوال غير صحيح. يرجى إدخال رقم جوال سعودي صحيح يبدأ بـ 05 ويتكون من 10 أرقام (مثال: 0512345678)');
+      return;
+    }
     setFormData(prev => ({ ...prev, phone: normalizedPhone }));
 
     if (orderType === 'delivery') {
@@ -544,7 +548,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                         />
                       </div>
                       {formData.phone.length > 0 && !isValidSaudiPhone(formData.phone) && (
-                        <p className="text-xs text-red-500 font-bold mr-2">⚠️ رقم الجوال غير صحيح (مثال: 0537895670)</p>
+                        <p className="text-xs text-red-500 font-bold mr-2">⚠️ رقم الجوال غير صحيح (مثال: 0512345678)</p>
                       )}
                     </div>
 
@@ -803,7 +807,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                       رجوع
                     </button>
                     <button
-                      disabled={storeStatus === 'closed' || !orderType || (orderType === 'delivery' && (!deliveryRules.isAllowed || totalPrice < deliveryRules.minOrderValue)) || !formData.name || !formData.phone || (orderType === 'delivery' && !formData.location)}
+                      disabled={storeStatus === 'closed' || !orderType || (orderType === 'delivery' && (!deliveryRules.isAllowed || totalPrice < deliveryRules.minOrderValue)) || !formData.name || !formData.phone || !isValidSaudiPhone(formData.phone) || (orderType === 'delivery' && !formData.location)}
                       onClick={() => setStep('review')}
                       className={cn(
                         "flex-[2] py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all disabled:opacity-50",
@@ -812,10 +816,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                         (orderType === 'delivery' && !deliveryRules.isAllowed) ? "bg-zinc-800 text-gray-500 cursor-not-allowed" :
                         (orderType === 'delivery' && totalPrice < deliveryRules.minOrderValue) ? "bg-zinc-800 text-gray-500 cursor-not-allowed" :
                         (!formData.name || !formData.phone) ? "bg-zinc-800 text-gray-500 cursor-not-allowed cursor-pointer" :
+                        (!isValidSaudiPhone(formData.phone)) ? "bg-zinc-800 text-red-400 cursor-not-allowed" :
                         "bg-primary text-white shadow-xl shadow-primary/30 hover:scale-[1.02] active:scale-95"
                       )}
                     >
-                      {storeStatus === 'closed' ? 'المطعم مغلق' : !orderType ? 'اختر نوع الطلب' : (orderType === 'delivery' && !deliveryRules.isAllowed) ? 'خارج نطاق التوصيل' : (orderType === 'delivery' && totalPrice < deliveryRules.minOrderValue) ? 'لم تصل للحد الأدنى' : (!formData.name || !formData.phone) ? 'أكمل البيانات' : 'مراجعة الطلب'}
+                      {storeStatus === 'closed' ? 'المطعم مغلق' : !orderType ? 'اختر نوع الطلب' : (orderType === 'delivery' && !deliveryRules.isAllowed) ? 'خارج نطاق التوصيل' : (orderType === 'delivery' && totalPrice < deliveryRules.minOrderValue) ? 'لم تصل للحد الأدنى' : (!formData.name || !formData.phone) ? 'أكمل البيانات' : (!isValidSaudiPhone(formData.phone)) ? 'رقم الجوال غير صحيح' : 'مراجعة الطلب'}
                     </button>
                   </div>
                 ) : (
