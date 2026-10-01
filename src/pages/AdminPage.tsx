@@ -966,19 +966,27 @@ const AdminMenuView = () => {
         };
 
         try {
+            let res;
             if (editingProduct) {
-                const { error } = await supabaseAdmin.from('products').update(payload).eq('id', editingProduct.id);
-                if (error) throw error;
+                res = await supabaseAdmin.from('products').update(payload).eq('id', editingProduct.id);
+                if (res.error) {
+                    res = await supabase.from('products').update(payload).eq('id', editingProduct.id);
+                }
+                if (res.error) throw res.error;
                 toast.success('تم التعديل بنجاح');
             } else {
-                const { error } = await supabaseAdmin.from('products').insert([payload]);
-                if (error) throw error;
+                res = await supabaseAdmin.from('products').insert([payload]);
+                if (res.error) {
+                    res = await supabase.from('products').insert([payload]);
+                }
+                if (res.error) throw res.error;
                 toast.success('تمت الإضافة بنجاح');
             }
             setIsModalOpen(false);
             fetchData();
-        } catch (error) {
-            toast.error('حدث خطأ أثناء الحفظ');
+        } catch (error: any) {
+            console.error('Save product error:', error);
+            toast.error('حدث خطأ أثناء الحفظ: ' + (error?.message || 'تحقق من البيانات الحقول'));
         } finally {
             setIsSaving(false);
         }
