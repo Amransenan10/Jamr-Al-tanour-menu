@@ -292,17 +292,11 @@ export default function App() {
         if (newOrder.status === 'completed') {
           localStorage.setItem('jamr_last_completed_order', newOrder.id);
         }
-        const hasSpun = localStorage.getItem(`jamr_wheel_spun_${newOrder.id}`);
-        // If user hasn't spun the wheel yet for this completed order, keep banner visible
-        if (!hasSpun && newOrder.status === 'completed') {
-          setActiveOrderId(newOrder.id);
-        } else {
-          setTimeout(() => {
-            localStorage.removeItem('jamr_active_order');
-            setActiveOrderId(null);
-            setActiveOrder(null);
-          }, 6000);
-        }
+        setTimeout(() => {
+          localStorage.removeItem('jamr_active_order');
+          setActiveOrderId(null);
+          setActiveOrder(null);
+        }, 500);
       }
 
       if (!isInitial && prevAppOrderStatusRef.current && prevAppOrderStatusRef.current !== newOrder.status) {
@@ -352,14 +346,9 @@ export default function App() {
             if (data.status === 'completed') {
               localStorage.setItem('jamr_last_completed_order', data.id);
             }
-            if (!hasSpun && data.status === 'completed') {
-              setActiveOrder(data);
-              setActiveOrderId(data.id);
-            } else {
-              localStorage.removeItem('jamr_active_order');
-              setActiveOrderId(null);
-              setActiveOrder(null);
-            }
+            localStorage.removeItem('jamr_active_order');
+            setActiveOrderId(null);
+            setActiveOrder(null);
           } else {
             processActiveOrderUpdate(data, prevAppOrderStatusRef.current === null);
           }
@@ -762,6 +751,10 @@ export default function App() {
             onClose={() => setIsCartOpen(false)}
             branch={selectedBranch || 'السويدي الغربي'}
             storeSettings={storeSettings}
+            onOrderPlaced={() => {
+              // Wait a moment for the drawer to close, then show the wheel
+              setTimeout(() => setIsWheelOpen(true), 800);
+            }}
           />
 
           <SideMenuDrawer
@@ -785,69 +778,87 @@ export default function App() {
 
           {/* Active Order Banner */}
           <AnimatePresence>
-            {activeOrderId && (
+            {activeOrderId && activeOrder && !['completed', 'cancelled'].includes(activeOrder?.status || '') && (
               <motion.div
-                initial={{ y: 100, opacity: 0, scale: 0.9 }}
-                animate={{ y: 0, opacity: 1, scale: 1 }}
-                exit={{ y: 100, opacity: 0, scale: 0.9 }}
+                key="order-banner"
+                initial={{ y: 120, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 120, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 className="fixed bottom-6 left-4 right-4 z-40 mx-auto max-w-sm"
               >
-                  <div className="flex items-center gap-2">
-                    <Link
-                      to={`/track/${activeOrderId}`}
-                      className="flex-1 flex items-center justify-between group overflow-hidden"
-                    >
-                      <div className="flex items-center gap-3.5 relative z-10">
-                        <div className="w-11 h-11 bg-primary text-white rounded-2xl flex items-center justify-center text-xl font-bold shadow-lg shadow-primary/30 group-hover:rotate-12 transition-transform shrink-0">
-                          {activeOrder?.status === 'ready' ? (
-                            activeOrder.order_type === 'delivery' ? <Bike size={22} /> : <CheckCircle2 size={22} />
-                          ) : activeOrder?.status === 'preparing' ? (
-                            <Utensils size={22} />
-                          ) : activeOrder?.status === 'accepted' ? (
-                            <CheckCircle2 size={22} />
-                          ) : (
-                            <FileText size={22} />
-                          )}
-                        </div>
-                        <div className="overflow-hidden">
-                          <div className="flex items-center gap-2">
-                            <span className="font-black text-xs sm:text-sm text-white truncate">
-                              {activeOrder?.status === 'ready'
-                                ? (activeOrder.order_type === 'delivery' ? 'المندوب في الطريق إليك' : 'طلبك جاهز للاستلام')
-                                : activeOrder?.status === 'preparing'
-                                ? 'جاري تحضير وجبتك في المطبخ'
-                                : activeOrder?.status === 'accepted'
-                                ? 'تم قبول طلبك، سيبدأ تحضيره'
-                                : 'تم استلام طلبك وجاري مراجعته'}
-                            </span>
-                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
-                          </div>
-                          <p className="text-[11px] text-gray-400 mt-0.5 font-medium flex items-center gap-1 truncate">
-                            <span>اضغط لتتبع الطلب</span>
-                            <Navigation size={10} className="rotate-45 text-primary" />
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
+                <div
+                  className={cn(
+                    "rounded-2xl border shadow-2xl overflow-hidden",
+                    activeOrder?.status === 'ready'
+                      ? "bg-emerald-950/95 border-emerald-500/50 shadow-emerald-500/20"
+                      : activeOrder?.status === 'preparing'
+                      ? "bg-amber-950/95 border-amber-500/50 shadow-amber-500/20"
+                      : activeOrder?.status === 'accepted'
+                      ? "bg-purple-950/95 border-purple-500/50 shadow-purple-500/20"
+                      : "bg-zinc-900/95 border-white/10 shadow-black/40"
+                  )}
+                  style={{ backdropFilter: 'blur(16px)' }}
+                >
+                  <Link to={`/track/${activeOrderId}`} className="flex items-center gap-3 p-3.5 pr-2">
+                    {/* Icon */}
+                    <div className={cn(
+                      "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-lg",
+                      activeOrder?.status === 'ready' ? "bg-emerald-500 shadow-emerald-500/40"
+                      : activeOrder?.status === 'preparing' ? "bg-amber-500 shadow-amber-500/40"
+                      : activeOrder?.status === 'accepted' ? "bg-purple-500 shadow-purple-500/40"
+                      : "bg-primary shadow-primary/40"
+                    )}>
+                      {activeOrder?.status === 'ready' ? (
+                        activeOrder.order_type === 'delivery' ? <Bike size={20} className="text-white" /> : <CheckCircle2 size={20} className="text-white" />
+                      ) : activeOrder?.status === 'preparing' ? (
+                        <Utensils size={20} className="text-white" />
+                      ) : activeOrder?.status === 'accepted' ? (
+                        <CheckCircle2 size={20} className="text-white" />
+                      ) : (
+                        <FileText size={20} className="text-white" />
+                      )}
+                    </div>
 
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        localStorage.removeItem('jamr_active_order');
-                        localStorage.removeItem('jamr_last_completed_order');
-                        setActiveOrderId(null);
-                        setActiveOrder(null);
-                      }}
-                      className="p-1.5 text-gray-400 hover:text-white bg-white/5 hover:bg-white/15 rounded-full transition-colors z-20 shrink-0 cursor-pointer"
-                      title="إغلاق التتبع"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
+                    {/* Text */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-sm text-white leading-tight truncate">
+                        {activeOrder?.status === 'ready'
+                          ? (activeOrder.order_type === 'delivery' ? '🛵 المندوب في الطريق إليك!' : '✅ طلبك جاهز للاستلام!')
+                          : activeOrder?.status === 'preparing'
+                          ? '👨‍🍳 جاري تحضير وجبتك في المطبخ'
+                          : activeOrder?.status === 'accepted'
+                          ? '✅ تم قبول طلبك، سيبدأ تحضيره'
+                          : '📝 تم استلام طلبك وجاري مراجعته'}
+                      </p>
+                      <p className="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1">
+                        <span>اضغط لتتبع الطلب</span>
+                        <Navigation size={9} className="rotate-45 text-primary" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping mr-1" />
+                      </p>
+                    </div>
+                  </Link>
+
+                  {/* Close button */}
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      localStorage.removeItem('jamr_active_order');
+                      localStorage.removeItem('jamr_last_completed_order');
+                      setActiveOrderId(null);
+                      setActiveOrder(null);
+                    }}
+                    className="absolute top-2 left-2 w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                    title="إغلاق"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
+
 
           <FloatingCartButton 
             storeStatus={storeStatus} 
@@ -859,6 +870,15 @@ export default function App() {
 
           <InstallPWA />
           <PushSubscriptionBanner />
+
+          {/* Spin Wheel Modal - auto-opens after order completion */}
+          <SpinWheelModal
+            isOpen={isWheelOpen}
+            onClose={() => setIsWheelOpen(false)}
+            prizes={appSettings?.wheel_prizes || []}
+            title={appSettings?.wheel_title || 'دَوّر واكسب جوائز المنيو!'}
+            orderId={localStorage.getItem('jamr_last_completed_order') || ''}
+          />
         </div>
       </CartProvider>
     </ThemeProvider>

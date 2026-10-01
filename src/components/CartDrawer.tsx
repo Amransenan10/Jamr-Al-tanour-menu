@@ -16,9 +16,10 @@ interface CartDrawerProps {
   onClose: () => void;
   branch: Branch;
   storeSettings?: any;
+  onOrderPlaced?: () => void;
 }
 
-export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch, storeSettings }) => {
+export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch, storeSettings, onOrderPlaced }) => {
   const storeStatus = storeSettings?.status || 'open';
   const { cart, removeFromCart, updateQuantity, totalPrice, clearCart } = useCart();
   const [step, setStep] = useState<'cart' | 'checkout' | 'review'>('cart');
@@ -406,6 +407,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
 
       clearCart();
       onClose();
+
+      // Trigger spin wheel in parent before navigating
+      if (onOrderPlaced) {
+        onOrderPlaced();
+      }
+
       navigate(`/track/${data.id}`);
     } catch (e: any) {
       console.error(e);
