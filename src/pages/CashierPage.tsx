@@ -710,118 +710,121 @@ export const CashierPage: React.FC = () => {
 
     // ── Update status ─────────────────────────────────────────────────────────
     const handleStatusChange = async (id: string, newStatus: OrderStatus) => {
+        if (updatingId) return; // prevent double-clicks
         setUpdatingId(id);
 
         const order = orders.find(o => o.id === id);
-        
-        // Handle Sales Count Increment
-        if (newStatus === 'completed' && order && order.status !== 'completed') {
-            try {
-                const updates = order.items.map(async (item) => {
-                    const { data: prod } = await supabaseAdmin.from('products').select('sales_count').eq('id', item.productId).single();
-                    if (prod) {
-                        await supabaseAdmin.from('products').update({ sales_count: (prod.sales_count || 0) + item.quantity }).eq('id', item.productId);
-                    }
-                });
-                await Promise.all(updates);
-            } catch (e) {
-                console.error('Failed to increment sales_count:', e);
-            }
-        }
 
-        // Handle Loyalty Sync when order is successfully completed
-        if (newStatus === 'completed' && order && order.status !== 'completed' && order.phone) {
-            const usedMatch = order.notes?.match(/\[LOYALTY_USED:(\d+)\]/);
-            const earnedMatch = order.notes?.match(/\[LOYALTY_EARNED:(\d+)\]/);
-            
-            const usedPoints = usedMatch ? parseInt(usedMatch[1]) || 0 : 0;
-            const earnedPoints = earnedMatch ? parseInt(earnedMatch[1]) || 0 : 0;
-            const diff = earnedPoints - usedPoints;
-            
-            if (diff !== 0 || usedPoints > 0) {
-                if (!supabaseAdmin) {
-                    toast.error('تحذير: لم يتم إضافة نقاط العميل للأسف!');
-                } else {
-                    try {
-                        const { data: customer } = await supabaseAdmin
-                        .from('customers')
-                        .select('points_balance')
-                        .eq('phone_number', order.phone)
-                        .single();
-                        
-                    if (customer) {
-                        await supabaseAdmin
-                            .from('customers')
-                            .update({ points_balance: Math.max(0, customer.points_balance + diff) })
-                            .eq('phone_number', order.phone);
-                    } else if (diff > 0) {
-                        await supabaseAdmin
-                            .from('customers')
-                            .insert([{
-                                phone_number: order.phone,
-                                full_name: order.customer_name || 'عميل المنيو',
-                                points_balance: diff
-                            }]);
-                    }
-
-                    if (usedPoints > 0) {
-                        await supabaseAdmin.from('transactions').insert([{
-                            customer_phone: order.phone,
-                            type: 'redeem',
-                            amount: order.total_price || 0,
-                            points_earned: 0,
-                            points_redeemed: usedPoints,
-                            notes: `استبدال نقاط خصم للطلب من الكاشير`,
-                            staff_id: branch || 'الكاشير',
-                            created_at: new Date().toISOString()
-                        }]);
-                    }
-                    if (earnedPoints > 0) {
-                        await supabaseAdmin.from('transactions').insert([{
-                            customer_phone: order.phone,
-                            type: 'earn',
-                            amount: order.total_price || 0,
-                            points_earned: earnedPoints,
-                            points_redeemed: 0,
-                            notes: `كسب نقاط من الطلب في الكاشير`,
-                            staff_id: branch || 'الكاشير',
-                            created_at: new Date().toISOString()
-                        }]);
-                    }
-
-                    toast.success('تمت مزامنة نقاط الولاء للعميل بنجاح');
+        try {
+            // Handle Sales Count Increment
+            if (newStatus === 'completed' && order && order.status !== 'completed') {
+                try {
+                    const updates = order.items.map(async (item: any) => {
+                        const { data: prod } = await supabaseAdmin.from('products').select('sales_count').eq('id', item.productId).single();
+                        if (prod) {
+                            await supabaseAdmin.from('products').update({ sales_count: (prod.sales_count || 0) + item.quantity }).eq('id', item.productId);
+                        }
+                    });
+                    await Promise.all(updates);
                 } catch (e) {
-                    console.error('Failed to sync loyalty points:', e);
-                    toast.error('حدث خطأ أثناء مزامنة نقاط الولاء');
+                    console.error('Failed to increment sales_count:', e);
                 }
             }
-          }
-        }
 
-        // Save status change to Supabase database
-        let updateError: any = null;
-        const { error: adminErr } = await supabaseAdmin.from('orders').update({ status: newStatus }).eq('id', id);
-        if (adminErr) {
-            updateError = adminErr;
-            const { error: anonErr } = await supabase.from('orders').update({ status: newStatus }).eq('id', id);
-            if (!anonErr) {
-                updateError = null;
-            } else {
-                updateError = anonErr;
+            // Handle Loyalty Sync when order is successfully completed
+            if (newStatus === 'completed' && order && order.status !== 'completed' && order.phone) {
+                const usedMatch = order.notes?.match(/\[LOYALTY_USED:(\d+)\]/);
+                const earnedMatch = order.notes?.match(/\[LOYALTY_EARNED:(\d+)\]/);
+                
+                const usedPoints = usedMatch ? parseInt(usedMatch[1]) || 0 : 0;
+                const earnedPoints = earnedMatch ? parseInt(earnedMatch[1]) || 0 : 0;
+                const diff = earnedPoints - usedPoints;
+                
+                if (diff !== 0 || usedPoints > 0) {
+                    try {
+                        const { data: customer } = await supabaseAdmin
+                            .from('customers')
+                            .select('points_balance')
+                            .eq('phone_number', order.phone)
+                            .single();
+                            
+                        if (customer) {
+                            await supabaseAdmin
+                                .from('customers')
+                                .update({ points_balance: Math.max(0, customer.points_balance + diff) })
+                                .eq('phone_number', order.phone);
+                        } else if (diff > 0) {
+                            await supabaseAdmin
+                                .from('customers')
+                                .insert([{
+                                    phone_number: order.phone,
+                                    full_name: order.customer_name || 'عميل المنيو',
+                                    points_balance: diff
+                                }]);
+                        }
+
+                        if (usedPoints > 0) {
+                            await supabaseAdmin.from('transactions').insert([{
+                                customer_phone: order.phone,
+                                type: 'redeem',
+                                amount: order.total_price || 0,
+                                points_earned: 0,
+                                points_redeemed: usedPoints,
+                                notes: `استبدال نقاط خصم للطلب من الكاشير`,
+                                staff_id: branch || 'الكاشير',
+                                created_at: new Date().toISOString()
+                            }]);
+                        }
+                        if (earnedPoints > 0) {
+                            await supabaseAdmin.from('transactions').insert([{
+                                customer_phone: order.phone,
+                                type: 'earn',
+                                amount: order.total_price || 0,
+                                points_earned: earnedPoints,
+                                points_redeemed: 0,
+                                notes: `كسب نقاط من الطلب في الكاشير`,
+                                staff_id: branch || 'الكاشير',
+                                created_at: new Date().toISOString()
+                            }]);
+                        }
+                        toast.success('تمت مزامنة نقاط الولاء للعميل بنجاح');
+                    } catch (e) {
+                        console.error('Failed to sync loyalty points:', e);
+                        // Don't block the status update - just warn
+                    }
+                }
             }
-        }
 
-        if (updateError) {
-            console.error('Failed to update order status:', updateError);
-            toast.error('لم يتم الحفظ في قاعدة البيانات: ' + (updateError.message || 'خطأ في الصلاحيات'));
-            // Refresh to revert optimistic state if update failed
+            // Save status change to Supabase database
+            let updateError: any = null;
+            const { error: adminErr } = await supabaseAdmin.from('orders').update({ status: newStatus }).eq('id', id);
+            if (adminErr) {
+                updateError = adminErr;
+                const { error: anonErr } = await supabase.from('orders').update({ status: newStatus }).eq('id', id);
+                if (!anonErr) {
+                    updateError = null;
+                } else {
+                    updateError = anonErr;
+                }
+            }
+
+            if (updateError) {
+                console.error('Failed to update order status:', updateError);
+                toast.error('لم يتم الحفظ في قاعدة البيانات: ' + (updateError.message || 'خطأ في الصلاحيات'));
+                fetchOrders(true);
+            } else {
+                setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
+                toast.success(`تم تحديث حالة الطلب إلى: ${STATUS_CONFIG[newStatus]?.label || newStatus}`);
+            }
+        } catch (err: any) {
+            console.error('Unexpected error in handleStatusChange:', err);
+            toast.error('حدث خطأ غير متوقع: ' + (err?.message || ''));
             fetchOrders(true);
-        } else {
-            setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
-            toast.success(`تم تحديث حالة الطلب إلى: ${STATUS_CONFIG[newStatus]?.label || newStatus}`);
+        } finally {
+            setUpdatingId(null); // Always release the lock
         }
-        setUpdatingId(null);
     };
+
 
     // ── Filter orders ─────────────────────────────────────────────────────────
     const ACTIVE_STATUSES: OrderStatus[] = ['new', 'accepted', 'preparing', 'ready'];
