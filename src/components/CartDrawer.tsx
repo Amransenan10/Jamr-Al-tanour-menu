@@ -289,7 +289,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
       alert('عذراً، رقم الجوال غير صحيح. يرجى إدخال رقم جوال سعودي صحيح يبدأ بـ 05 ويتكون من 10 أرقام (مثال: 0512345678)');
       return;
     }
-    setFormData(prev => ({ ...prev, phone: normalizedPhone }));
+    const cleanPhone = normalizedPhone;
+    setFormData(prev => ({ ...prev, phone: cleanPhone }));
 
     if (orderType === 'delivery') {
       if (!deliveryRules.isAllowed) {
@@ -320,11 +321,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
     setLoading(true);
     try {
       // Re-verify promo with phone one more time to prevent bypasses when user enters phone AFTER applying promo
-      if (appliedPromo && formData.phone) {
+      if (appliedPromo && cleanPhone) {
           const { data: previousOrders } = await supabase
           .from('orders')
           .select('id')
-          .eq('phone', formData.phone)
+          .eq('phone', cleanPhone)
           .eq('promo_code', appliedPromo.code)
           .limit(1);
           
@@ -347,7 +348,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         branch,
         order_type: orderType,
         customer_name: formData.name,
-        phone: formData.phone,
+        phone: cleanPhone,
         location: orderType === 'delivery' ? formData.location : undefined,
         notes: orderNotes,
         total_price: finalPrice,

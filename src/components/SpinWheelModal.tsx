@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabaseClient';
 import { supabaseAdmin } from '../lib/supabaseAdmin';
+import { normalizeSaudiPhone } from '../utils/phoneUtils';
 
 export interface Prize {
   id: number | string;
@@ -104,7 +105,8 @@ export const SpinWheelModal: React.FC<SpinWheelModalProps> = ({
       if (selectedPrize.type !== 'unlucky') {
         setSavingPrize(true);
         try {
-          const cleanPhone = customerPhone.replace(/\D/g, '') || '0500000000';
+          const rawPhone = customerPhone ? normalizeSaudiPhone(customerPhone) : '';
+          const cleanPhone = rawPhone || '0500000000';
           const shortPhone = cleanPhone.slice(-4);
 
           if (selectedPrize.type === 'points') {
