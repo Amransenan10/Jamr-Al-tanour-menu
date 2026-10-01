@@ -950,34 +950,49 @@ const AdminMenuView = () => {
         }
 
         setIsSaving(true);
-        const payload = {
-            name_ar: formData.name_ar,
-            name_en: formData.name_ar, // Optional fallback
-            price: parseFloat(formData.price) || 0,
-            original_price: formData.original_price ? parseFloat(formData.original_price) : null,
-            is_offer: formData.is_offer,
-            description_ar: formData.description_ar,
-            description_en: formData.description_ar,
-            category_id: formData.category_id,
-            image_url: formData.image_url,
-            is_available: formData.is_available,
-            is_hidden: formData.is_hidden,
-            calories: parseInt(formData.calories) || null
+        const cleanPrice = parseFloat(formData.price.toString().replace(/,/g, '.')) || 0;
+        const cleanOrigPrice = formData.original_price ? (parseFloat(formData.original_price.toString().replace(/,/g, '.')) || null) : null;
+        const cleanCalories = formData.calories ? (parseInt(formData.calories.toString()) || null) : null;
+
+        // If offers_weekly string is chosen, fallback to first real category ID or null if FK requires UUID
+        let targetCategory = formData.category_id;
+        if (targetCategory === 'offers_weekly') {
+            targetCategory = categories.length > 0 ? categories[0].id : null;
+        }
+
+        const payload: any = {
+            name_ar: formData.name_ar.trim(),
+            name_en: formData.name_ar.trim(), // Optional fallback
+            price: cleanPrice,
+            original_price: cleanOrigPrice,
+            is_offer: formData.category_id === 'offers_weekly' || Boolean(formData.is_offer),
+            description_ar: formData.description_ar ? formData.description_ar.trim() : '',
+            description_en: formData.description_ar ? formData.description_ar.trim() : '',
+            category_id: targetCategory,
+            image_url: formData.image_url || null,
+            is_available: Boolean(formData.is_available),
+            is_hidden: Boolean(formData.is_hidden),
+            calories: cleanCalories
         };
 
         try {
             let res;
+            console.log('[Admin] Saving product payload:', JSON.stringify(payload, null, 2));
             if (editingProduct) {
                 res = await supabaseAdmin.from('products').update(payload).eq('id', editingProduct.id);
+                console.log('[Admin] Update result (admin):', res.error);
                 if (res.error) {
                     res = await supabase.from('products').update(payload).eq('id', editingProduct.id);
+                    console.log('[Admin] Update result (anon):', res.error);
                 }
                 if (res.error) throw res.error;
                 toast.success('تم التعديل بنجاح');
             } else {
                 res = await supabaseAdmin.from('products').insert([payload]);
+                console.log('[Admin] Insert result (admin):', res.error);
                 if (res.error) {
                     res = await supabase.from('products').insert([payload]);
+                    console.log('[Admin] Insert result (anon):', res.error);
                 }
                 if (res.error) throw res.error;
                 toast.success('تمت الإضافة بنجاح');
@@ -985,8 +1000,8 @@ const AdminMenuView = () => {
             setIsModalOpen(false);
             fetchData();
         } catch (error: any) {
-            console.error('Save product error:', error);
-            toast.error('حدث خطأ أثناء الحفظ: ' + (error?.message || 'تحقق من البيانات الحقول'));
+            console.error('[Admin] Save product FULL error:', JSON.stringify(error));
+            toast.error('خطأ: ' + (error?.message || error?.details || error?.hint || JSON.stringify(error)));
         } finally {
             setIsSaving(false);
         }
