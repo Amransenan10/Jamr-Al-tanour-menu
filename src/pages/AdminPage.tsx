@@ -968,25 +968,28 @@ const AdminMenuView = () => {
         const cleanOrigPrice = formData.original_price ? (parseFloat(formData.original_price.toString().replace(/,/g, '.')) || null) : null;
         const cleanCalories = formData.calories ? (parseInt(formData.calories.toString()) || null) : null;
 
-        // If offers_weekly string is chosen, fallback to first real category ID or null if FK requires UUID
-        let targetCategory = formData.category_id;
+        // If offers_weekly string is chosen, fallback to first real category ID
+        let targetCategory: string | null = formData.category_id;
         if (targetCategory === 'offers_weekly') {
             targetCategory = categories.length > 0 ? categories[0].id : null;
         }
 
-        const payload: any = {
+        // Build payload with only confirmed columns - add optional columns only if truthy
+        const payload: Record<string, any> = {
             name_ar: formData.name_ar.trim(),
-            name_en: formData.name_ar.trim(), // Optional fallback
+            name_en: formData.name_ar.trim(),
             price: cleanPrice,
-            original_price: cleanOrigPrice,
             description_ar: formData.description_ar ? formData.description_ar.trim() : '',
             description_en: formData.description_ar ? formData.description_ar.trim() : '',
             category_id: targetCategory,
             image_url: formData.image_url || null,
             is_available: Boolean(formData.is_available),
-            is_hidden: Boolean(formData.is_hidden),
-            calories: cleanCalories
         };
+
+        // Conditionally add optional columns (they may not exist in the DB yet)
+        if (cleanOrigPrice !== null) payload['original_price'] = cleanOrigPrice;
+        if (cleanCalories !== null) payload['calories'] = cleanCalories;
+        if (formData.is_hidden) payload['is_hidden'] = Boolean(formData.is_hidden);
 
         try {
             let res;
