@@ -35,6 +35,12 @@ ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS bound_phone TEXT DEFAULT NUL
 -- 5. إضافة عمود مسافة التوصيل لجدول الطلبات
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS distance_km NUMERIC DEFAULT NULL;
 
+-- 6. إضافة الأعمدة الاختيارية لجدول المنتجات
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS is_offer BOOLEAN DEFAULT false;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT false;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS calories INTEGER DEFAULT NULL;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS original_price NUMERIC DEFAULT NULL;
+
 -- 6. تفعيل المزامنة المباشرة Realtime مع تجنب تكرار الإضافة
 DO $$ 
 BEGIN

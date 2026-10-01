@@ -979,7 +979,6 @@ const AdminMenuView = () => {
             name_en: formData.name_ar.trim(), // Optional fallback
             price: cleanPrice,
             original_price: cleanOrigPrice,
-            is_offer: formData.category_id === 'offers_weekly' || Boolean(formData.is_offer),
             description_ar: formData.description_ar ? formData.description_ar.trim() : '',
             description_en: formData.description_ar ? formData.description_ar.trim() : '',
             category_id: targetCategory,
