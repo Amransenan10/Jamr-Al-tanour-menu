@@ -942,10 +942,24 @@ const AdminMenuView = () => {
         }
     };
 
-    const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!formData.name_ar || !formData.price || !formData.category_id) {
-            toast.error('الرجاء تعبئة بعض الحقول الإجبارية (الاسم، السعر، القسم)');
+    const handleSave = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        
+        if (!formData.name_ar || !formData.name_ar.trim()) {
+            toast.error('يرجى كتابة اسم الصنف');
+            alert('يرجى كتابة اسم الصنف أولاً');
+            return;
+        }
+
+        if (!formData.price || isNaN(parseFloat(formData.price.toString().replace(/,/g, '.')))) {
+            toast.error('يرجى إدخال سعر صحيح للصنف');
+            alert('يرجى إدخال سعر صحيح للصنف');
+            return;
+        }
+
+        if (!formData.category_id) {
+            toast.error('يرجى اختيار القسم');
+            alert('يرجى اختيار قسم للصنف');
             return;
         }
 
@@ -980,28 +994,28 @@ const AdminMenuView = () => {
             console.log('[Admin] Saving product payload:', JSON.stringify(payload, null, 2));
             if (editingProduct) {
                 res = await supabaseAdmin.from('products').update(payload).eq('id', editingProduct.id);
-                console.log('[Admin] Update result (admin):', res.error);
                 if (res.error) {
                     res = await supabase.from('products').update(payload).eq('id', editingProduct.id);
-                    console.log('[Admin] Update result (anon):', res.error);
                 }
                 if (res.error) throw res.error;
                 toast.success('تم التعديل بنجاح');
+                alert('تم تعديل الصنف بنجاح! 🎉');
             } else {
                 res = await supabaseAdmin.from('products').insert([payload]);
-                console.log('[Admin] Insert result (admin):', res.error);
                 if (res.error) {
                     res = await supabase.from('products').insert([payload]);
-                    console.log('[Admin] Insert result (anon):', res.error);
                 }
                 if (res.error) throw res.error;
                 toast.success('تمت الإضافة بنجاح');
+                alert('تمت إضافة الصنف الجديد بنجاح! 🎉');
             }
             setIsModalOpen(false);
             fetchData();
         } catch (error: any) {
             console.error('[Admin] Save product FULL error:', JSON.stringify(error));
-            toast.error('خطأ: ' + (error?.message || error?.details || error?.hint || JSON.stringify(error)));
+            const errMsg = error?.message || error?.details || error?.hint || JSON.stringify(error);
+            toast.error('خطأ: ' + errMsg);
+            alert('حدث خطأ أثناء الحفظ:\n' + errMsg);
         } finally {
             setIsSaving(false);
         }
@@ -1080,16 +1094,16 @@ const AdminMenuView = () => {
                                 <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-white"><X size={24} /></button>
                             </div>
                             
-                            <form onSubmit={handleSave} className="overflow-y-auto pr-2 custom-scrollbar flex-1 space-y-4">
+                            <form noValidate onSubmit={handleSave} className="overflow-y-auto pr-2 custom-scrollbar flex-1 space-y-4">
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-bold text-gray-400">اسم الصنف <span className="text-red-500">*</span></label>
-                                    <input required type="text" value={formData.name_ar} onChange={e => setFormData({...formData, name_ar: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none" />
+                                    <input type="text" value={formData.name_ar} onChange={e => setFormData({...formData, name_ar: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none" placeholder="مثال: برجر دجاج طازج" />
                                 </div>
                                 
                                 <div className="grid grid-cols-3 gap-3">
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-bold text-gray-400">سعر البيع (ر.س) <span className="text-red-500">*</span></label>
-                                        <input required type="number" step="0.01" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none" />
+                                        <input type="number" step="0.01" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none" placeholder="مثال: 15" />
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-bold text-amber-400">قبل الخصم (اختياري)</label>
@@ -1097,7 +1111,7 @@ const AdminMenuView = () => {
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-sm font-bold text-gray-400">القسم <span className="text-red-500">*</span></label>
-                                        <select required value={formData.category_id} onChange={e => setFormData({...formData, category_id: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none appearance-none cursor-pointer">
+                                        <select value={formData.category_id} onChange={e => setFormData({...formData, category_id: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none appearance-none cursor-pointer">
                                             <option value="offers_weekly">🏷️ قسم العروض الأسبوعية</option>
                                             {categories.map(cat => (
                                                 <option key={cat.id} value={cat.id}>{cat.name_ar}</option>
@@ -1203,9 +1217,9 @@ const AdminMenuView = () => {
                                     <p className="text-xs text-center text-gray-500 pt-4 mt-2 border-t border-white/5">أضف الصنف أولاً للتمكن من تخصيص (الخيارات والإضافات).</p>
                                 )}
 
-                                <div className="pt-4 mt-4 border-t border-white/5 flex gap-3">
-                                    <button type="submit" disabled={isSaving || isUploading} className="flex-1 bg-primary text-white font-black py-3.5 rounded-xl hover:bg-primary/90 flex items-center justify-center gap-2 transition-colors">
-                                        {isSaving ? <Loader2 size={18} className="animate-spin" /> : editingProduct ? 'تحديث الصنف' : 'حفظ الصنف الجديد'}
+                                 <div className="pt-4 mt-4 border-t border-white/5 flex gap-3">
+                                    <button type="button" onClick={() => handleSave()} disabled={isSaving || isUploading} className="flex-1 bg-primary text-white font-black py-3.5 rounded-xl hover:bg-primary/90 flex items-center justify-center gap-2 transition-colors cursor-pointer">
+                                        {isSaving ? <><Loader2 size={18} className="animate-spin" /><span>جاري الحفظ...</span></> : <span>{editingProduct ? 'تحديث الصنف' : 'حفظ الصنف الجديد'}</span>}
                                     </button>
                                     <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 bg-zinc-800 text-white font-bold py-3.5 rounded-xl hover:bg-zinc-700 transition-colors">
                                         إلغاء
