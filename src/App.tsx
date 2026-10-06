@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { cn } from './lib/utils';
 import { CategoryBar } from './components/CategoryBar';
 import { ProductCard } from './components/ProductCard';
+import { MenuSection } from './components/MenuSection';
 import { ProductModal } from './components/ProductModal';
 import { CartDrawer } from './components/CartDrawer';
 import { InstallPWA } from './components/InstallPWA';
@@ -596,46 +597,17 @@ export default function App() {
   const isShowingWeeklyOffers = activeCategoryId === 'offers_weekly' && !searchQuery;
   const displayProducts = isShowingWeeklyOffers ? weeklyOffersProducts : (isShowingPopular ? topPopularProducts : filteredProducts);
 
-  const nextCategory = React.useMemo(() => {
-    if (!activeCategoryId || activeCategoryId === 'offers_weekly' || categories.length === 0) return null;
-    const currentIndex = categories.findIndex(c => c.id === activeCategoryId);
-    if (currentIndex !== -1 && currentIndex < categories.length - 1) {
-      return categories[currentIndex + 1];
+  const handleCategoryClick = (id: string | null) => {
+    setActiveCategoryId(id);
+    const elementId = id === null ? 'category-popular' : (id === 'offers_weekly' ? 'category-offers_weekly' : `category-${id}`);
+    const element = document.getElementById(elementId);
+    if (element) {
+      // Calculate top position with offset for sticky headers (Header 125px + CategoryBar 72px ≈ 200px)
+      // The scroll-mt-[135px] in MenuSection usually handles this if we use scrollIntoView,
+      // but let's let scrollIntoView with scroll-margin-top do its CSS magic natively:
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-    return null;
-  }, [activeCategoryId, categories]);
-
-  const nextCategoryRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!nextCategory) return;
-    
-    const timeoutId = setTimeout(() => {
-      if (!nextCategoryRef.current) return;
-      const observer = new IntersectionObserver(
-        (entries) => {
-          if (entries[0].isIntersecting) {
-            setActiveCategoryId(nextCategory.id);
-            window.scrollTo({ top: 220, behavior: 'smooth' });
-          }
-        },
-        { threshold: 0.1, rootMargin: '0px 0px 50px 0px' }
-      );
-      observer.observe(nextCategoryRef.current);
-      
-      // We must attach disconnecting to a variable inside the timeout closure if we were to return it, 
-      // but since it's a timeout, the cleanup of the effect handles the timeout itself.
-      // To prevent memory leaks, we can store the observer and disconnect on unmount.
-      (nextCategoryRef.current as any)._observer = observer;
-    }, 800);
-
-    return () => {
-      clearTimeout(timeoutId);
-      if (nextCategoryRef.current && (nextCategoryRef.current as any)._observer) {
-        (nextCategoryRef.current as any)._observer.disconnect();
-      }
-    };
-  }, [nextCategory]);
+  };
 
   return (
     <ThemeProvider>
@@ -710,7 +682,7 @@ export default function App() {
           <CategoryBar
             categories={categories}
             activeCategoryId={activeCategoryId}
-            onCategoryChange={setActiveCategoryId}
+            onCategoryChange={handleCategoryClick}
             showWeeklyOffers={Boolean(appSettings?.offers_active)}
             offersTitle={appSettings?.offers_title || 'العروض الأسبوعية'}
           />
@@ -721,43 +693,57 @@ export default function App() {
                 <Loader2 size={48} className="text-primary animate-spin" />
                 <p className="text-gray-500 font-medium">جاري تحضير المنيو...</p>
               </div>
-            ) : displayProducts.length > 0 ? (
-              <div className="space-y-8">
-
-                
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-8">
-                  <AnimatePresence mode="popLayout">
-                    {displayProducts.map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        onSelect={setSelectedProduct}
-                        isPopular={isShowingPopular || topPopularProducts.some(p => p.id === product.id)}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </div>
-
-                {nextCategory && (
-                  <div ref={nextCategoryRef} className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/20 rounded-3xl p-6 sm:p-8 text-center space-y-3 mt-12 backdrop-blur-sm">
-                    <div className="text-xs font-bold text-amber-500 flex items-center justify-center gap-1.5">
-                      <CheckCircle2 size={16} />
-                      <span>وصلت لنهاية أصناف قسم ({categories.find(c => c.id === activeCategoryId)?.name_ar})</span>
-                    </div>
-                    <h3 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white">
-                      الانتقال السلس للقسم التالي: <span className="text-amber-500">{nextCategory.name_ar}</span>
-                    </h3>
-                    <button
-                      onClick={() => {
-                        setActiveCategoryId(nextCategory.id);
-                        window.scrollTo({ top: 350, behavior: 'smooth' });
-                      }}
-                      className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black text-xs sm:text-sm rounded-2xl shadow-xl shadow-amber-500/20 hover:scale-105 active:scale-95 transition-all inline-flex items-center gap-2 cursor-pointer mt-2"
-                    >
-                      <span>تصفح أصناف {nextCategory.name_ar}</span>
-                      <ArrowDown size={16} className="animate-bounce" />
-                    </button>
+            ) : products.length > 0 ? (
+              <div className="space-y-4">
+                {searchQuery ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                    <AnimatePresence mode="popLayout">
+                      {filteredProducts.map((product) => (
+                        <ProductCard
+                          key={product.id}
+                          product={product}
+                          onSelect={setSelectedProduct}
+                          isPopular={false}
+                        />
+                      ))}
+                    </AnimatePresence>
                   </div>
+                ) : (
+                  <>
+                    <MenuSection
+                      id="popular"
+                      title="الأكثر طلباً 🔥"
+                      products={topPopularProducts}
+                      onSelectProduct={setSelectedProduct}
+                      onInView={setActiveCategoryId}
+                      isPopular={true}
+                    />
+                    
+                    {Boolean(appSettings?.offers_active) && weeklyOffersProducts.length > 0 && (
+                      <MenuSection
+                        id="offers_weekly"
+                        title={appSettings?.offers_title || 'العروض الأسبوعية'}
+                        products={weeklyOffersProducts}
+                        onSelectProduct={setSelectedProduct}
+                        onInView={setActiveCategoryId}
+                        isOffers={true}
+                      />
+                    )}
+
+                    {categories.map(category => {
+                      const categoryProds = products.filter(p => p.category_id === category.id && !p.is_hidden).sort((a, b) => (b.is_available === a.is_available ? 0 : b.is_available ? 1 : -1));
+                      return (
+                        <MenuSection
+                          key={category.id}
+                          id={category.id}
+                          title={category.name_ar}
+                          products={categoryProds}
+                          onSelectProduct={setSelectedProduct}
+                          onInView={setActiveCategoryId}
+                        />
+                      );
+                    })}
+                  </>
                 )}
               </div>
             ) : error ? (

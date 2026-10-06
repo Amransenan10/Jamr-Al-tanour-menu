@@ -18,6 +18,22 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
   showWeeklyOffers = true,
   offersTitle = 'العروض الأسبوعية',
 }) => {
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!scrollContainerRef.current) return;
+    const activeBtn = scrollContainerRef.current.querySelector<HTMLButtonElement>(`[data-category="${activeCategoryId || 'popular'}"]`);
+    if (activeBtn) {
+      const container = scrollContainerRef.current;
+      const btnRect = activeBtn.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      
+      // Calculate center position for LTR/RTL safely
+      const scrollLeft = activeBtn.offsetLeft - (containerRect.width / 2) + (btnRect.width / 2);
+      container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+    }
+  }, [activeCategoryId]);
+
   return (
     <div className="sticky top-[125px] sm:top-[133px] z-30 bg-white dark:bg-zinc-950 py-2.5 sm:py-3.5 border-b border-gray-100 dark:border-white/10 shadow-sm transition-all">
       <div className="container mx-auto px-2 sm:px-4 relative">
@@ -25,8 +41,9 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
         <div className="absolute left-0 top-0 bottom-0 w-6 sm:w-8 bg-gradient-to-r from-white dark:from-charcoal to-transparent z-10 pointer-events-none" />
         <div className="absolute right-0 top-0 bottom-0 w-6 sm:w-8 bg-gradient-to-l from-white dark:from-charcoal to-transparent z-10 pointer-events-none" />
         
-        <div className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto no-scrollbar pb-0.5 snap-x snap-mandatory px-2 sm:px-4">
+        <div ref={scrollContainerRef} className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto no-scrollbar pb-0.5 snap-x snap-mandatory px-2 sm:px-4">
           <button
+            data-category="popular"
             onClick={() => onCategoryChange(null)}
             className={cn(
               "whitespace-nowrap px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all snap-start flex items-center gap-1.5 shrink-0",
@@ -41,6 +58,7 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
 
           {showWeeklyOffers && (
             <button
+              data-category="offers_weekly"
               onClick={() => onCategoryChange('offers_weekly')}
               className={cn(
                 "whitespace-nowrap px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all snap-start flex items-center gap-1.5 shrink-0",
@@ -57,6 +75,7 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
           {categories.map((category) => (
             <button
               key={category.id}
+              data-category={category.id}
               onClick={() => onCategoryChange(category.id)}
               className={cn(
                 "whitespace-nowrap px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-bold transition-all snap-start flex items-center gap-1.5 shrink-0",
