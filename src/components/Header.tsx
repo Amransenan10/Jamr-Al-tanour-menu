@@ -103,15 +103,15 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Search & Branch */}
-        <div className="mt-3.5 flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        <div className="mt-3 flex flex-row gap-2.5">
+          <div className="relative flex-[0.6]">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               type="text"
-              placeholder="ابحث عن وجبتك المفضلة..."
+              placeholder="البحث"
               onChange={(e) => onSearch(e.target.value)}
               className={cn(
-                "w-full pr-10 pl-4 py-2.5 rounded-2xl text-sm transition-all outline-none border-none",
+                "w-full pr-8 pl-3 py-2.5 rounded-2xl text-[13px] font-medium transition-all outline-none border-none",
                 isEventActive
                   ? "bg-black/30 focus:ring-2 focus:ring-emerald-400/50 text-white placeholder:text-gray-400"
                   : "bg-gray-100 dark:bg-white/5 focus:ring-2 focus:ring-primary/50 text-gray-900 dark:text-white"
@@ -119,21 +119,21 @@ export const Header: React.FC<HeaderProps> = ({
             />
           </div>
 
-          <div className="relative">
+          <div className="relative flex-[0.4]">
             <button
               onClick={() => setIsBranchMenuOpen(!isBranchMenuOpen)}
               className={cn(
-                "w-full sm:w-auto flex items-center justify-between gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium transition-colors",
+                "w-full flex items-center justify-between gap-1.5 px-3 py-2.5 rounded-2xl text-[13px] font-bold transition-colors overflow-hidden whitespace-nowrap",
                 isEventActive
                   ? "bg-black/30 text-white border border-white/10 hover:bg-black/40"
                   : "bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-200"
               )}
             >
-              <div className="flex items-center gap-2">
-                <MapPin size={16} className="text-primary" />
-                <span>{selectedBranch ? `فرع ${selectedBranch}` : 'اختر الفرع'}</span>
+              <div className="flex items-center gap-1.5 overflow-hidden">
+                <MapPin size={14} className="text-primary shrink-0" />
+                <span className="truncate">{selectedBranch ? selectedBranch : 'الفرع'}</span>
               </div>
-              <ChevronDown size={16} className={cn("transition-transform", isBranchMenuOpen && "rotate-180")} />
+              <ChevronDown size={14} className={cn("transition-transform shrink-0", isBranchMenuOpen && "rotate-180")} />
             </button>
 
             {isBranchMenuOpen && (

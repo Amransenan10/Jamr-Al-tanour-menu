@@ -19,7 +19,7 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
   offersTitle = 'العروض الأسبوعية',
 }) => {
   return (
-    <div className="sticky top-[108px] sm:top-[75px] z-30 bg-white dark:bg-zinc-950 py-2.5 sm:py-3.5 border-b border-gray-100 dark:border-white/10 shadow-sm transition-all">
+    <div className="sticky top-[125px] sm:top-[133px] z-30 bg-white dark:bg-zinc-950 py-2.5 sm:py-3.5 border-b border-gray-100 dark:border-white/10 shadow-sm transition-all">
       <div className="container mx-auto px-2 sm:px-4 relative">
         {/* Gradient Masks for Scroll */}
         <div className="absolute left-0 top-0 bottom-0 w-6 sm:w-8 bg-gradient-to-r from-white dark:from-charcoal to-transparent z-10 pointer-events-none" />

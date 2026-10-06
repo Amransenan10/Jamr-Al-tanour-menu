@@ -608,18 +608,33 @@ export default function App() {
   const nextCategoryRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!nextCategory || !nextCategoryRef.current) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setActiveCategoryId(nextCategory.id);
-          window.scrollTo({ top: 320, behavior: 'smooth' });
-        }
-      },
-      { threshold: 0.7 }
-    );
-    observer.observe(nextCategoryRef.current);
-    return () => observer.disconnect();
+    if (!nextCategory) return;
+    
+    const timeoutId = setTimeout(() => {
+      if (!nextCategoryRef.current) return;
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting) {
+            setActiveCategoryId(nextCategory.id);
+            window.scrollTo({ top: 220, behavior: 'smooth' });
+          }
+        },
+        { threshold: 0.1, rootMargin: '0px 0px 50px 0px' }
+      );
+      observer.observe(nextCategoryRef.current);
+      
+      // We must attach disconnecting to a variable inside the timeout closure if we were to return it, 
+      // but since it's a timeout, the cleanup of the effect handles the timeout itself.
+      // To prevent memory leaks, we can store the observer and disconnect on unmount.
+      (nextCategoryRef.current as any)._observer = observer;
+    }, 800);
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (nextCategoryRef.current && (nextCategoryRef.current as any)._observer) {
+        (nextCategoryRef.current as any)._observer.disconnect();
+      }
+    };
   }, [nextCategory]);
 
   return (
