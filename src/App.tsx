@@ -12,6 +12,7 @@ import { SeasonalEventOverlay } from './components/SeasonalEventOverlay';
 import { SocialLinks } from './components/SocialLinks';
 import { SideMenuDrawer } from './components/SideMenuDrawer';
 import { StoriesStrip } from './components/StoriesStrip';
+import { CollapsibleHeroSection } from './components/CollapsibleHeroSection';
 import { StoryViewerModal } from './components/StoryViewerModal';
 import { SpinWheelModal } from './components/SpinWheelModal';
 import { Category, Product, Branch, Story } from './types';
@@ -648,6 +649,30 @@ export default function App() {
           <BranchSelectorModal
             isOpen={selectedBranch === null}
             onSelect={handleBranchSelect}
+          />
+
+          <CollapsibleHeroSection
+            stories={stories}
+            onSelectProductById={(productId) => {
+              const found = products.find(p => p.id === productId);
+              if (found) setSelectedProduct(found);
+            }}
+            onAddDirectOfferToCart={(offerName, offerPrice, imageUrl) => {
+              const offerProduct: Product = {
+                id: `direct_offer_${Date.now()}`,
+                name_ar: offerName,
+                name_en: offerName,
+                description_ar: 'عرض مباشر خـاص',
+                description_en: 'Direct Offer',
+                price: offerPrice,
+                category_id: 'offers_weekly',
+                image_url: imageUrl || '',
+                is_available: true,
+                is_hidden: false,
+                is_offer: true
+              };
+              setSelectedProduct(offerProduct);
+            }}
           />
 
           <StoriesStrip 
