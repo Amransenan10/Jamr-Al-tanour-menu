@@ -244,8 +244,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         }
       }
 
-      // If phone is entered, check if the user previously used this code
-      if (formData.phone) {
+      // Check if the user previously used this code (unless it's a free delivery coupon which allows unlimited multi-use)
+      if (formData.phone && data.discount_type !== 'free_delivery') {
         const { data: previousOrders } = await supabase
           .from('orders')
           .select('id')
