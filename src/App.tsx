@@ -605,6 +605,23 @@ export default function App() {
     return null;
   }, [activeCategoryId, categories]);
 
+  const nextCategoryRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!nextCategory || !nextCategoryRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setActiveCategoryId(nextCategory.id);
+          window.scrollTo({ top: 320, behavior: 'smooth' });
+        }
+      },
+      { threshold: 0.7 }
+    );
+    observer.observe(nextCategoryRef.current);
+    return () => observer.disconnect();
+  }, [nextCategory]);
+
   return (
     <ThemeProvider>
       <CartProvider>
@@ -675,11 +692,6 @@ export default function App() {
             }}
           />
 
-          <StoriesStrip 
-            stories={stories} 
-            onStoryClick={(index) => setActiveStoryIndex(index)} 
-          />
-
           <CategoryBar
             categories={categories}
             activeCategoryId={activeCategoryId}
@@ -712,7 +724,7 @@ export default function App() {
                 </div>
 
                 {nextCategory && (
-                  <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/20 rounded-3xl p-6 sm:p-8 text-center space-y-3 mt-12 backdrop-blur-sm">
+                  <div ref={nextCategoryRef} className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/20 rounded-3xl p-6 sm:p-8 text-center space-y-3 mt-12 backdrop-blur-sm">
                     <div className="text-xs font-bold text-amber-500 flex items-center justify-center gap-1.5">
                       <CheckCircle2 size={16} />
                       <span>وصلت لنهاية أصناف قسم ({categories.find(c => c.id === activeCategoryId)?.name_ar})</span>

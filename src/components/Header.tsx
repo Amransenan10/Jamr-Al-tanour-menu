@@ -36,10 +36,10 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className={cn(
-      "sticky top-0 z-40 backdrop-blur-md transition-all border-b",
+      "sticky top-0 z-40 transition-all border-b shadow-sm",
       isEventActive 
         ? `bg-gradient-to-r ${presetDetails?.colors.gradient || 'from-emerald-950 via-zinc-900 to-emerald-950'} text-white border-b border-white/10 shadow-lg`
-        : "bg-white/80 dark:bg-charcoal/80 border-gray-100 dark:border-white/5"
+        : "bg-white dark:bg-zinc-950 border-gray-100 dark:border-white/10"
     )}>
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-4">
