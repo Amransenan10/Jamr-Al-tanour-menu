@@ -100,8 +100,8 @@ export const OrderTrackingPage: React.FC = () => {
             } else {
                 processOrderUpdate(orderRes.data, prevStatusRef.current === null);
 
-                // Auto-open wheel 1 second after landing on page (first time only, not spun yet)
-                if (!isSilent && !spun && parsedSettings?.wheel_active !== false) {
+                // Auto-open wheel 1 second after landing on page (first time only, not spun yet, ONLY IF wheel_active is enabled)
+                if (!isSilent && !spun && Boolean(parsedSettings?.wheel_active) === true) {
                     setTimeout(() => {
                         setIsWheelOpen(true);
                     }, 1000);
@@ -199,7 +199,7 @@ export const OrderTrackingPage: React.FC = () => {
                 )}
 
                 {/* 🎡 Spin Wheel Banner — PROMINENT at top */}
-                {appSettings?.wheel_active !== false && (
+                {Boolean(appSettings?.wheel_active) === true && (
                     <motion.div
                         initial={{ opacity: 0, scale: 0.97 }}
                         animate={{ opacity: 1, scale: 1 }}

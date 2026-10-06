@@ -752,8 +752,10 @@ export default function App() {
             branch={selectedBranch || 'السويدي الغربي'}
             storeSettings={storeSettings}
             onOrderPlaced={() => {
-              // Wait a moment for the drawer to close, then show the wheel
-              setTimeout(() => setIsWheelOpen(true), 800);
+              // Wait a moment for the drawer to close, then show the wheel ONLY IF wheel_active is enabled
+              if (Boolean(appSettings?.wheel_active)) {
+                setTimeout(() => setIsWheelOpen(true), 800);
+              }
             }}
           />
 
@@ -873,10 +875,11 @@ export default function App() {
 
           {/* Spin Wheel Modal - auto-opens after order completion */}
           <SpinWheelModal
-            isOpen={isWheelOpen}
+            isOpen={isWheelOpen && Boolean(appSettings?.wheel_active)}
             onClose={() => setIsWheelOpen(false)}
             prizes={appSettings?.wheel_prizes || []}
             title={appSettings?.wheel_title || 'دَوّر واكسب جوائز المنيو!'}
+            customerPhone={localStorage.getItem('jamr_customer_phone') || ''}
             orderId={localStorage.getItem('jamr_last_completed_order') || ''}
           />
         </div>

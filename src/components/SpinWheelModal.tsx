@@ -105,53 +105,58 @@ export const SpinWheelModal: React.FC<SpinWheelModalProps> = ({
       if (selectedPrize.type !== 'unlucky') {
         setSavingPrize(true);
         try {
-          const rawPhone = customerPhone ? normalizeSaudiPhone(customerPhone) : '';
-          const cleanPhone = rawPhone || '0500000000';
-          const shortPhone = cleanPhone.slice(-4);
+          const phoneToUse = customerPhone || localStorage.getItem('jamr_customer_phone') || '';
+          const rawPhone = phoneToUse ? normalizeSaudiPhone(phoneToUse) : '';
+          const cleanPhone = rawPhone;
+          const shortPhone = cleanPhone ? cleanPhone.slice(-4) : Math.floor(1000 + Math.random() * 9000).toString();
 
           if (selectedPrize.type === 'points') {
             // Loyalty points prize
             const pointsVal = selectedPrize.discount_value || 50;
             setPointsGranted(pointsVal);
 
-            // Fetch & update customer points in Supabase
-            const { data: existingCust } = await supabase
-              .from('customers')
-              .select('points_balance, full_name')
-              .eq('phone_number', cleanPhone)
-              .maybeSingle();
+            if (cleanPhone) {
+              // Fetch & update customer points in Supabase for the actual customer phone
+              const { data: existingCust } = await supabase
+                .from('customers')
+                .select('points_balance, full_name')
+                .eq('phone_number', cleanPhone)
+                .maybeSingle();
 
-            const currentBal = existingCust?.points_balance || 0;
-            const newBal = currentBal + pointsVal;
-            const custName = existingCust?.full_name || 'عميل عجلة الحظ';
+              const currentBal = existingCust?.points_balance || 0;
+              const newBal = currentBal + pointsVal;
+              const custName = existingCust?.full_name || 'عميل عجلة الحظ';
 
-            const custPayload = {
-              phone_number: cleanPhone,
-              full_name: custName,
-              points_balance: newBal
-            };
+              const custPayload = {
+                phone_number: cleanPhone,
+                full_name: custName,
+                points_balance: newBal
+              };
 
-            let res = await supabaseAdmin
-              .from('customers')
-              .upsert([custPayload], { onConflict: 'phone_number' });
+              let res = await supabaseAdmin
+                .from('customers')
+                .upsert([custPayload], { onConflict: 'phone_number' });
 
-            if (res.error) {
-              await supabase.from('customers').upsert([custPayload], { onConflict: 'phone_number' });
+              if (res.error) {
+                await supabase.from('customers').upsert([custPayload], { onConflict: 'phone_number' });
+              }
+
+              // Also record in transactions table
+              try {
+                await supabaseAdmin.from('transactions').insert([{
+                  customer_phone: cleanPhone,
+                  points_earned: pointsVal,
+                  amount: 0,
+                  staff_id: 'wheel_prize'
+                }]);
+              } catch (txErr) {
+                console.warn('Transaction record skip:', txErr);
+              }
+
+              toast.success(`🎉 مبروك! أضيفت ${pointsVal} نقطة ولاء لرصيدك بنجاح! 🌟`);
+            } else {
+              toast.success(`🎉 مبروك! فزت بـ ${pointsVal} نقطة ولاء! 🌟`);
             }
-
-            // Also record in transactions table
-            try {
-              await supabaseAdmin.from('transactions').insert([{
-                customer_phone: cleanPhone,
-                points_earned: pointsVal,
-                amount: 0,
-                staff_id: 'wheel_prize'
-              }]);
-            } catch (txErr) {
-              console.warn('Transaction record skip:', txErr);
-            }
-
-            toast.success(`🎉 مبروك! أضيفت ${pointsVal} نقطة ولاء لرصيدك بنجاح! 🌟`);
 
           } else {
             // Dynamic Single-Use Coupon Prize
@@ -180,7 +185,7 @@ export const SpinWheelModal: React.FC<SpinWheelModalProps> = ({
               max_uses: 1,
               current_uses: 0,
               is_active: true,
-              bound_phone: cleanPhone
+              bound_phone: cleanPhone || null
             };
 
             // Save to LocalStorage as instant guaranteed fallback
