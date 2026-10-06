@@ -407,13 +407,17 @@ export default function App() {
     setStoreSettings(data || { branch_name: targetBranch, status: 'open', is_delivery_active: true, is_pickup_active: true });
   };
 
-  // Dedicated settings loader – uses isolated themeSettingsUtils
+  // Dedicated settings loader – fetches both core app defaults and seasonal theme overlays
   const fetchAppSettings = async () => {
     try {
-      const themeData = await fetchThemeSettings();
-      console.log('DEBUG: fetchAppSettings loaded via fetchThemeSettings, event_active =', themeData.event_active);
-      setAppSettings(themeData);
-      localStorage.setItem('jamr_app_settings', JSON.stringify(themeData));
+      const [{ data: appData }, themeData] = await Promise.all([
+        supabase.from('app_settings').select('*').single(),
+        fetchThemeSettings()
+      ]);
+      const combined = { ...(appData || {}), ...themeData };
+      console.log('DEBUG: fetchAppSettings merged settings:', combined);
+      setAppSettings(combined);
+      localStorage.setItem('jamr_app_settings', JSON.stringify(combined));
     } catch (e) {
       console.error('DEBUG: fetchAppSettings exception:', e);
     }
