@@ -1601,7 +1601,7 @@ const AdminCouponsView = () => {
             const payload = {
                 code: rawCode,
                 discount_type: formData.discount_type,
-                discount_value: parseFloat(formData.discount_value),
+                discount_value: formData.discount_type === 'free_delivery' ? 0 : (parseFloat(formData.discount_value) || 0),
                 max_uses: formData.max_uses ? parseInt(formData.max_uses) : null,
                 min_order_value: formData.min_order_value ? parseFloat(formData.min_order_value) : 0,
                 is_active: formData.is_active
@@ -1670,7 +1670,9 @@ const AdminCouponsView = () => {
                             ) : coupons.map(coupon => (
                                 <tr key={coupon.id} className="hover:bg-white/[0.02]">
                                     <td className="p-4"><span className="font-mono font-black text-white bg-zinc-800 px-3 py-1 rounded-lg tracking-widest">{coupon.code}</span></td>
-                                    <td className="p-4 text-primary font-bold">{coupon.discount_value}{coupon.discount_type === 'percentage' ? '%' : ' ر.س'}</td>
+                                    <td className="p-4 text-primary font-bold">
+                                        {coupon.discount_type === 'free_delivery' ? 'توصيل مجاني 🚚' : `${coupon.discount_value}${coupon.discount_type === 'percentage' ? '%' : ' ر.س'}`}
+                                    </td>
                                     <td className="p-4 text-gray-400">
                                         <span className="text-white font-bold">{coupon.current_uses}</span> 
                                         {coupon.max_uses ? ` / ${coupon.max_uses}` : ' (غير محدود)'}
@@ -1715,11 +1717,23 @@ const AdminCouponsView = () => {
                                         <select required value={formData.discount_type} onChange={e => setFormData({...formData, discount_type: e.target.value as any})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none">
                                             <option value="percentage">نسبة مئوية (%)</option>
                                             <option value="fixed">مبلغ ثابت (ر.س)</option>
+                                            <option value="free_delivery">توصيل مجاني 🚚</option>
                                         </select>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <label className="text-sm font-bold text-gray-400">قيمة الخصم <span className="text-red-500">*</span></label>
-                                        <input required type="number" step="0.01" value={formData.discount_value} onChange={e => setFormData({...formData, discount_value: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none" />
+                                        <label className="text-sm font-bold text-gray-400">
+                                            {formData.discount_type === 'free_delivery' ? 'قيمة الخصم (تلقائي)' : 'قيمة الخصم'} <span className="text-red-500">*</span>
+                                        </label>
+                                        <input 
+                                            required={formData.discount_type !== 'free_delivery'} 
+                                            disabled={formData.discount_type === 'free_delivery'} 
+                                            type="number" 
+                                            step="0.01" 
+                                            placeholder={formData.discount_type === 'free_delivery' ? 'مجاني 0 ر.س' : ''}
+                                            value={formData.discount_type === 'free_delivery' ? '0' : formData.discount_value} 
+                                            onChange={e => setFormData({...formData, discount_value: e.target.value})} 
+                                            className="w-full bg-zinc-800 text-white rounded-xl p-3 border border-transparent focus:border-primary/50 outline-none disabled:opacity-50" 
+                                        />
                                     </div>
                                 </div>
 
