@@ -141,6 +141,11 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                             <Phone size={14} className="animate-pulse" /> <span className="tracking-widest" dir="ltr">{order.phone}</span>
                         </a>
                     )}
+                    {order.notes?.includes('[LOYALTY_SECURITY_CHECK]') && (
+                        <span className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-xl font-bold bg-red-500/10 text-red-400 border border-red-500/30 shadow-sm animate-pulse" title="الرقم المستخدم يختلف عن الجهاز، يرجى مطابقة الهوية">
+                            🛡️ تحقق من رقم صاحب النقاط!
+                        </span>
+                    )}
                 </div>
 
                 {/* Items */}

@@ -23,6 +23,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader2, UtensilsCrossed, Navigation, AlertCircle, Clock, CheckCircle2, Bike, Utensils, FileText, Sparkles, Tag, ShieldAlert, ArrowDown, ChevronLeft, X } from 'lucide-react';
 import { BranchSelectorModal } from './components/BranchSelectorModal';
+import { LoyaltyReminderBar } from './components/LoyaltyReminderBar';
 import { FloatingCartButton } from './components/FloatingCartButton';
 import { useBackButton } from './hooks/useBackButton';
 import { Link } from 'react-router-dom';
@@ -805,6 +806,11 @@ export default function App() {
             isOpen={isSideMenuOpen}
             onClose={() => setIsSideMenuOpen(false)}
             appSettings={appSettings}
+          />
+
+          <LoyaltyReminderBar
+            onOpenCart={() => setIsCartOpen(true)}
+            onOpenSideMenu={() => setIsSideMenuOpen(true)}
           />
 
           {activeStoryIndex !== null && (

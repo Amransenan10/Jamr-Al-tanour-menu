@@ -342,11 +342,26 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         }
       }
 
+      // Save phone to device binding for security and convenience
+      try {
+        localStorage.setItem('jamr_customer_phone', cleanPhone);
+        localStorage.setItem('customerPhone', cleanPhone);
+      } catch (e) {}
+
+      const boundPhone = (localStorage.getItem('jamr_customer_phone') || '').replace(/\D/g, '');
+      const isSecurityMismatch = Boolean(
+        pointsToDeduct > 0 && 
+        boundPhone && 
+        boundPhone.length >= 9 && 
+        cleanPhone.replace(/\D/g, '') !== boundPhone
+      );
+
       const orderNotes = [
         formData.notes,
         deliveryRules.distanceKm ? `[DISTANCE:${deliveryRules.distanceKm}km]` : '',
         pointsToDeduct > 0 ? `[LOYALTY_USED:${pointsToDeduct}]` : '',
-        loyaltyPointsEarned > 0 ? `[LOYALTY_EARNED:${loyaltyPointsEarned}]` : ''
+        loyaltyPointsEarned > 0 ? `[LOYALTY_EARNED:${loyaltyPointsEarned}]` : '',
+        isSecurityMismatch ? `[LOYALTY_SECURITY_CHECK]` : ''
       ].filter(Boolean).join('\n');
 
       const orderPayload: any = {
@@ -656,36 +671,66 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                     
                     {/* Loyalty Points Section */}
                     {loyaltyConfig.is_enabled && formData.phone.length >= 9 && (
-                      <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-500/10 p-3 rounded-xl border border-amber-200 dark:border-amber-500/20">
-                        <div>
-                          <div className="text-sm font-bold text-amber-700 dark:text-amber-400">
-                            {loyaltyPoints > 0 ? `لديك ${loyaltyPoints} نقطة ولاء 🌟` : 'نظام الولاء: 0 نقطة'}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-500/10 p-3 rounded-xl border border-amber-200 dark:border-amber-500/20">
+                          <div>
+                            <div className="text-sm font-bold text-amber-700 dark:text-amber-400">
+                              {loyaltyPoints > 0 ? `لديك ${loyaltyPoints} نقطة ولاء 🌟` : 'نظام الولاء: 0 نقطة'}
+                            </div>
+                            <div className="text-xs text-amber-600/80 dark:text-amber-400/80">
+                              {loyaltyPoints >= minPointsToRedeem ? (
+                                (() => {
+                                  const totalVal = Math.floor(loyaltyPoints / redemptionRate);
+                                  const cartRemaining = totalPrice + deliveryFee - discountAmount;
+                                  const maxAllowedByPct = Math.floor((cartRemaining * maxRedemptionPercentage) / 100);
+                                  if (totalVal > maxAllowedByPct && cartRemaining > 0) {
+                                    return `تستحق خصم ${maxAllowedByPct} ر.س كحد أقصى (${maxRedemptionPercentage}% من الفاتورة) - وباقي نقاطك محفوظة 🌟`;
+                                  }
+                                  return `تساوي خصم ${totalVal} ر.س`;
+                                })()
+                              ) : (loyaltyPoints > 0 ? `تحتاج ${minPointsToRedeem} نقاط للاستفادة من الخصم` : 'اجمع النقاط مع هذا الطلب لخصومات مستقبلية')}
+                            </div>
                           </div>
-                          <div className="text-xs text-amber-600/80 dark:text-amber-400/80">
-                            {loyaltyPoints >= minPointsToRedeem ? (
-                              (() => {
-                                const totalVal = Math.floor(loyaltyPoints / redemptionRate);
-                                const cartRemaining = totalPrice + deliveryFee - discountAmount;
-                                const maxAllowedByPct = Math.floor((cartRemaining * maxRedemptionPercentage) / 100);
-                                if (totalVal > maxAllowedByPct && cartRemaining > 0) {
-                                  return `تستحق خصم ${maxAllowedByPct} ر.س كحد أقصى (${maxRedemptionPercentage}% من الفاتورة) - وباقي نقاطك محفوظة 🌟`;
-                                }
-                                return `تساوي خصم ${totalVal} ر.س`;
-                              })()
-                            ) : (loyaltyPoints > 0 ? `تحتاج ${minPointsToRedeem} نقاط للاستفادة من الخصم` : 'اجمع النقاط مع هذا الطلب لخصومات مستقبلية')}
-                          </div>
+                          {loyaltyPoints >= minPointsToRedeem && (
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input 
+                                type="checkbox" 
+                                className="sr-only peer" 
+                                checked={useLoyaltyPoints}
+                                onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
+                              />
+                              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                              <span className="mr-2 text-xs font-bold text-gray-500 dark:text-gray-400">استخدام</span>
+                            </label>
+                          )}
                         </div>
-                        {loyaltyPoints >= minPointsToRedeem && (
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input 
-                              type="checkbox" 
-                              className="sr-only peer" 
-                              checked={useLoyaltyPoints}
-                              onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
-                            />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
-                            <span className="mr-2 text-xs font-bold text-gray-500 dark:text-gray-400">استخدام</span>
-                          </label>
+
+                        {/* Security check notice if phone mismatches device bound phone */}
+                        {useLoyaltyPoints && (
+                          (() => {
+                            const boundP = (localStorage.getItem('jamr_customer_phone') || '').replace(/\D/g, '');
+                            const currP = formData.phone.replace(/\D/g, '');
+                            if (boundP && boundP.length >= 9 && currP !== boundP) {
+                              return (
+                                <div className="p-2.5 bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 rounded-xl text-[11px] text-orange-700 dark:text-orange-400 font-medium">
+                                  🛡️ <span className="font-bold">تنويه أمان:</span> هذا الرقم يختلف عن رقم جهازك السابق. لحماية نقاط العملاء، سيُطلب من الكاشير تأكيد رقم الهاتف عند التسليم.
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()
+                        )}
+
+                        {/* Points Earning Motivation Banner */}
+                        {loyaltyPointsEarned > 0 && (
+                          <div className="flex items-center justify-between p-2.5 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl text-xs text-emerald-700 dark:text-emerald-400">
+                            <span className="font-bold flex items-center gap-1">
+                              <span>🎁 ستكسب مع هذا الطلب</span>
+                            </span>
+                            <span className="font-black bg-emerald-500 text-white px-2 py-0.5 rounded-lg">
+                              +{loyaltyPointsEarned} نقطة ولاء 🌟
+                            </span>
+                          </div>
                         )}
                       </div>
                     )}

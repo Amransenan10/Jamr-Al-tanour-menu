@@ -22,6 +22,13 @@ export const SideMenuDrawer: React.FC<SideMenuDrawerProps> = ({ isOpen, onClose,
   const [pointsResult, setPointsResult] = useState<{ points?: number, error?: string } | null>(null);
   const navigate = useNavigate();
 
+  React.useEffect(() => {
+    const saved = localStorage.getItem('jamr_customer_phone') || localStorage.getItem('customerPhone') || '';
+    if (saved) {
+      setPhoneNumber(saved);
+    }
+  }, []);
+
   const handleCheckPoints = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phoneNumber) return;
@@ -35,6 +42,10 @@ export const SideMenuDrawer: React.FC<SideMenuDrawerProps> = ({ isOpen, onClose,
     setPointsResult(null);
     try {
       const cleanPhone = phoneNumber.replace(/\D/g, '');
+      try {
+        localStorage.setItem('jamr_customer_phone', cleanPhone);
+      } catch (e) {}
+
       const { data, error } = await supabaseLoyalty
         .from('customers')
         .select('points_balance')
@@ -51,7 +62,7 @@ export const SideMenuDrawer: React.FC<SideMenuDrawerProps> = ({ isOpen, onClose,
         setPointsResult({ points: 0 }); // New customer
       }
     } catch (err: any) {
-      setPointsResult({ error: 'عذراً لا توجد مسجل بهذا الرقم.' });
+      setPointsResult({ error: 'عذراً لا توجد حساب مسجل بهذا الرقم.' });
     } finally {
       setLoadingPoints(false);
     }
@@ -146,13 +157,27 @@ export const SideMenuDrawer: React.FC<SideMenuDrawerProps> = ({ isOpen, onClose,
                 </form>
 
                 {pointsResult && (
-                  <div className="mt-3 p-2 bg-white/50 dark:bg-black/20 rounded-xl border border-amber-500/20 text-center">
+                  <div className="mt-3 p-3 bg-white/50 dark:bg-black/20 rounded-xl border border-amber-500/20 text-center">
                     {pointsResult.error ? (
                       <span className="text-red-500 text-xs font-bold">{pointsResult.error}</span>
                     ) : (
-                      <div className="flex flex-col items-center gap-0">
+                      <div className="flex flex-col items-center gap-1">
                         <span className="text-[10px] text-gray-500 font-bold">الرصيد المتاح</span>
-                        <span className="text-2xl font-black text-amber-500">{pointsResult.points}</span>
+                        <span className="text-2xl font-black text-amber-500">{pointsResult.points} نقطة</span>
+                        
+                        {/* Tier Badge */}
+                        {(() => {
+                          const pts = pointsResult.points || 0;
+                          let tier = { title: 'عضوية فضية 🥈', color: 'bg-slate-200 text-slate-800' };
+                          if (pts >= 300) tier = { title: 'عضوية ماسية 💎', color: 'bg-cyan-500 text-white shadow-cyan-500/30' };
+                          else if (pts >= 100) tier = { title: 'عضوية ذهبية 🥇', color: 'bg-amber-500 text-white shadow-amber-500/30' };
+                          
+                          return (
+                            <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full mt-1 shadow-sm ${tier.color}`}>
+                              {tier.title}
+                            </span>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
