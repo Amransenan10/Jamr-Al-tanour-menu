@@ -394,7 +394,8 @@ export const CashierPage: React.FC = () => {
         is_enabled: true,
         earning_rate: 1,
         redemption_rate: 10,
-        min_points_to_redeem: 5
+        min_points_to_redeem: 5,
+        max_redemption_percentage: 50
     });
     const [menuProducts, setMenuProducts] = useState<any[]>([]);
     const [loadingMenu, setLoadingMenu] = useState(false);
@@ -409,7 +410,8 @@ export const CashierPage: React.FC = () => {
                     is_enabled: data.is_enabled ?? true,
                     earning_rate: Number(data.earning_rate) || 1,
                     redemption_rate: Number(data.redemption_rate) || 10,
-                    min_points_to_redeem: Number(data.min_points_to_redeem) || 5
+                    min_points_to_redeem: Number(data.min_points_to_redeem) || 5,
+                    max_redemption_percentage: data.max_redemption_percentage !== undefined && data.max_redemption_percentage !== null ? Number(data.max_redemption_percentage) : 50
                 });
             }
         });

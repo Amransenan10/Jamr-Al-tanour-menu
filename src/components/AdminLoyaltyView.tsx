@@ -17,6 +17,7 @@ interface LoyaltyConfig {
     redemption_rate: number; // كل كم نقطة = 1 ريال خصم
     min_points_to_redeem: number; // الحد الأدنى للاستبدال
     welcome_bonus_points: number; // نقاط ترحيبية
+    max_redemption_percentage: number; // أقصى نسبة خصم بالنقاط من الفاتورة (%)
 }
 
 interface Customer {
@@ -48,7 +49,8 @@ export const AdminLoyaltyView: React.FC = () => {
         earning_rate: 1,
         redemption_rate: 10,
         min_points_to_redeem: 5,
-        welcome_bonus_points: 0
+        welcome_bonus_points: 0,
+        max_redemption_percentage: 50
     });
     const [loadingConfig, setLoadingConfig] = useState(true);
     const [savingConfig, setSavingConfig] = useState(false);
@@ -110,7 +112,8 @@ export const AdminLoyaltyView: React.FC = () => {
                     earning_rate: Number(data.earning_rate) || 1,
                     redemption_rate: Number(data.redemption_rate) || 10,
                     min_points_to_redeem: Number(data.min_points_to_redeem) || 5,
-                    welcome_bonus_points: Number(data.welcome_bonus_points) || 0
+                    welcome_bonus_points: Number(data.welcome_bonus_points) || 0,
+                    max_redemption_percentage: data.max_redemption_percentage !== undefined && data.max_redemption_percentage !== null ? Number(data.max_redemption_percentage) : 50
                 });
             } else if (error) {
                 console.warn('loyalty_config query info:', error.message);
@@ -187,6 +190,7 @@ export const AdminLoyaltyView: React.FC = () => {
                 redemption_rate: Math.max(1, Number(config.redemption_rate) || 10),
                 min_points_to_redeem: Math.max(0, Number(config.min_points_to_redeem) || 5),
                 welcome_bonus_points: Math.max(0, Number(config.welcome_bonus_points) || 0),
+                max_redemption_percentage: Math.min(100, Math.max(1, Number(config.max_redemption_percentage) || 50)),
                 updated_at: new Date().toISOString()
             };
 
@@ -595,6 +599,31 @@ export const AdminLoyaltyView: React.FC = () => {
                                         />
                                         <span className="text-xs font-bold text-white">نقطة هدية ترحيبية 🎁</span>
                                     </div>
+                                </div>
+
+                                {/* Max Redemption Percentage */}
+                                <div className="bg-zinc-800/50 p-5 rounded-2xl border border-white/5 space-y-3 md:col-span-2">
+                                    <div className="flex items-center gap-2 text-orange-400">
+                                        <TrendingUp size={20} />
+                                        <label className="font-bold text-sm text-white">أقصى نسبة خصم بالنقاط من سعر الفاتورة (%)</label>
+                                    </div>
+                                    <p className="text-xs text-gray-400">
+                                        تحديد أقصى نسبة خصم مسموح بها بالنقاط للطلب الواحد لمنع تصفير الطلب كاملاً وإلزام العميل بدفع المتبقي نقداً/شبكة (مثال: 50% تضمن تحصيل نصف المبلغ وتوفر باقي النقاط لطلب قادم).
+                                    </p>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="100"
+                                            value={config.max_redemption_percentage}
+                                            onChange={e => setConfig(prev => ({ ...prev, max_redemption_percentage: Math.min(100, Math.max(1, parseInt(e.target.value) || 50)) }))}
+                                            className="w-28 bg-zinc-900 text-orange-400 font-black text-center text-lg rounded-xl p-3 border border-white/10 focus:ring-2 focus:ring-orange-500 outline-none"
+                                        />
+                                        <span className="text-xs font-bold text-white">% من إجمالي الطلب كحد أقصى للخصم</span>
+                                    </div>
+                                    <p className="text-[11px] text-orange-400/80 bg-orange-500/10 p-2.5 rounded-xl border border-orange-500/20">
+                                        💡 إذا كان لدى العميل نقاط بـ 40 ر.س واشترى بـ 40 ر.س (ونسبة الخصم القصوى {config.max_redemption_percentage}%): سيحصل على خصم <span className="font-bold">{(40 * (config.max_redemption_percentage || 50) / 100).toFixed(0)} ر.س فقط</span> ويدفع الباقي كاش/شبكة، وتحفظ باقي نقاطه للطلب القادم.
+                                    </p>
                                 </div>
                             </div>
                         )}

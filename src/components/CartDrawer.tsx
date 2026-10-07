@@ -51,7 +51,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
     is_enabled: true,
     earning_rate: 1,
     redemption_rate: 10,
-    min_points_to_redeem: 5
+    min_points_to_redeem: 5,
+    max_redemption_percentage: 50
   });
 
   React.useEffect(() => {
@@ -66,7 +67,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
             is_enabled: cfg.is_enabled ?? true,
             earning_rate: Number(cfg.earning_rate) || 1,
             redemption_rate: Number(cfg.redemption_rate) || 10,
-            min_points_to_redeem: Number(cfg.min_points_to_redeem) || 5
+            min_points_to_redeem: Number(cfg.min_points_to_redeem) || 5,
+            max_redemption_percentage: cfg.max_redemption_percentage !== undefined && cfg.max_redemption_percentage !== null ? Number(cfg.max_redemption_percentage) : 50
           });
         }
       } catch (err) {
@@ -156,15 +158,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
   const redemptionRate = loyaltyConfig.redemption_rate || 10;
   const earningRate = loyaltyConfig.earning_rate || 1;
   const minPointsToRedeem = loyaltyConfig.min_points_to_redeem || 5;
+  const maxRedemptionPercentage = loyaltyConfig.max_redemption_percentage !== undefined && loyaltyConfig.max_redemption_percentage !== null ? loyaltyConfig.max_redemption_percentage : 50;
 
-  let maxLoyaltyDiscount = loyaltyConfig.is_enabled ? Math.floor(loyaltyPoints / redemptionRate) : 0;
+  let rawMaxLoyaltyDiscount = loyaltyConfig.is_enabled ? Math.floor(loyaltyPoints / redemptionRate) : 0;
   let loyaltyDiscountAmount = 0;
   let pointsToDeduct = 0;
 
-  if (loyaltyConfig.is_enabled && useLoyaltyPoints && loyaltyPoints >= minPointsToRedeem && maxLoyaltyDiscount > 0) {
+  if (loyaltyConfig.is_enabled && useLoyaltyPoints && loyaltyPoints >= minPointsToRedeem && rawMaxLoyaltyDiscount > 0) {
     const remainingTotal = totalPrice + deliveryFee - discountAmount;
-    loyaltyDiscountAmount = Math.min(maxLoyaltyDiscount, remainingTotal);
-    pointsToDeduct = loyaltyDiscountAmount * redemptionRate;
+    const maxAllowedByPercentage = Math.floor((remainingTotal * maxRedemptionPercentage) / 100);
+    loyaltyDiscountAmount = Math.max(0, Math.min(rawMaxLoyaltyDiscount, maxAllowedByPercentage, remainingTotal));
+    pointsToDeduct = Math.floor(loyaltyDiscountAmount * redemptionRate);
   }
   
   // Ensure final price doesn't go below 0
@@ -658,7 +662,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                             {loyaltyPoints > 0 ? `لديك ${loyaltyPoints} نقطة ولاء 🌟` : 'نظام الولاء: 0 نقطة'}
                           </div>
                           <div className="text-xs text-amber-600/80 dark:text-amber-400/80">
-                            {loyaltyPoints >= minPointsToRedeem ? `تساوي خصم ${Math.floor(loyaltyPoints / redemptionRate)} ر.س` : (loyaltyPoints > 0 ? `تحتاج ${minPointsToRedeem} نقاط للاستفادة من الخصم` : 'اجمع النقاط مع هذا الطلب لخصومات مستقبلية')}
+                            {loyaltyPoints >= minPointsToRedeem ? (
+                              (() => {
+                                const totalVal = Math.floor(loyaltyPoints / redemptionRate);
+                                const cartRemaining = totalPrice + deliveryFee - discountAmount;
+                                const maxAllowedByPct = Math.floor((cartRemaining * maxRedemptionPercentage) / 100);
+                                if (totalVal > maxAllowedByPct && cartRemaining > 0) {
+                                  return `تستحق خصم ${maxAllowedByPct} ر.س كحد أقصى (${maxRedemptionPercentage}% من الفاتورة) - وباقي نقاطك محفوظة 🌟`;
+                                }
+                                return `تساوي خصم ${totalVal} ر.س`;
+                              })()
+                            ) : (loyaltyPoints > 0 ? `تحتاج ${minPointsToRedeem} نقاط للاستفادة من الخصم` : 'اجمع النقاط مع هذا الطلب لخصومات مستقبلية')}
                           </div>
                         </div>
                         {loyaltyPoints >= minPointsToRedeem && (
