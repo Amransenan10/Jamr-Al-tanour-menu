@@ -297,6 +297,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                           {items.filter(item => item.group_id === group.id).map(item => {
                             const isSelected = selectedOptions.some(o => o.itemId === item.id);
                             const isOverrideGroup = group.max_selection === 1 && group.min_selection > 0;
+                            const isItemAvailable = item.is_available ?? true;
 
                             // Calculate dynamic UI price based on currently selected options
                             let displayItemPrice = item.price;
@@ -318,17 +319,25 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                             return (
                               <button
                                 key={item.id}
+                                disabled={!isItemAvailable}
                                 onClick={() => handleOptionToggle(group, item)}
                                 className={cn(
-                                  "flex flex-col p-4 rounded-2xl border-2 transition-all text-right",
-                                  isSelected
+                                  "flex flex-col p-4 rounded-2xl border-2 transition-all text-right relative overflow-hidden",
+                                  !isItemAvailable && "opacity-50 grayscale cursor-not-allowed bg-gray-100 dark:bg-zinc-800/40 border-gray-200 dark:border-white/5",
+                                  isItemAvailable && isSelected
                                     ? "border-primary bg-primary/5 text-primary"
-                                    : "border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-300"
+                                    : isItemAvailable && "border-gray-100 dark:border-white/5 bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-300"
                                 )}
                               >
                                 <div className="flex items-center justify-between w-full mb-1">
                                   <span className="font-bold text-sm">{item.name_ar}</span>
-                                  <span className="text-xs font-medium">{displayPrice}</span>
+                                  <span className="text-xs font-medium">
+                                    {!isItemAvailable ? (
+                                      <span className="text-red-500 font-bold bg-red-500/10 px-2 py-0.5 rounded-full text-[10px]">نفد</span>
+                                    ) : (
+                                      displayPrice
+                                    )}
+                                  </span>
                                 </div>
                                 {item.calories && item.calories > 0 && (
                                   <span className="text-[10px] font-bold opacity-70 flex items-center gap-1">

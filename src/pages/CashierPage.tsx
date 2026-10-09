@@ -450,9 +450,9 @@ export const CashierPage: React.FC = () => {
         });
     };
 
-    // Fetch products when opening menu management
+    // Fetch products whenever menu management modal opens
     useEffect(() => {
-        if (showMenuManagement && menuProducts.length === 0) {
+        if (showMenuManagement) {
             setLoadingMenu(true);
             supabase.from('products').select('*').order('category_id').order('name_ar').then(({ data }) => {
                 if (data) setMenuProducts(data);
@@ -465,10 +465,15 @@ export const CashierPage: React.FC = () => {
         const nextStatus = !currentStatus;
         // Optimistic update
         setMenuProducts(prev => prev.map(p => p.id === productId ? { ...p, is_available: nextStatus } : p));
-        const { error } = await supabaseAdmin.from('products').update({ is_available: nextStatus }).eq('id', productId);
-        if (error) {
+        let res = await supabaseAdmin.from('products').update({ is_available: nextStatus }).eq('id', productId);
+        if (res.error) {
+            res = await supabase.from('products').update({ is_available: nextStatus }).eq('id', productId);
+        }
+        if (res.error) {
             toast.error('تعذر تحديث الصنف');
             setMenuProducts(prev => prev.map(p => p.id === productId ? { ...p, is_available: currentStatus } : p));
+        } else {
+            toast.success(nextStatus ? 'تم تفعيل الصنف (متاح)' : 'تم تعطيل الصنف (نفد)');
         }
     };
 

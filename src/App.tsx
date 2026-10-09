@@ -273,16 +273,29 @@ export default function App() {
     fetchData(savedBranch || 'السويدي الغربي', hasCache);
     fetchAppSettings();
 
-    // Auto-sync theme settings on tab focus / phone wake up
+    // Realtime listener for product & category availability changes across all clients
+    const liveMenuChannel = supabase
+      .channel('live-menu-availability-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
+        fetchData(undefined, true);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
+        fetchData(undefined, true);
+      })
+      .subscribe();
+
+    // Auto-sync theme settings & menu on tab focus / phone wake up
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         fetchAppSettings();
+        fetchData(undefined, true);
       }
     };
     window.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       window.removeEventListener('visibilitychange', handleVisibilityChange);
+      supabase.removeChannel(liveMenuChannel);
     };
   }, []);
 
@@ -568,11 +581,14 @@ export default function App() {
       categoryMap[p.category_id].push(p);
     });
 
-    // Step 2: Pick top 3 from each non-drink category
+    // Step 2: Pick top 3 from each non-drink category, prioritizing available items
     const diversePopular: Product[] = [];
     Object.values(categoryMap).forEach(catProds => {
       const topInCat = [...catProds]
-        .sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
+        .sort((a, b) => {
+          if (a.is_available !== b.is_available) return b.is_available ? 1 : -1;
+          return (b.sales_count || 0) - (a.sales_count || 0);
+        })
         .slice(0, 3);
       diversePopular.push(...topInCat);
     });
