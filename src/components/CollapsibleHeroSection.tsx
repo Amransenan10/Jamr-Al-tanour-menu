@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Story } from '../types';
-import { Sparkles, Tag, ChevronLeft, ChevronRight, X, ZoomIn, ShoppingBag } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, ShoppingBag, ZoomIn, Ticket } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface CollapsibleHeroSectionProps {
@@ -21,7 +21,7 @@ export const CollapsibleHeroSection: React.FC<CollapsibleHeroSectionProps> = ({
 
   // Active stories filtering
   const activeStories = React.useMemo(() => {
-    return stories.filter(s => s.is_active);
+    return stories.filter(s => s.is_active !== false);
   }, [stories]);
 
   // Listen to window scroll to collapse/expand
@@ -48,12 +48,15 @@ export const CollapsibleHeroSection: React.FC<CollapsibleHeroSectionProps> = ({
   const isCollapsed = scrollY > 70;
 
   const currentStory = activeStories[currentIndex] || activeStories[0];
+  const displayTitle = currentStory.title || currentStory.offer_name;
 
   const handleStoryClick = (story: Story) => {
+    if (story.is_active === false) return;
     if (story.product_id && onSelectProductById) {
       onSelectProductById(story.product_id);
-    } else if (story.offer_name && story.offer_price && onAddDirectOfferToCart) {
-      onAddDirectOfferToCart(story.offer_name, story.offer_price, story.image_url);
+    } else if (story.offer_price && onAddDirectOfferToCart) {
+      const offerTitle = story.offer_name || story.title || 'عرض خاص';
+      onAddDirectOfferToCart(offerTitle, story.offer_price, story.image_url);
     } else {
       // Image-only poster or promotional banner -> Open full preview modal
       setFullscreenImage(story.image_url);
@@ -91,35 +94,37 @@ export const CollapsibleHeroSection: React.FC<CollapsibleHeroSectionProps> = ({
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent" />
 
-                {/* Content Overlay */}
+                {/* Content Overlay – Title only, clean */}
                 <div className="absolute bottom-0 right-0 left-0 p-4 sm:p-6 flex flex-col justify-end items-start text-right">
-                  {currentStory.offer_name ? (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary text-black font-black text-xs sm:text-sm shadow-lg mb-2">
-                      <Sparkles size={14} className="animate-spin" />
-                      <span>{currentStory.offer_name}</span>
-                      {currentStory.offer_price && (
-                        <span className="bg-black/20 px-2 py-0.5 rounded-full text-white mr-1">
-                          {currentStory.offer_price} ر.س
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500/20 backdrop-blur-md text-amber-300 border border-amber-500/30 text-[11px] font-bold mb-2">
-                      <Tag size={12} />
-                      <span>عرض خاص حصري</span>
-                    </div>
-                  )}
-
-                  {currentStory.title && (
-                    <h3 className="text-white font-extrabold text-base sm:text-2xl drop-shadow-md leading-snug">
-                      {currentStory.title}
+                  {displayTitle && (
+                    <h3 className="text-white font-extrabold text-base sm:text-2xl drop-shadow-md leading-snug mb-2">
+                      {displayTitle}
                     </h3>
                   )}
 
-                  <div className="mt-2 flex items-center gap-2 text-xs font-bold text-gray-300 group-hover:text-primary transition-colors">
-                    <ZoomIn size={14} />
-                    <span>اضغط لمعاينة العرض والتفاصيل 🔥</span>
-                  </div>
+                  {/* Smart CTA button based on story type */}
+                  {currentStory.offer_price ? (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleStoryClick(currentStory); }}
+                      className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl bg-primary text-black font-black text-xs sm:text-sm shadow-lg hover:brightness-110 active:scale-95 transition-all"
+                    >
+                      <ShoppingBag size={14} />
+                      <span>أضف للسلة • {currentStory.offer_price} ر.س</span>
+                    </button>
+                  ) : currentStory.product_id ? (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleStoryClick(currentStory); }}
+                      className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl bg-white/15 backdrop-blur-md text-white border border-white/20 font-bold text-xs sm:text-sm hover:bg-white/25 active:scale-95 transition-all"
+                    >
+                      <ShoppingBag size={14} />
+                      <span>عرض المنتج</span>
+                    </button>
+                  ) : currentStory.promo_code ? (
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/20 backdrop-blur-md border border-amber-500/30 text-amber-300 font-mono font-black text-xs">
+                      <Ticket size={13} />
+                      <span>كود الخصم: {currentStory.promo_code}</span>
+                    </div>
+                  ) : null}
                 </div>
               </motion.div>
             </AnimatePresence>

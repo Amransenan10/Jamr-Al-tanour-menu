@@ -452,7 +452,6 @@ export default function App() {
         supabase
           .from('categories')
           .select('*')
-          .eq('is_active', true)
           .order('display_order', { ascending: true }),
         supabase
           .from('products')
@@ -523,7 +522,14 @@ export default function App() {
     );
   }, [categories]);
 
+  const navCategories = React.useMemo(() => {
+    return categories.filter(c => c.is_active !== false);
+  }, [categories]);
+
   const filteredProducts = React.useMemo(() => {
+    const catActiveMap: Record<string, boolean> = {};
+    categories.forEach(c => { catActiveMap[c.id] = c.is_active !== false; });
+
     return products
       .filter((p) => {
         if (p.is_hidden) return false;
@@ -532,8 +538,9 @@ export default function App() {
           p.name_en.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesCategory && matchesSearch;
       })
+      .map(p => (catActiveMap[p.category_id] === false ? { ...p, is_available: false } : p))
       .sort((a, b) => (b.is_available === a.is_available ? 0 : b.is_available ? 1 : -1));
-  }, [products, activeCategoryId, searchQuery]);
+  }, [products, categories, activeCategoryId, searchQuery]);
 
   const weeklyOffersProducts = React.useMemo(() => {
     const offerProds = products.filter(p => {
@@ -542,77 +549,64 @@ export default function App() {
       const isOfferCat = cat?.name_ar.includes('عرض') || cat?.name_ar.includes('عروض');
       const hasDiscount = p.original_price && p.original_price > p.price;
       return p.is_offer || isOfferCat || hasDiscount;
-    });
-
-    const storyOfferProds: Product[] = stories
-      .filter(s => s.offer_name && s.offer_price)
-      .map(s => ({
-        id: `story_offer_${s.id}`,
-        name_ar: s.offer_name!,
-        name_en: s.offer_name!,
-        description_ar: s.title || 'عرض حصري من الاستوري',
-        description_en: s.title || 'Exclusive Story Offer',
-        price: s.offer_price!,
-        category_id: 'offers_weekly',
-        image_url: s.image_url,
-        is_available: true,
-        is_hidden: false,
-        is_offer: true
-      }));
-
-    const combined = [...offerProds];
-    storyOfferProds.forEach(sp => {
-      if (!combined.some(p => p.name_ar === sp.name_ar)) {
-        combined.push(sp);
+    }).map(p => {
+      const cat = categories.find(c => c.id === p.category_id);
+      if (cat && cat.is_active === false) {
+        return { ...p, is_available: false };
       }
+      return p;
     });
 
-    return combined.sort((a, b) => (b.is_available === a.is_available ? 0 : b.is_available ? 1 : -1));
-  }, [products, categories, stories]);
+    // Sort: available first, then by sales_count
+    return offerProds.sort((a, b) => (b.is_available === a.is_available ? 0 : b.is_available ? 1 : -1));
+  }, [products, categories]);
 
   const topPopularProducts = React.useMemo(() => {
     if (products.length === 0) return [];
-    
-    // Step 1: Group by category (Excluding drinks)
-    const categoryMap: Record<string, Product[]> = {};
-    products.forEach(p => {
-      if (p.is_hidden || drinkCategoryIds.has(p.category_id)) return;
-      if (!categoryMap[p.category_id]) categoryMap[p.category_id] = [];
-      categoryMap[p.category_id].push(p);
+
+    // Build a category order map for deterministic sorting and active checks
+    const catOrderMap: Record<string, number> = {};
+    const catActiveMap: Record<string, boolean> = {};
+    categories.forEach((c, idx) => {
+      catOrderMap[c.id] = c.display_order ?? idx;
+      catActiveMap[c.id] = c.is_active !== false;
     });
 
-    // Step 2: Pick top 3 from each non-drink category, prioritizing available items
-    const diversePopular: Product[] = [];
-    Object.values(categoryMap).forEach(catProds => {
-      const topInCat = [...catProds]
-        .sort((a, b) => {
-          if (a.is_available !== b.is_available) return b.is_available ? 1 : -1;
-          return (b.sales_count || 0) - (a.sales_count || 0);
-        })
-        .slice(0, 3);
-      diversePopular.push(...topInCat);
-    });
-
-    // Step 3: Combine with overall top sellers (excluding drinks), then unique, then limit to 14
-    const overallTop = [...products]
+    // Filter: no hidden, no drinks
+    const eligible = products
       .filter(p => !p.is_hidden && !drinkCategoryIds.has(p.category_id))
-      .sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0))
-      .slice(0, 14);
-
-    const combinedSet = new Set([...diversePopular.map(p => p.id), ...overallTop.map(p => p.id)]);
-    const finalPopular = Array.from(combinedSet)
-      .map(id => products.find(p => p.id === id)!)
-      .filter(Boolean)
-      .sort((a, b) => {
-        if (a.is_available !== b.is_available) {
-          return b.is_available ? 1 : -1;
+      .map(p => {
+        if (catActiveMap[p.category_id] === false) {
+          return { ...p, is_available: false };
         }
-        return (b.sales_count || 0) - (a.sales_count || 0);
-      })
-      .slice(0, 14);
+        return p;
+      });
 
-    return finalPopular;
-  }, [products, drinkCategoryIds]);
+    // Sort deterministically: available first → category order → sales_count desc
+    const sorted = [...eligible].sort((a, b) => {
+      if (a.is_available !== b.is_available) return b.is_available ? 1 : -1;
+      const catOrderDiff = (catOrderMap[a.category_id] ?? 999) - (catOrderMap[b.category_id] ?? 999);
+      if (catOrderDiff !== 0) return catOrderDiff;
+      return (b.sales_count || 0) - (a.sales_count || 0);
+    });
+
+    // Pick top 2 per category to ensure diversity, then fill up to 14
+    const catSeen: Record<string, number> = {};
+    const picked: typeof sorted = [];
+    for (const p of sorted) {
+      catSeen[p.category_id] = (catSeen[p.category_id] || 0) + 1;
+      if (catSeen[p.category_id] <= 2) picked.push(p);
+    }
+
+    // If under 14, fill with remaining sorted items not yet included
+    const pickedIds = new Set(picked.map(p => p.id));
+    for (const p of sorted) {
+      if (picked.length >= 14) break;
+      if (!pickedIds.has(p.id)) picked.push(p);
+    }
+
+    return picked.slice(0, 14);
+  }, [products, categories, drinkCategoryIds]);
 
   const isShowingPopular = activeCategoryId === null && !searchQuery;
   const isShowingWeeklyOffers = activeCategoryId === 'offers_weekly' && !searchQuery;
@@ -701,7 +695,7 @@ export default function App() {
           />
 
           <CategoryBar
-            categories={categories}
+            categories={navCategories}
             activeCategoryId={activeCategoryId}
             onCategoryChange={handleCategoryClick}
             showWeeklyOffers={Boolean(appSettings?.offers_active)}
@@ -733,7 +727,7 @@ export default function App() {
                   <>
                     <MenuSection
                       id="popular"
-                      title="الأكثر طلباً 🔥"
+                      title="الأكثر طلباً"
                       products={topPopularProducts}
                       onSelectProduct={setSelectedProduct}
                       onInView={setActiveCategoryId}
@@ -752,7 +746,14 @@ export default function App() {
                     )}
 
                     {categories.map(category => {
-                      const categoryProds = products.filter(p => p.category_id === category.id && !p.is_hidden).sort((a, b) => (b.is_available === a.is_available ? 0 : b.is_available ? 1 : -1));
+                      const isCategoryActive = category.is_active !== false;
+                      const categoryProds = products
+                        .filter(p => p.category_id === category.id && !p.is_hidden)
+                        .map(p => (!isCategoryActive ? { ...p, is_available: false } : p))
+                        .sort((a, b) => (b.is_available === a.is_available ? 0 : b.is_available ? 1 : -1));
+
+                      if (categoryProds.length === 0) return null;
+
                       return (
                         <MenuSection
                           key={category.id}

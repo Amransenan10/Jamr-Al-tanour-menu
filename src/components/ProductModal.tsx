@@ -159,6 +159,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
 
   const isAddToCartDisabled = () => {
     if (loading) return true;
+    if (product && product.is_available === false) return true;
     return getMissingRequiredGroups().length > 0;
   };
 
@@ -427,7 +428,9 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                       <Loader2 size={18} className="animate-spin" />
                       جاري تحميل الخيارات...
                     </span>
-                  ) : isAddToCartDisabled() ? (
+                  ) : product && product.is_available === false ? (
+                    <span>غير متوفر حالياً</span>
+                  ) : getMissingRequiredGroups().length > 0 ? (
                     <span>اختر {getMissingRequiredGroups()[0]?.name_ar}</span>
                   ) : (
                     <span>إضافة • {calculateTotal()} ر.س</span>
