@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
     Clock, CheckCircle2, Package, Loader2, Bell, RefreshCw,
     MapPin, ShoppingBag, Phone, Bike, Coffee, ChevronDown, LogOut, Copy, ExternalLink,
-    Settings, Volume2, X, LayoutList, Sun, Moon, Star, UserPlus, Search
+    Settings, Volume2, X, LayoutList, Star, UserPlus, Search
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -381,7 +381,7 @@ export const CashierPage: React.FC = () => {
     const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
     const [showSettings, setShowSettings] = useState(false);
     const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
-    const [isDark, setIsDark] = useState(() => localStorage.getItem('jamr_cashier_theme') !== 'light');
+    const isDark = false;
     
     const [storeSettings, setStoreSettings] = useState<any>({ status: 'open', is_delivery_active: true, is_pickup_active: true });
     const storeStatus = storeSettings.status;
@@ -442,13 +442,6 @@ export const CashierPage: React.FC = () => {
         }
     }, [loyaltySearchPhone, showLoyaltyModal]);
 
-    const toggleTheme = () => {
-        setIsDark(prev => {
-            const next = !prev;
-            localStorage.setItem('jamr_cashier_theme', next ? 'dark' : 'light');
-            return next;
-        });
-    };
 
     // Fetch products whenever menu management modal opens
     useEffect(() => {
@@ -1061,13 +1054,6 @@ export const CashierPage: React.FC = () => {
                                 <Bell size={12} /> {counts.new} جديد
                             </span>
                         )}
-                        <button
-                            onClick={toggleTheme}
-                            className={cn("p-2.5 rounded-xl transition-colors", isDark ? 'bg-zinc-800 hover:bg-zinc-700' : 'bg-gray-100 hover:bg-gray-200')}
-                            title={isDark ? 'الوضع النهاري' : 'الوضع الليلي'}
-                        >
-                            {isDark ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} className="text-gray-600" />}
-                        </button>
                         <button
                             onClick={fetchOrders}
                             className={cn("p-2.5 rounded-xl transition-colors", isDark ? 'bg-zinc-800 hover:bg-zinc-700' : 'bg-gray-100 hover:bg-gray-200')}

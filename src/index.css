@@ -11,7 +11,7 @@
 
 @layer base {
   body {
-    @apply bg-white text-charcoal dark:bg-charcoal dark:text-white transition-colors duration-300;
+    @apply bg-white text-charcoal;
     font-family: var(--font-sans);
     direction: rtl;
   }

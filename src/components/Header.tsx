@@ -1,7 +1,6 @@
 import React from 'react';
-import { Search, Moon, Sun, MapPin, ShoppingCart, ChevronDown, User, FileText, Menu, Sparkles, Star } from 'lucide-react';
+import { Search, MapPin, ShoppingCart, ChevronDown, User, FileText, Menu, Sparkles, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
 import { Branch, SeasonalEventSettings } from '../types';
 import { motion } from 'motion/react';
@@ -31,7 +30,6 @@ export const Header: React.FC<HeaderProps> = ({
   logoUrl,
   eventSettings
 }) => {
-  const { theme, toggleTheme } = useTheme();
   const { totalItems } = useCart();
   const [isBranchMenuOpen, setIsBranchMenuOpen] = React.useState(false);
 
@@ -109,17 +107,6 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Menu size={18} className="sm:w-5 sm:h-5" />
               <span>القائمة</span>
-            </button>
-            <button
-              onClick={toggleTheme}
-              className={cn(
-                "p-2.5 rounded-xl transition-colors shrink-0",
-                isEventActive
-                  ? "bg-white/10 hover:bg-white/20 text-amber-300 border border-white/10"
-                  : "bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10"
-              )}
-            >
-              {theme === 'dark' ? <Sun size={18} className="sm:w-5 sm:h-5" /> : <Moon size={18} className="sm:w-5 sm:h-5" />}
             </button>
           </div>
         </div>
