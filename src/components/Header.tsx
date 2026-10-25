@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Moon, Sun, MapPin, ShoppingCart, ChevronDown, User, FileText, Menu, Sparkles } from 'lucide-react';
+import { Search, Moon, Sun, MapPin, ShoppingCart, ChevronDown, User, FileText, Menu, Sparkles, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
@@ -14,6 +14,8 @@ interface HeaderProps {
   onCartOpen: () => void;
   onSearch: (query: string) => void;
   onSideMenuOpen: () => void;
+  onLoyaltyOpen?: () => void;
+  loyaltyPoints?: number | null;
   logoUrl?: string;
   eventSettings?: SeasonalEventSettings;
 }
@@ -24,6 +26,8 @@ export const Header: React.FC<HeaderProps> = ({
   onCartOpen,
   onSearch,
   onSideMenuOpen,
+  onLoyaltyOpen,
+  loyaltyPoints,
   logoUrl,
   eventSettings
 }) => {
@@ -75,29 +79,47 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-2 w-1/2">
+          <div className="flex items-center justify-end gap-1.5 sm:gap-2 w-1/2">
+            {onLoyaltyOpen && (
+              <button
+                onClick={onLoyaltyOpen}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl transition-all font-black text-xs shrink-0 active:scale-95",
+                  (loyaltyPoints && loyaltyPoints > 0)
+                    ? "bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/30 shadow-sm"
+                    : isEventActive
+                      ? "bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                      : "bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-white/10"
+                )}
+                title="نقاط الولاء والمكافآت"
+              >
+                <Star size={15} className={cn((loyaltyPoints && loyaltyPoints > 0) ? "fill-amber-400 text-amber-400" : "text-amber-400")} />
+                <span>{(loyaltyPoints && loyaltyPoints > 0) ? `${loyaltyPoints} نقطة` : 'نقاطي'}</span>
+              </button>
+            )}
+
             <button
               onClick={onSideMenuOpen}
               className={cn(
-                "flex items-center gap-2 px-3 py-2.5 rounded-xl transition-colors font-bold text-sm",
+                "flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-2.5 rounded-xl transition-colors font-bold text-xs sm:text-sm",
                 isEventActive
                   ? "bg-white/10 hover:bg-white/20 text-white border border-white/10"
                   : "bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-white/10"
               )}
             >
-              <Menu size={20} />
+              <Menu size={18} className="sm:w-5 sm:h-5" />
               <span>القائمة</span>
             </button>
             <button
               onClick={toggleTheme}
               className={cn(
-                "p-2.5 rounded-xl transition-colors",
+                "p-2.5 rounded-xl transition-colors shrink-0",
                 isEventActive
                   ? "bg-white/10 hover:bg-white/20 text-amber-300 border border-white/10"
                   : "bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10"
               )}
             >
-              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+              {theme === 'dark' ? <Sun size={18} className="sm:w-5 sm:h-5" /> : <Moon size={18} className="sm:w-5 sm:h-5" />}
             </button>
           </div>
         </div>

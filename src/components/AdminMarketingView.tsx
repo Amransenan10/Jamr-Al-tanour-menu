@@ -788,6 +788,57 @@ export const AdminMarketingView: React.FC = () => {
               <h3 className="font-black text-lg text-white">إرسال إشعار مباشر</h3>
             </div>
 
+            {/* Quick Loyalty Templates */}
+            <div className="space-y-1.5 pb-2">
+              <label className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
+                <Sparkles size={13} className="text-amber-400" />
+                <span>قوالب إشعارات نقاط الولاء الجذابة:</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNotifForm({
+                    ...notifForm,
+                    title: 'غداك اليوم برعاية نقاطك! 🍕',
+                    message: 'عندك نقاط تنتظرك في جمر التنور! اطلب الآن واستخدم رصيدك لخصم فوري على وجبتك المفضلة 🌟',
+                    promo_code: ''
+                  })}
+                  className="p-2.5 bg-zinc-800/80 hover:bg-zinc-800 text-right rounded-xl border border-white/5 hover:border-amber-500/40 transition-colors text-xs space-y-0.5"
+                >
+                  <div className="font-bold text-amber-300">🍕 تذكير الغداء</div>
+                  <div className="text-[10px] text-gray-400 line-clamp-1">غداك اليوم برعاية نقاطك...</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setNotifForm({
+                    ...notifForm,
+                    title: 'عشائك اليوم عليه خصم! 🔥',
+                    message: 'استبدل نقاطك بخصم مباشر ولذيذ على الشاورما والمعجنات من جمر التنور الليلة 🌟',
+                    promo_code: ''
+                  })}
+                  className="p-2.5 bg-zinc-800/80 hover:bg-zinc-800 text-right rounded-xl border border-white/5 hover:border-amber-500/40 transition-colors text-xs space-y-0.5"
+                >
+                  <div className="font-bold text-orange-400">🌙 تذكير العشاء</div>
+                  <div className="text-[10px] text-gray-400 line-clamp-1">عشائك اليوم عليه خصم...</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setNotifForm({
+                    ...notifForm,
+                    title: 'مكافآتك تنتظرك في جمر التنور 🎯',
+                    message: 'باقي لك طلب بسيط وتفتح أعلى مستوى خصومات! تصفح المنيو واستمتع بألذ الأطباق 🌟',
+                    promo_code: ''
+                  })}
+                  className="p-2.5 bg-zinc-800/80 hover:bg-zinc-800 text-right rounded-xl border border-white/5 hover:border-amber-500/40 transition-colors text-xs space-y-0.5"
+                >
+                  <div className="font-bold text-emerald-400">🎯 تحفيز النقاط</div>
+                  <div className="text-[10px] text-gray-400 line-clamp-1">مكافآتك تنتظرك...</div>
+                </button>
+              </div>
+            </div>
+
             <form onSubmit={handleSendBroadcast} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-gray-400">عنوان الإشعار <span className="text-red-500">*</span></label>

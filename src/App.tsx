@@ -23,7 +23,8 @@ import { ThemeProvider } from './context/ThemeContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader2, UtensilsCrossed, Navigation, AlertCircle, Clock, CheckCircle2, Bike, Utensils, FileText, Sparkles, Tag, ShieldAlert, ArrowDown, ChevronLeft, X } from 'lucide-react';
 import { BranchSelectorModal } from './components/BranchSelectorModal';
-import { LoyaltyReminderBar } from './components/LoyaltyReminderBar';
+import { LoyaltyModal } from './components/LoyaltyModal';
+import { supabaseLoyalty } from './lib/loyaltySupabase';
 import { FloatingCartButton } from './components/FloatingCartButton';
 import { useBackButton } from './hooks/useBackButton';
 import { Link } from 'react-router-dom';
@@ -54,6 +55,8 @@ export default function App() {
   const [storeSettings, setStoreSettings] = useState<any>(null);
   const [appSettings, setAppSettings] = useState<any>({});
   const [isWheelOpen, setIsWheelOpen] = useState(false);
+  const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null);
+  const [isLoyaltyModalOpen, setIsLoyaltyModalOpen] = useState(false);
   const storeStatus = storeSettings?.status || 'open';
 
   // Hardware Back Button Handlers
@@ -61,6 +64,8 @@ export default function App() {
   useBackButton(isSideMenuOpen, () => setIsSideMenuOpen(false), 'menu');
   useBackButton(selectedProduct !== null, () => setSelectedProduct(null), 'product');
   useBackButton(activeStoryIndex !== null, () => setActiveStoryIndex(null), 'story');
+  useBackButton(isLoyaltyModalOpen, () => setIsLoyaltyModalOpen(false), 'loyalty');
+  useBackButton(isWheelOpen, () => setIsWheelOpen(false), 'wheel');
 
   useEffect(() => {
     initOneSignal();
@@ -273,6 +278,26 @@ export default function App() {
     fetchData(savedBranch || 'السويدي الغربي', hasCache);
     fetchAppSettings();
 
+    // Fetch customer loyalty points if phone exists
+    const fetchCustomerLoyalty = async () => {
+      try {
+        const phone = (localStorage.getItem('jamr_customer_phone') || localStorage.getItem('customerPhone') || '').replace(/\D/g, '');
+        if (phone && phone.length >= 9 && supabaseLoyalty) {
+          const { data } = await supabaseLoyalty
+            .from('customers')
+            .select('points_balance')
+            .eq('phone_number', phone)
+            .maybeSingle();
+          if (data && typeof data.points_balance === 'number') {
+            setLoyaltyPoints(data.points_balance);
+          }
+        }
+      } catch (e) {
+        console.warn('Loyalty points fetch error:', e);
+      }
+    };
+    fetchCustomerLoyalty();
+
     // Realtime listener for product & category availability changes across all clients
     const liveMenuChannel = supabase
       .channel('live-menu-availability-sync')
@@ -289,6 +314,7 @@ export default function App() {
       if (document.visibilityState === 'visible') {
         fetchAppSettings();
         fetchData(undefined, true);
+        fetchCustomerLoyalty();
       }
     };
     window.addEventListener('visibilitychange', handleVisibilityChange);
@@ -307,6 +333,22 @@ export default function App() {
       if (['completed', 'cancelled'].includes(newOrder.status)) {
         if (newOrder.status === 'completed') {
           localStorage.setItem('jamr_last_completed_order', newOrder.id);
+          // Refetch customer points balance after 1.5s to sync newly earned points
+          setTimeout(async () => {
+            try {
+              const phone = (localStorage.getItem('jamr_customer_phone') || localStorage.getItem('customerPhone') || '').replace(/\D/g, '');
+              if (phone && phone.length >= 9 && supabaseLoyalty) {
+                const { data } = await supabaseLoyalty
+                  .from('customers')
+                  .select('points_balance')
+                  .eq('phone_number', phone)
+                  .maybeSingle();
+                if (data && typeof data.points_balance === 'number') {
+                  setLoyaltyPoints(data.points_balance);
+                }
+              }
+            } catch (e) {}
+          }, 1500);
         }
         setTimeout(() => {
           localStorage.removeItem('jamr_active_order');
@@ -321,7 +363,7 @@ export default function App() {
           accepted: 'تم قبول الطلب ✅',
           preparing: 'جاري التحضير في المطبخ 👨‍🍳',
           ready: newOrder.order_type === 'delivery' ? 'المندوب في الطريق إليك 🛵' : 'طلبك جاهز للاستلام! 🎉',
-          completed: 'تم تسليم الطلب! اضغط لتدوير عجلة الحظ 🎡',
+          completed: 'تم تسليم الطلب وأضفنا نقاط الولاء لرصيدك! 🌟 اضغط لتدوير عجلة الحظ 🎡',
           cancelled: 'تم إلغاء الطلب ❌'
         };
         const label = statusLabels[newOrder.status] || 'تحديث جديد في طلبك';
@@ -642,6 +684,8 @@ export default function App() {
             onCartOpen={() => setIsCartOpen(true)}
             onSearch={setSearchQuery}
             onSideMenuOpen={() => setIsSideMenuOpen(true)}
+            onLoyaltyOpen={() => setIsLoyaltyModalOpen(true)}
+            loyaltyPoints={loyaltyPoints}
             logoUrl={appSettings?.logo_url || ''}
             eventSettings={appSettings}
           />
@@ -825,9 +869,12 @@ export default function App() {
             appSettings={appSettings}
           />
 
-          <LoyaltyReminderBar
+          <LoyaltyModal
+            isOpen={isLoyaltyModalOpen}
+            onClose={() => setIsLoyaltyModalOpen(false)}
             onOpenCart={() => setIsCartOpen(true)}
-            onOpenSideMenu={() => setIsSideMenuOpen(true)}
+            onOpenSpinWheel={() => setIsWheelOpen(true)}
+            onPointsUpdate={(pts) => setLoyaltyPoints(pts)}
           />
 
           {activeStoryIndex !== null && (

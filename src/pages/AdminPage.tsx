@@ -984,6 +984,7 @@ const AdminMenuView = () => {
             category_id: targetCategory,
             image_url: formData.image_url || null,
             is_available: Boolean(formData.is_available),
+            is_offer: Boolean(formData.is_offer || formData.category_id === 'offers_weekly'),
         };
 
         // Conditionally add optional columns (they may not exist in the DB yet)
@@ -1069,6 +1070,9 @@ const AdminMenuView = () => {
                                     <h3 className="font-bold flex items-center justify-between">
                                         {p.name_ar}
                                         <div className="flex items-center gap-1">
+                                            {(p.is_offer || (p.original_price && p.original_price > p.price)) && (
+                                                <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full font-bold">عرض 🏷️</span>
+                                            )}
                                             {p.is_hidden && <span className="text-[10px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded-full">مخفي (للعروض)</span>}
                                             {!p.is_available && <span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">نَفَد</span>}
                                         </div>
@@ -1164,6 +1168,17 @@ const AdminMenuView = () => {
                                     </div>
                                     <span className="text-sm font-bold flex-1">الصنف متوفر لطلبات العملاء</span>
                                     <input type="checkbox" className="hidden" checked={formData.is_available} onChange={e => setFormData({...formData, is_available: e.target.checked})} />
+                                </label>
+
+                                <label className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl cursor-pointer hover:bg-amber-500/20 transition-colors mt-2">
+                                    <div className={cn("w-5 h-5 rounded-md flex items-center justify-center border", (formData.is_offer || formData.category_id === 'offers_weekly') ? "bg-amber-500 border-amber-500" : "bg-zinc-900 border-white/20")}>
+                                        {(formData.is_offer || formData.category_id === 'offers_weekly') && <CheckCircle2 size={14} className="text-black" />}
+                                    </div>
+                                    <div className="flex-1">
+                                        <span className="text-sm font-bold text-amber-300 block">تمييز الصنف كـ (عرض خاص) 🏷️</span>
+                                        <span className="text-xs text-amber-300/70 block mt-0.5">سيظهر الصنف في قسم العروض الأسبوعية في المنيو</span>
+                                    </div>
+                                    <input type="checkbox" className="hidden" checked={Boolean(formData.is_offer || formData.category_id === 'offers_weekly')} onChange={e => setFormData({...formData, is_offer: e.target.checked})} />
                                 </label>
 
                                 <label className="flex items-center gap-3 p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl cursor-pointer hover:bg-purple-500/20 transition-colors mt-2">

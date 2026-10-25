@@ -68,12 +68,12 @@ export const CollapsibleHeroSection: React.FC<CollapsibleHeroSectionProps> = ({
       <div 
         className={cn(
           "transition-all duration-500 ease-out overflow-hidden px-4 container mx-auto",
-          isCollapsed ? "max-h-0 opacity-0 my-0 py-0 scale-95" : "max-h-[380px] opacity-100 mt-4 mb-2 scale-100"
+          isCollapsed ? "max-h-0 opacity-0 my-0 py-0 scale-95" : "max-h-[550px] opacity-100 mt-4 mb-2 scale-100"
         )}
       >
-        <div className="relative rounded-3xl overflow-hidden shadow-2xl bg-zinc-900 border border-white/10 group">
-          {/* Main Hero Slider Container */}
-          <div className="relative aspect-[21/9] sm:aspect-[2.5/1] w-full overflow-hidden bg-zinc-950">
+        <div className="relative max-w-4xl mx-auto rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl bg-zinc-900 border border-white/10 group">
+          {/* Main Hero Slider Container - aspect 2:1 matches standard restaurant designs (1080x540) */}
+          <div className="relative aspect-[2/1] sm:aspect-[2.1/1] w-full overflow-hidden bg-zinc-950">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentStory.id}
@@ -90,9 +90,9 @@ export const CollapsibleHeroSection: React.FC<CollapsibleHeroSectionProps> = ({
                   className="w-full h-full object-cover object-center"
                 />
                 
-                {/* Overlay Gradients */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent" />
+                {/* Overlay Gradients - subtle to keep image text crisp and readable */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/35 via-transparent to-transparent pointer-events-none" />
 
                 {/* Content Overlay – Title only, clean */}
                 <div className="absolute bottom-0 right-0 left-0 p-4 sm:p-6 flex flex-col justify-end items-start text-right">
