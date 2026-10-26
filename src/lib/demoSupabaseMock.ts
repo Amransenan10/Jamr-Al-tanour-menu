@@ -110,6 +110,62 @@ class MockQueryBuilder {
     return this;
   }
 
+  neq(column: string, value: any) {
+    this.filters.push((item) => item[column] !== value);
+    return this;
+  }
+
+  in(column: string, values: any[]) {
+    this.filters.push((item) => Array.isArray(values) && values.includes(item[column]));
+    return this;
+  }
+
+  gte(column: string, value: any) {
+    this.filters.push((item) => item[column] >= value);
+    return this;
+  }
+
+  gt(column: string, value: any) {
+    this.filters.push((item) => item[column] > value);
+    return this;
+  }
+
+  lte(column: string, value: any) {
+    this.filters.push((item) => item[column] <= value);
+    return this;
+  }
+
+  lt(column: string, value: any) {
+    this.filters.push((item) => item[column] < value);
+    return this;
+  }
+
+  is(column: string, value: any) {
+    this.filters.push((item) => item[column] === value);
+    return this;
+  }
+
+  like(column: string, pattern: string) {
+    const regex = new RegExp('^' + pattern.replace(/%/g, '.*') + '$', 'i');
+    this.filters.push((item) => regex.test(String(item[column] || '')));
+    return this;
+  }
+
+  ilike(column: string, pattern: string) {
+    return this.like(column, pattern);
+  }
+
+  contains(column: string, value: any) {
+    this.filters.push((item) => {
+      const val = item[column];
+      if (Array.isArray(val)) {
+        return Array.isArray(value) ? value.every(v => val.includes(v)) : val.includes(value);
+      }
+      return false;
+    });
+    return this;
+  }
+
   order(column: string, options: { ascending?: boolean } = { ascending: true }) {
     const asc = options.ascending ?? true;
     this.orderFn = (a, b) => {
@@ -182,6 +238,32 @@ class MockQueryBuilder {
           { branch_name: 'فرع التحلية', password: '1234' },
           { branch_name: 'admin', password: '123' }
         ];
+      case 'broadcast_notifications':
+        return [];
+      case 'theme_settings':
+        return [MITHAQ_APP_SETTINGS];
+      case 'option_groups': {
+        const groups: any[] = [];
+        MITHAQ_PRODUCTS.forEach(p => {
+          if (p.option_groups) groups.push(...p.option_groups);
+        });
+        return groups;
+      }
+      case 'option_items': {
+        const items: any[] = [];
+        MITHAQ_PRODUCTS.forEach(p => {
+          if (p.option_groups) {
+            p.option_groups.forEach(g => {
+              if (g.items) items.push(...g.items);
+            });
+          }
+        });
+        return items;
+      }
+      case 'cart_recovery_settings':
+        return [{ is_enabled: false }];
+      case 'spin_wheel_rewards':
+        return [];
       default:
         return [];
     }
@@ -361,39 +443,63 @@ export const demoSupabaseClient: any = {
   from: (table: string) => new MockQueryBuilder(table),
 
   channel: (channelName: string) => {
-    return {
-      on: (eventStr: string, filterObj: any, callback: (payload: any) => void) => {
+    const channelListeners: Array<{ table: string; callback: any }> = [];
+
+    const channelObj: any = {
+      name: channelName,
+      state: 'joined',
+      topic: channelName,
+      on: (_eventStr: string, filterObj: any, callback: (payload: any) => void) => {
         const table = filterObj?.table || '*';
-        listeners.push({ table, callback });
-        return {
-          on: (_e: string, _f: any, cb: any) => {
-            listeners.push({ table: _f?.table || '*', callback: cb });
-            return demoSupabaseClient.channel(channelName);
-          },
-          subscribe: (statusCallback?: (status: string) => void) => {
-            if (statusCallback) statusCallback('SUBSCRIBED');
-            return {
-              unsubscribe: () => {
-                const idx = listeners.findIndex(l => l.callback === callback);
-                if (idx !== -1) listeners.splice(idx, 1);
-              }
-            };
-          }
-        };
+        const entry = { table, callback };
+        listeners.push(entry);
+        channelListeners.push(entry);
+        return channelObj;
       },
       subscribe: (statusCallback?: (status: string) => void) => {
-        if (statusCallback) statusCallback('SUBSCRIBED');
-        return {
-          unsubscribe: () => {}
-        };
+        if (statusCallback) {
+          try {
+            statusCallback('SUBSCRIBED');
+          } catch (e) {
+            console.error('Demo realtime statusCallback error:', e);
+          }
+        }
+        return channelObj;
+      },
+      unsubscribe: async () => {
+        channelListeners.forEach(entry => {
+          const idx = listeners.indexOf(entry);
+          if (idx !== -1) listeners.splice(idx, 1);
+        });
+        return 'ok';
       }
     };
+
+    return channelObj;
   },
+
+  removeChannel: async (channelOrName?: any) => {
+    if (channelOrName && typeof channelOrName.unsubscribe === 'function') {
+      try {
+        await channelOrName.unsubscribe();
+      } catch (e) {
+        // ignore
+      }
+    }
+    return 'ok';
+  },
+
+  removeAllChannels: async () => {
+    listeners.length = 0;
+    return 'ok';
+  },
+
+  getChannels: () => [],
 
   storage: {
     from: (_bucket: string) => ({
       getPublicUrl: (path: string) => ({
-        data: { publicUrl: path.startsWith('http') ? path : '/assets/logo.png' }
+        data: { publicUrl: path?.startsWith('http') ? path : '/assets/logo.png' }
       }),
       upload: async (_path: string, _file: any) => ({
         data: { path: _path },
