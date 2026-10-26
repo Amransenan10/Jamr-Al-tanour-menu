@@ -166,7 +166,7 @@ export const OrderTrackingPage: React.FC = () => {
                 <div className="text-center">
                     <Link to="/" className="inline-block mb-3">
                         <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 mx-auto overflow-hidden border border-gray-100 dark:border-white/10 p-1">
-                            <img src="/assets/logo.png" alt="جمر التنور" className="w-full h-full object-contain" />
+                            <img src="/assets/logo.png" alt="مذاق | MITHAQ" className="w-full h-full object-contain" />
                         </div>
                     </Link>
                     <h1 className="text-xl font-black text-gray-900 dark:text-white">تتبع طلبك</h1>

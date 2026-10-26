@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, FileText, MessageCircle, Star, Instagram, Twitter, Navigation } from 'lucide-react';
+import { X, FileText, MessageCircle, Star, Instagram, Twitter, Navigation, Laptop, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabaseLoyalty } from '../lib/loyaltySupabase';
 
@@ -71,7 +71,7 @@ export const SideMenuDrawer: React.FC<SideMenuDrawerProps> = ({ isOpen, onClose,
   // Prepare support URL
   const supportPhone = appSettings?.social_whatsapp;
   const supportUrl = supportPhone 
-    ? `https://wa.me/${supportPhone}?text=${encodeURIComponent('أهلاً، لدي استفسار/شكوى بخصوص مطعم جمر التنور:')}`
+    ? `https://wa.me/${supportPhone}?text=${encodeURIComponent('أهلاً، لدي استفسار بخصوص مطعم مذاق | MITHAQ:')}`
     : '#';
 
   return (
@@ -123,6 +123,38 @@ export const SideMenuDrawer: React.FC<SideMenuDrawerProps> = ({ isOpen, onClose,
                     <h3 className="font-bold text-sm text-gray-900 dark:text-white">طلباتي السابقة</h3>
                     <p className="text-xs text-gray-500">تتبع طلباتك وتاريخها</p>
                   </div>
+                </button>
+
+                <button 
+                  onClick={() => {
+                    onClose();
+                    setTimeout(() => navigate('/cashier'), 150);
+                  }}
+                  className="w-full flex items-center gap-3 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 hover:border-amber-500/40 transition-colors text-right"
+                >
+                  <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-white shrink-0 shadow-md shadow-amber-500/20">
+                    <Laptop size={20} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="font-bold text-sm text-amber-600 dark:text-amber-400">لوحة الكاشير (تجربة حية)</h3>
+                      <span className="text-[10px] bg-amber-500 text-white font-black px-1.5 py-0.2 rounded-full">1234</span>
+                    </div>
+                    <p className="text-xs text-gray-500">استقبال الطلبات والدارك مود</p>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => {
+                    if (window.confirm('هل تريد إعادة تعيين بيانات النسخة التجريبية وحذف الطلبات المنفذة؟')) {
+                      localStorage.clear();
+                      window.location.reload();
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-500/10 text-xs transition-colors"
+                >
+                  <RotateCcw size={13} />
+                  <span>إعادة تعيين بيانات التجربة (Reset Demo)</span>
                 </button>
               </div>
 
@@ -241,7 +273,7 @@ export const SideMenuDrawer: React.FC<SideMenuDrawerProps> = ({ isOpen, onClose,
             </div>
             
             <div className="p-4 border-t border-gray-100 dark:border-white/5 text-center bg-gray-50/50 dark:bg-transparent">
-              <p className="text-[10px] text-gray-400 font-medium tracking-wide">جمر التنور © 2026</p>
+              <p className="text-[10px] text-gray-400 font-medium tracking-wide">مطعم مذاق | MITHAQ © 2026 (Demo)</p>
             </div>
           </motion.div>
         </>

@@ -50,13 +50,13 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden flex items-center justify-center shrink-0 shadow-sm border border-white/10 bg-black/20">
               <img
                 src={logoUrl || '/assets/logo.png'}
-                alt="جمر التنور"
+                alt="مذاق | MITHAQ"
                 className="w-full h-full object-contain"
               />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg sm:text-xl font-extrabold text-primary leading-tight">جمر التنور</h1>
+                <h1 className="text-lg sm:text-xl font-extrabold text-primary leading-tight">مذاق | MITHAQ</h1>
                 {isEventActive && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm">
                     <span>{presetDetails?.icon || '🇸🇦'}</span>

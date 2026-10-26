@@ -1,7 +1,7 @@
 {
-    "name": "جمر التنور",
-    "short_name": "جمر التنور",
-    "description": "المنيو الإلكتروني لتلقي الطلبات وعرض الوجبات",
+    "name": "مذاق | MITHAQ",
+    "short_name": "مذاق",
+    "description": "منيو إلكتروني ذكي لتلقي الطلبات وعرض الوجبات (نسخة تجريبية Demo)",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#121212",

@@ -354,7 +354,7 @@ export const playNotificationSound = (type: SoundType = 'standard') => {
 };
 
 // ─── CashierPage ─────────────────────────────────────────────────────────────
-const BRANCHES: Branch[] = ['السويدي الغربي', 'طويق'];
+const BRANCHES: Branch[] = ['الفرع الرئيسي', 'فرع التحلية'];
 const FILTER_STATUSES: (OrderStatus | 'active')[] = ['active', 'new', 'accepted', 'preparing', 'ready', 'completed'];
 const FILTER_LABELS: Record<string, string> = {
     active: 'النشطة', new: 'جديدة', accepted: 'مقبولة',
@@ -897,11 +897,11 @@ export const CashierPage: React.FC = () => {
                     <div className="text-center space-y-8 relative">
                         <div>
                             <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center shadow-2xl shadow-primary/30 mx-auto mb-5 overflow-hidden p-2 border border-white/10">
-                                <img src="/assets/logo.png" alt="جمر التنور" className="w-full h-full object-contain" />
+                                <img src="/assets/logo.png" alt="مذاق | MITHAQ" className="w-full h-full object-contain" />
                             </div>
-                            <h1 className={cn("text-3xl font-black", isDark ? 'text-white' : 'text-gray-900')}>لوحة الكاشير</h1>
+                            <h1 className={cn("text-3xl font-black", isDark ? 'text-white' : 'text-gray-900')}>لوحة كاشير مذاق</h1>
                             <p className="text-gray-500 mt-2 text-sm">
-                                {loginBranch ? `تسجيل الدخول لفرع ${loginBranch}` : 'اختر الفرع لبدء استقبال الطلبات'}
+                                {loginBranch ? `تسجيل الدخول لـ ${loginBranch} (الرمز التجريبي: 1234)` : 'اختر الفرع لتجربة استقبال الطلبات'}
                             </p>
                         </div>
 
@@ -1023,10 +1023,10 @@ export const CashierPage: React.FC = () => {
                     <div className="flex items-center justify-between w-full md:w-auto">
                         <div className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 overflow-hidden p-1 border border-white/10">
-                            <img src="/assets/logo.png" alt="جمر التنور" className="w-full h-full object-contain" />
+                            <img src="/assets/logo.png" alt="مذاق | MITHAQ" className="w-full h-full object-contain" />
                         </div>
                         <div>
-                            <h1 className={cn("font-black text-lg leading-none", isDark ? 'text-white' : 'text-gray-900')}>كاشير جمر التنور</h1>
+                            <h1 className={cn("font-black text-lg leading-none", isDark ? 'text-white' : 'text-gray-900')}>كاشير مذاق | MITHAQ</h1>
                             <div className="flex items-center gap-1.5 mt-0.5">
                                 <MapPin size={11} className="text-primary" />
                                 <span className="text-xs text-gray-400">فرع {branch}</span>

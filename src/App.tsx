@@ -276,7 +276,7 @@ export default function App() {
     }
 
     // fetchData handles menu/products/categories only in background if cache exists
-    fetchData(savedBranch || 'السويدي الغربي', hasCache);
+    fetchData(savedBranch || 'الفرع الرئيسي', hasCache);
     fetchAppSettings();
 
     // Fetch customer loyalty points if phone exists
@@ -488,7 +488,7 @@ export default function App() {
     setError(null);
     try {
       const startTime = Date.now();
-      const currentSelectedBranch = overrideBranch || selectedBranch || 'السويدي الغربي';
+      const currentSelectedBranch = overrideBranch || selectedBranch || 'الفرع الرئيسي';
       // NOTE: app_settings is intentionally NOT fetched here to prevent overwriting
       // realtime-updated state. Use fetchAppSettings() for that.
       const [catsRes, prodsRes, statusRes, storiesRes] = await Promise.all([
@@ -679,6 +679,29 @@ export default function App() {
             eventSettings={appSettings}
           />
           
+          {/* Standalone Demo Live Notification Bar */}
+          <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 text-white py-2 px-3 text-xs shadow-sm flex items-center justify-between gap-2 border-b border-white/10">
+            <div className="flex items-center gap-2 truncate">
+              <span className="bg-white/20 backdrop-blur-sm text-white px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0">
+                Demo
+              </span>
+              <span className="font-bold truncate text-[11px] sm:text-xs">
+                نسخة تجريبية تفاعلية لعرض النظام للعملاء
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Link
+                to="/cashier"
+                target="_blank"
+                className="bg-white text-zinc-900 px-2.5 py-1 rounded-xl text-[11px] font-black shadow-sm hover:bg-amber-50 active:scale-95 transition-all flex items-center gap-1.5"
+                title="فتح لوحة الكاشير في لسان جديد لتجربة استلام الطلب مباشرة"
+              >
+                <span>شاشة الكاشير 💻</span>
+                <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.2 rounded-md font-bold">1234</span>
+              </Link>
+            </div>
+          </div>
+
           <Header
             selectedBranch={selectedBranch}
             onBranchChange={handleBranchSelect}
@@ -854,7 +877,7 @@ export default function App() {
           <CartDrawer
             isOpen={isCartOpen}
             onClose={() => setIsCartOpen(false)}
-            branch={selectedBranch || 'السويدي الغربي'}
+            branch={selectedBranch || 'الفرع الرئيسي'}
             storeSettings={storeSettings}
             onOrderPlaced={() => {
               // Wait a moment for the drawer to close, then show the wheel ONLY IF wheel_active is enabled

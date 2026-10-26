@@ -30,7 +30,7 @@ export const initOneSignal = (appId?: string) => {
               type: "push",
               autoPrompt: true,
               text: {
-                actionMessage: "هل ترغب في استقبال خصومات وعروض جمر التنور الحصرية؟",
+                actionMessage: "هل ترغب في استقبال خصومات وعروض مطعم مذاق الحصرية؟",
                 acceptButton: "موافق 👍",
                 cancelButton: "لاحقاً"
               },
@@ -42,7 +42,7 @@ export const initOneSignal = (appId?: string) => {
           ]
         },
         welcomeNotification: {
-          title: "مطعم جمر التنور 🔥",
+          title: "مطعم مذاق | MITHAQ 🍽️",
           message: "أهلاً بك! تم تفعيل إشعارات العروض والخصومات بنجاح 🎉"
         }
       });

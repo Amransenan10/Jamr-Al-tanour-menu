@@ -1,15 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
+import { demoSupabaseClient } from './demoSupabaseMock';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// ── MITHAQ DEMO SANDBOX ──
+// Completely isolated in-memory & local-storage mock engine.
+// ZERO network requests to any production database.
+export const isDemoMode = true;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('CRITICAL: Supabase credentials are missing! Please check your Vercel/environment variables.');
-}
-
-// Ensure createClient is called with a non-empty string for the URL
-// to avoid a fatal crash during initialization.
-export const supabase = createClient(
-  supabaseUrl || 'https://placeholder-url.supabase.co',
-  supabaseAnonKey || 'placeholder-key'
-);
+export const supabase = demoSupabaseClient;

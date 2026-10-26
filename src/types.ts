@@ -100,7 +100,7 @@ export interface CartItem {
 }
 
 export type OrderType = 'pickup' | 'delivery' | null;
-export type Branch = 'السويدي الغربي' | 'طويق';
+export type Branch = 'الفرع الرئيسي' | 'فرع التحلية' | 'السويدي الغربي' | 'طويق';
 
 export interface Order {
   id?: string;

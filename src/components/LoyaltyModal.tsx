@@ -165,7 +165,7 @@ export const LoyaltyModal: React.FC<LoyaltyModalProps> = ({
                 <Star className="text-amber-200 fill-amber-200" size={28} />
               </div>
               <div>
-                <h3 className="text-xl font-black">برنامج مكافآت جمر التنور</h3>
+                <h3 className="text-xl font-black">برنامج مكافآت مذاق | MITHAQ</h3>
                 <p className="text-xs text-amber-100 font-medium">اجمع النقاط مع كل طلب وحولها لخصم فوري</p>
               </div>
             </div>
