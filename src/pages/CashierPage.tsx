@@ -403,6 +403,7 @@ export const CashierPage: React.FC = () => {
         max_redemption_percentage: 50
     });
     const [menuProducts, setMenuProducts] = useState<any[]>([]);
+    const [menuSearch, setMenuSearch] = useState('');
     const [loadingMenu, setLoadingMenu] = useState(false);
 
     useEffect(() => {
@@ -447,7 +448,7 @@ export const CashierPage: React.FC = () => {
     useEffect(() => {
         if (showMenuManagement) {
             setLoadingMenu(true);
-            supabase.from('products').select('*').order('category_id').order('name_ar').then(({ data }) => {
+            (supabaseAdmin || supabase).from('products').select('*').order('category_id').order('name_ar').then(({ data }) => {
                 if (data) setMenuProducts(data);
                 setLoadingMenu(false);
             });
@@ -466,7 +467,7 @@ export const CashierPage: React.FC = () => {
             toast.error('تعذر تحديث الصنف');
             setMenuProducts(prev => prev.map(p => p.id === productId ? { ...p, is_available: currentStatus } : p));
         } else {
-            toast.success(nextStatus ? 'تم تفعيل الصنف (متاح)' : 'تم تعطيل الصنف (نفد)');
+            toast.success(nextStatus ? 'تم تفعيل الصنف (متاح للطلب) 🟢' : 'تم إيقاف الصنف (غير متاح / نَفَد) 🔴');
         }
     };
 
@@ -1339,14 +1340,38 @@ export const CashierPage: React.FC = () => {
                             exit={{ scale: 0.95, opacity: 0 }}
                             className={cn("rounded-3xl p-6 w-full max-w-2xl relative z-10 shadow-2xl max-h-[90vh] flex flex-col", isDark ? 'bg-zinc-900 border border-white/10' : 'bg-white border border-gray-100')}
                         >
-                            <div className="flex justify-between items-center mb-6 shrink-0">
-                                <h3 className={cn("text-xl font-black flex items-center gap-2", isDark ? 'text-white' : 'text-gray-900')}>
-                                    <LayoutList className="text-primary" />
-                                    إدارة الأصناف (توفير / نفاذ المكونات)
-                                </h3>
+                            <div className="flex justify-between items-center mb-4 shrink-0">
+                                <div>
+                                    <h3 className={cn("text-xl font-black flex items-center gap-2", isDark ? 'text-white' : 'text-gray-900')}>
+                                        <LayoutList className="text-primary" />
+                                        إدارة الأصناف (توفير / نفاذ المكونات)
+                                    </h3>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        إجمالي الأصناف: {menuProducts.length} صنف ({menuProducts.filter(p => p.is_available).length} متاح • {menuProducts.filter(p => !p.is_available).length} غير متاح)
+                                    </p>
+                                </div>
                                 <button onClick={() => setShowMenuManagement(false)} className="text-gray-500 hover:text-white transition-colors">
                                     <X size={24} />
                                 </button>
+                            </div>
+
+                            <div className="relative mb-3 shrink-0">
+                                <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                                <input
+                                    type="text"
+                                    value={menuSearch}
+                                    onChange={e => setMenuSearch(e.target.value)}
+                                    placeholder="بحث سريع عن صنف (كولا، عصير برتقال، شاورما...)"
+                                    className={cn(
+                                        "w-full rounded-xl pr-10 pl-9 py-2.5 text-sm outline-none border focus:border-primary/50",
+                                        isDark ? "bg-zinc-800 text-white border-white/10 placeholder-gray-500" : "bg-gray-100 text-gray-900 border-gray-200 placeholder-gray-400"
+                                    )}
+                                />
+                                {menuSearch && (
+                                    <button onClick={() => setMenuSearch('')} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">
+                                        <X size={16} />
+                                    </button>
+                                )}
                             </div>
                             
                             <div className="overflow-y-auto pr-2 custom-scrollbar flex-1 space-y-4">
@@ -1354,7 +1379,9 @@ export const CashierPage: React.FC = () => {
                                     <div className="flex justify-center py-10"><Loader2 className="animate-spin text-primary" size={32} /></div>
                                 ) : (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        {menuProducts.map(product => (
+                                        {menuProducts
+                                            .filter(p => !menuSearch || p.name_ar?.toLowerCase().includes(menuSearch.toLowerCase()))
+                                            .map(product => (
                                             <div key={product.id} className={cn("p-3 rounded-2xl flex items-center justify-between border", isDark ? 'bg-zinc-800 border-white/5' : 'bg-gray-50 border-gray-100')}>
                                                 <div className="flex items-center gap-3">
                                                     {product.image_url && <img src={product.image_url} alt={product.name_ar} className="w-10 h-10 rounded-xl object-cover" />}

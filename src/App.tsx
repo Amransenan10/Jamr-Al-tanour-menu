@@ -18,6 +18,7 @@ import { StoryViewerModal } from './components/StoryViewerModal';
 import { SpinWheelModal } from './components/SpinWheelModal';
 import { Category, Product, Branch, Story } from './types';
 import { supabase } from './lib/supabaseClient';
+import { supabaseAdmin } from './lib/supabaseAdmin';
 import { CartProvider } from './context/CartContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { motion, AnimatePresence } from 'motion/react';
@@ -495,7 +496,7 @@ export default function App() {
           .from('categories')
           .select('*')
           .order('display_order', { ascending: true }),
-        supabase
+        (supabaseAdmin || supabase)
           .from('products')
           .select('*, option_groups(id, min_selection, max_selection, option_items(price))')
           .order('is_available', { ascending: false }),

@@ -759,12 +759,15 @@ const AdminMenuView = () => {
 
     const [optionGroups, setOptionGroups] = useState<any[]>([]);
     const [optionItems, setOptionItems] = useState<any[]>([]);
+    const [productSearch, setProductSearch] = useState('');
+    const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
+    const [selectedAvailabilityFilter, setSelectedAvailabilityFilter] = useState<'all' | 'available' | 'unavailable'>('all');
 
     const fetchData = async () => {
         setLoading(true);
         const [prodRes, catRes] = await Promise.all([
-            supabase.from('products').select('*').order('category_id').order('name_ar'),
-            supabase.from('categories').select('*').order('sort_order')
+            supabaseAdmin.from('products').select('*').order('category_id').order('name_ar'),
+            supabaseAdmin.from('categories').select('*').order('sort_order')
         ]);
         if (prodRes.data) setProducts(prodRes.data);
         if (catRes.data) {
@@ -774,6 +777,22 @@ const AdminMenuView = () => {
             }
         }
         setLoading(false);
+    };
+
+    const toggleProductAvailability = async (productId: string, currentStatus: boolean) => {
+        const nextStatus = !currentStatus;
+        // Optimistic update
+        setProducts(prev => prev.map(p => p.id === productId ? { ...p, is_available: nextStatus } : p));
+        let res = await supabaseAdmin.from('products').update({ is_available: nextStatus }).eq('id', productId);
+        if (res.error) {
+            res = await supabase.from('products').update({ is_available: nextStatus }).eq('id', productId);
+        }
+        if (res.error) {
+            toast.error('تعذر تغيير حالة الصنف');
+            setProducts(prev => prev.map(p => p.id === productId ? { ...p, is_available: currentStatus } : p));
+        } else {
+            toast.success(nextStatus ? 'تم تفعيل الصنف (متوفر للعملاء) 🟢' : 'تم إيقاف الصنف (نَفَد / غير متوفر) 🔴');
+        }
     };
 
     useEffect(() => { fetchData(); }, []);
@@ -1036,21 +1055,82 @@ const AdminMenuView = () => {
         }
     };
 
+    const filteredProductsList = products.filter(p => {
+        const matchesSearch = !productSearch || p.name_ar?.toLowerCase().includes(productSearch.toLowerCase());
+        const matchesCat = selectedCategoryFilter === 'all' || p.category_id === selectedCategoryFilter;
+        const matchesAvail = selectedAvailabilityFilter === 'all'
+            ? true
+            : selectedAvailabilityFilter === 'available'
+                ? (p.is_available ?? true)
+                : !(p.is_available ?? true);
+        return matchesSearch && matchesCat && matchesAvail;
+    });
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold">إدارة الأصناف الشاملة</h2>
+                <div>
+                    <h2 className="text-xl font-bold">إدارة الأصناف الشاملة</h2>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                        إجمالي الأصناف: {products.length} ({products.filter(p => p.is_available ?? true).length} متوفر • {products.filter(p => !(p.is_available ?? true)).length} غير متوفر)
+                    </p>
+                </div>
                 <div className="flex gap-2">
-                    <button onClick={fetchData} className="p-2 bg-zinc-800 rounded-lg hover:bg-zinc-700 text-gray-400"><RefreshCw size={18} /></button>
+                    <button onClick={fetchData} className="p-2 bg-zinc-800 rounded-lg hover:bg-zinc-700 text-gray-400" title="تحديث القائمة"><RefreshCw size={18} /></button>
                     <button onClick={() => handleOpenModal()} className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-primary/90 transition-colors">
                         <Plus size={18} /> إضافة صنف
                     </button>
                 </div>
             </div>
 
+            {/* Search and Filters */}
+            <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                    <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                        type="text"
+                        value={productSearch}
+                        onChange={e => setProductSearch(e.target.value)}
+                        placeholder="ابحث عن صنف بالاسم (كولا، عصير برتقال، فلافل...)"
+                        className="w-full bg-zinc-900 border border-white/10 rounded-xl pr-10 pl-9 py-2.5 text-sm text-white placeholder-gray-500 focus:border-primary/50 outline-none"
+                    />
+                    {productSearch && (
+                        <button onClick={() => setProductSearch('')} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">
+                            <X size={16} />
+                        </button>
+                    )}
+                </div>
+                <div className="flex gap-2">
+                    <select
+                        value={selectedCategoryFilter}
+                        onChange={e => setSelectedCategoryFilter(e.target.value)}
+                        className="bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:border-primary/50 outline-none cursor-pointer"
+                    >
+                        <option value="all">كل الأقسام ({products.length})</option>
+                        {categories.map(c => (
+                            <option key={c.id} value={c.id}>{c.name_ar}</option>
+                        ))}
+                    </select>
+                    <select
+                        value={selectedAvailabilityFilter}
+                        onChange={e => setSelectedAvailabilityFilter(e.target.value)}
+                        className="bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:border-primary/50 outline-none cursor-pointer"
+                    >
+                        <option value="all">كل الحالات ({products.length})</option>
+                        <option value="available">🟢 متوفر ({products.filter(p => p.is_available ?? true).length})</option>
+                        <option value="unavailable">🔴 نَفَد / غير متوفر ({products.filter(p => !(p.is_available ?? true)).length})</option>
+                    </select>
+                </div>
+            </div>
+
             {loading ? <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" size={32} /></div> : (
+                filteredProductsList.length === 0 ? (
+                    <div className="bg-zinc-900 border border-white/5 rounded-2xl p-12 text-center text-gray-400">
+                        لا توجد أصناف مطابقة لمعايير البحث والتصفية.
+                    </div>
+                ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {products.map(p => (
+                    {filteredProductsList.map(p => (
                         <div key={p.id} className="bg-zinc-900 border border-white/5 rounded-2xl p-4 flex flex-col gap-3 transition-transform hover:-translate-y-1 hover:border-white/10 relative group">
                             <div className="flex gap-3">
                                 <div className="relative shrink-0">
@@ -1074,7 +1154,7 @@ const AdminMenuView = () => {
                                                 <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full font-bold">عرض 🏷️</span>
                                             )}
                                             {p.is_hidden && <span className="text-[10px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded-full">مخفي (للعروض)</span>}
-                                            {!p.is_available && <span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">نَفَد</span>}
+                                            {!(p.is_available ?? true) && <span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full font-bold">نَفَد</span>}
                                         </div>
                                     </h3>
                                     <p className="text-primary font-bold text-sm mt-1">{p.price} ر.س</p>
@@ -1082,12 +1162,26 @@ const AdminMenuView = () => {
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 mt-auto pt-3 border-t border-white/5">
+                                <button
+                                    type="button"
+                                    onClick={() => toggleProductAvailability(p.id, p.is_available ?? true)}
+                                    className={cn(
+                                        "px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center justify-center gap-1 shrink-0 cursor-pointer",
+                                        p.is_available ?? true
+                                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
+                                            : "bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20"
+                                    )}
+                                    title={p.is_available ?? true ? 'اضغط لتعيين كغير متوفر' : 'اضغط للتفعيل كمتوفر'}
+                                >
+                                    {p.is_available ?? true ? '🟢 متاح' : '🔴 غير متوفر'}
+                                </button>
                                 <button onClick={() => handleOpenModal(p)} className="flex-1 py-1.5 flex items-center justify-center gap-1.5 text-xs font-bold text-blue-400 bg-blue-500/10 rounded-lg hover:bg-blue-500/20 transition-colors"><Edit2 size={12}/> تعديل</button>
-                                <button onClick={() => handleDelete(p.id)} className="flex-1 py-1.5 flex items-center justify-center gap-1.5 text-xs font-bold text-red-400 bg-red-500/10 rounded-lg hover:bg-red-500/20 transition-colors"><Trash2 size={12}/> حذف</button>
+                                <button onClick={() => handleDelete(p.id)} className="p-1.5 text-red-400 bg-red-500/10 rounded-lg hover:bg-red-500/20 transition-colors" title="حذف الصنف"><Trash2 size={14}/></button>
                             </div>
                         </div>
                     ))}
                 </div>
+                )
             )}
 
             <AnimatePresence>
@@ -2053,8 +2147,8 @@ const AdminAdditionsView: React.FC = () => {
     const fetchProductsData = async () => {
         setLoading(true);
         const [prodRes, catRes] = await Promise.all([
-            supabase.from('products').select('*').order('name_ar'),
-            supabase.from('categories').select('*').order('sort_order')
+            supabaseAdmin.from('products').select('*').order('name_ar'),
+            supabaseAdmin.from('categories').select('*').order('sort_order')
         ]);
         if (prodRes.data) setProducts(prodRes.data);
         if (catRes.data) setCategories(catRes.data);
