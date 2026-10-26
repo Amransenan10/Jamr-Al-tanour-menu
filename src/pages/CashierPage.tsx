@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
     Clock, CheckCircle2, Package, Loader2, Bell, RefreshCw,
     MapPin, ShoppingBag, Phone, Bike, Coffee, ChevronDown, LogOut, Copy, ExternalLink,
-    Settings, Volume2, X, LayoutList, Star, UserPlus, Search
+    Settings, Volume2, X, LayoutList, Star, UserPlus, Search, Moon, Sun
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -381,7 +381,19 @@ export const CashierPage: React.FC = () => {
     const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
     const [showSettings, setShowSettings] = useState(false);
     const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
-    const isDark = false;
+    const [isDark, setIsDark] = useState<boolean>(() => {
+        const saved = localStorage.getItem('jamr_cashier_dark_mode');
+        return saved !== null ? saved === 'true' : true;
+    });
+
+    const toggleDarkMode = () => {
+        setIsDark(prev => {
+            const next = !prev;
+            localStorage.setItem('jamr_cashier_dark_mode', String(next));
+            toast.success(next ? 'تم تفعيل الوضع الليلي (Dark Mode) 🌙' : 'تم تفعيل الوضع النهاري (Light Mode) ☀️');
+            return next;
+        });
+    };
     
     const [storeSettings, setStoreSettings] = useState<any>({ status: 'open', is_delivery_active: true, is_pickup_active: true });
     const storeStatus = storeSettings.status;
@@ -860,7 +872,21 @@ export const CashierPage: React.FC = () => {
     // ── Branch login screen ───────────────────────────────────────────────────
     if (!isAuthenticated) {
         return (
-            <div className={cn("min-h-screen flex items-center justify-center p-6", isDark ? 'bg-charcoal' : 'bg-gray-50')}>
+            <div className={cn("min-h-screen flex items-center justify-center p-6 relative", isDark && "dark", isDark ? 'bg-charcoal text-white' : 'bg-gray-50 text-gray-900')}>
+                <div className="absolute top-4 left-4 z-20">
+                    <button
+                        type="button"
+                        onClick={toggleDarkMode}
+                        className={cn(
+                            "p-3 rounded-2xl transition-all border shadow-sm flex items-center gap-2 font-bold text-xs cursor-pointer",
+                            isDark ? 'bg-zinc-800 border-white/10 text-amber-400 hover:bg-zinc-700' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-100'
+                        )}
+                        title={isDark ? "التبديل إلى الوضع النهاري" : "التبديل إلى الوضع الليلي"}
+                    >
+                        {isDark ? <Sun size={16} /> : <Moon size={16} />}
+                        <span>{isDark ? 'الوضع النهاري ☀️' : 'الوضع الليلي 🌙'}</span>
+                    </button>
+                </div>
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 pointer-events-none" />
                 <motion.div
                     initial={{ y: 20, opacity: 0 }}
@@ -889,7 +915,7 @@ export const CashierPage: React.FC = () => {
                                     >
                                         <div className="flex items-center gap-3">
                                             <MapPin size={20} className="text-primary group-hover:text-white" />
-                                            <span className="text-white font-black text-lg group-hover:text-white">فرع {b}</span>
+                                            <span className={cn("font-black text-lg group-hover:text-white transition-colors", isDark ? 'text-white' : 'text-gray-900')}>فرع {b}</span>
                                         </div>
                                         <ChevronDown size={18} className="text-gray-500 group-hover:text-white -rotate-90" />
                                     </button>
@@ -941,7 +967,7 @@ export const CashierPage: React.FC = () => {
     // ── Cashier Audio Unlock Overlay ──────────────────────────────────────────
     if (isAuthenticated && !isAudioUnlocked) {
         return (
-            <div className={cn("min-h-screen flex items-center justify-center p-6 cursor-pointer", isDark ? 'bg-charcoal' : 'bg-gray-50')} onClick={() => {
+            <div className={cn("min-h-screen flex items-center justify-center p-6 cursor-pointer", isDark && "dark", isDark ? 'bg-charcoal text-white' : 'bg-gray-50 text-gray-900')} onClick={() => {
                 const ctx = getAudioContext();
                 if (ctx && ctx.state === 'suspended') ctx.resume();
                 playNotificationSound('soft');
@@ -967,7 +993,7 @@ export const CashierPage: React.FC = () => {
 
     // ── Main cashier view ─────────────────────────────────────────────────────
     return (
-        <div className={cn("min-h-screen transition-colors duration-300", isDark ? 'bg-charcoal text-white' : 'bg-gray-50 text-gray-900')}>
+        <div className={cn("min-h-screen transition-colors duration-300", isDark && "dark", isDark ? 'bg-charcoal text-white' : 'bg-gray-50 text-gray-900')}>
             {/* New order alert banner */}
             <AnimatePresence>
                 {newOrderAlert && (
@@ -1075,6 +1101,16 @@ export const CashierPage: React.FC = () => {
                             title="إدارة الولاء والعملاء"
                         >
                             <Star size={16} className="text-amber-400" />
+                        </button>
+                        <button
+                            onClick={toggleDarkMode}
+                            className={cn(
+                                "p-2.5 rounded-xl transition-colors flex items-center justify-center",
+                                isDark ? "bg-zinc-800 hover:bg-zinc-700 text-amber-400" : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                            )}
+                            title={isDark ? "التبديل إلى الوضع النهاري (Light Mode)" : "التبديل إلى الوضع الليلي (Dark Mode)"}
+                        >
+                            {isDark ? <Sun size={16} /> : <Moon size={16} />}
                         </button>
                         <button
                             onClick={() => setShowSettings(true)}
@@ -1313,6 +1349,40 @@ export const CashierPage: React.FC = () => {
                                             )} />
                                         </div>
                                     </button>
+                                </div>
+
+                                <div className={cn("pt-6 border-t space-y-3", isDark ? 'border-white/5' : 'border-gray-100')}>
+                                    <h4 className="text-xs font-bold text-gray-500 mb-2 mr-1">مظهر الشاشة (Dark / Light Mode)</h4>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => { if (!isDark) toggleDarkMode(); }}
+                                            className={cn(
+                                                "flex items-center justify-center gap-2 p-3.5 rounded-2xl font-bold text-xs transition-all border",
+                                                isDark 
+                                                    ? "bg-zinc-800 text-amber-400 border-amber-500/30 shadow-md" 
+                                                    : "bg-gray-100 text-gray-500 border-transparent hover:bg-gray-200"
+                                            )}
+                                        >
+                                            <Moon size={16} />
+                                            <span>الوضع الليلي 🌙</span>
+                                            {isDark && <CheckCircle2 size={14} className="text-amber-400 mr-auto" />}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { if (isDark) toggleDarkMode(); }}
+                                            className={cn(
+                                                "flex items-center justify-center gap-2 p-3.5 rounded-2xl font-bold text-xs transition-all border",
+                                                !isDark 
+                                                    ? "bg-amber-500/10 text-amber-600 border-amber-500/30 shadow-md" 
+                                                    : "bg-zinc-800 text-gray-400 border-transparent hover:bg-zinc-700"
+                                            )}
+                                        >
+                                            <Sun size={16} />
+                                            <span>الوضع النهاري ☀️</span>
+                                            {!isDark && <CheckCircle2 size={14} className="text-amber-600 mr-auto" />}
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <p className="text-[10px] text-gray-500 mt-4 text-center leading-relaxed">
