@@ -31,8 +31,9 @@ export const getSavedPixelConfig = (): MarketingPixelsConfig => {
   const defaultConfig: MarketingPixelsConfig = {
     meta_pixel_id: '1775427600349485',
     meta_enabled: true,
-    snapchat_enabled: true,
+    tiktok_pixel_id: 'DBFM1UJC77UASCMGLRJ0',
     tiktok_enabled: true,
+    snapchat_enabled: true,
     ga4_enabled: true
   };
 

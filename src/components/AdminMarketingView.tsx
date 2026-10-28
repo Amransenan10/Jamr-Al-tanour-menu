@@ -56,7 +56,7 @@ export const AdminMarketingView: React.FC = () => {
   const [pixelForm, setPixelForm] = useState<MarketingPixelsConfig>({
     snapchat_pixel_id: '',
     snapchat_enabled: true,
-    tiktok_pixel_id: '',
+    tiktok_pixel_id: 'DBFM1UJC77UASCMGLRJ0',
     tiktok_enabled: true,
     meta_pixel_id: '1775427600349485',
     meta_enabled: true,
