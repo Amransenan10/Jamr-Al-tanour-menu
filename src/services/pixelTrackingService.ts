@@ -28,14 +28,22 @@ let activeConfig: MarketingPixelsConfig = {};
 
 /** Load saved pixel configuration from localStorage or default */
 export const getSavedPixelConfig = (): MarketingPixelsConfig => {
-  if (typeof window === 'undefined') return {};
+  const defaultConfig: MarketingPixelsConfig = {
+    meta_pixel_id: '1775427600349485',
+    meta_enabled: true,
+    snapchat_enabled: true,
+    tiktok_enabled: true,
+    ga4_enabled: true
+  };
+
+  if (typeof window === 'undefined') return defaultConfig;
   try {
     const raw = localStorage.getItem(STORAGE_PIXELS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) return { ...defaultConfig, ...JSON.parse(raw) };
   } catch (e) {
     console.warn('Error reading pixel config cache:', e);
   }
-  return {};
+  return defaultConfig;
 };
 
 /** Save pixel configuration to local storage */

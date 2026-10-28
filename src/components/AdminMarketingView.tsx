@@ -58,7 +58,7 @@ export const AdminMarketingView: React.FC = () => {
     snapchat_enabled: true,
     tiktok_pixel_id: '',
     tiktok_enabled: true,
-    meta_pixel_id: '',
+    meta_pixel_id: '1775427600349485',
     meta_enabled: true,
     ga4_measurement_id: '',
     ga4_enabled: true
