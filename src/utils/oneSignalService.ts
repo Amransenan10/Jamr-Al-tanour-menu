@@ -42,7 +42,7 @@ export const initOneSignal = (appId?: string) => {
           ]
         },
         welcomeNotification: {
-          title: "مطعم جمر التنور 🔥",
+          title: "مطعم جمر التنور",
           message: "أهلاً بك! تم تفعيل إشعارات العروض والخصومات بنجاح 🎉"
         }
       });

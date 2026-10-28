@@ -192,7 +192,7 @@ export const STORAGE_WHATSAPP_TEMPLATE_KEY = 'jamr_whatsapp_recovery_template';
 export const STORAGE_RECOVERY_PROMO_KEY = 'jamr_whatsapp_recovery_promo';
 
 export const DEFAULT_WHATSAPP_TEMPLATE = `يا هلا {customer_name}! 🌸
-لاحظنا أنك تركت وجبتك اللذيذة في سلة *مطعم جمر التنور* 🔥
+لاحظنا أنك تركت وجبتك اللذيذة في سلة *مطعم جمر التنور*
 
 📋 أصنافك المحفوظة:
 {items}

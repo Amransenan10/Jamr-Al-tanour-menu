@@ -238,7 +238,7 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
                     <Sparkles size={14} />
                     <span>هدية ترحيبية خاصة بالزوار الجدد</span>
                   </div>
-                  <h2 className="text-xl font-black text-white mt-0.5">يا هلا بك في جمر التنور! 🔥</h2>
+                  <h2 className="text-xl font-black text-white mt-0.5">يا هلا بك في جمر التنور!</h2>
                 </div>
               </div>
 

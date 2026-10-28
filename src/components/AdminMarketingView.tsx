@@ -486,7 +486,7 @@ export const AdminMarketingView: React.FC = () => {
 
     const text = encodeURIComponent(
       `${nameGreeting}\n` +
-      `لأنك ${badgeTitle} في مطعم جمر التنور 🔥\n` +
+      `لأنك ${badgeTitle} في مطعم جمر التنور\n` +
       `يسعدنا تقديم كود خصم حصري لك (WELCOME10) لخصم 10% على طلبك القادم! 🍕✨\n\n` +
       `استخدم الكود عند الطلب من المنيو:\nhttps://jamr-al-tanour-menu.vercel.app/`
     );
