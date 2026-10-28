@@ -496,7 +496,8 @@ export default function App() {
         supabase.from('app_settings').select('*').single(),
         fetchThemeSettings()
       ]);
-      const combined = { ...(appData || {}), ...themeData };
+      const parsedAppData = appData ? parseAppSettings(appData) : {};
+      const combined = { ...parsedAppData, ...themeData };
       console.log('DEBUG: fetchAppSettings merged settings:', combined);
       setAppSettings(combined);
       localStorage.setItem('jamr_app_settings', JSON.stringify(combined));
@@ -904,7 +905,7 @@ export default function App() {
           />
 
           <WelcomeOfferModal
-            welcomePointsAmount={Number(localStorage.getItem('jamr_welcome_points_amount')) || appSettings?.welcome_offer?.points_amount || 50}
+            welcomePointsAmount={appSettings?.welcome_offer?.points_amount || Number(localStorage.getItem('jamr_welcome_points_amount')) || 100}
             isEnabled={appSettings?.welcome_offer?.enabled !== false}
             onSuccess={(phone, points) => {
               setLoyaltyPoints(points);

@@ -13,7 +13,7 @@ interface WelcomeOfferModalProps {
 
 export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
   onSuccess,
-  welcomePointsAmount = 50,
+  welcomePointsAmount = 100,
   isEnabled = true
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -22,15 +22,37 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [claimed, setClaimed] = useState(false);
 
-  // Dynamic Points Amount State
+  // Dynamic Points Amount State (Default 100)
   const [effectivePoints, setEffectivePoints] = useState<number>(() => {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem('jamr_welcome_points_amount') : null;
-    return saved ? Number(saved) : welcomePointsAmount;
+    return welcomePointsAmount || 100;
   });
 
   // Sync points dynamically on mount
   useEffect(() => {
     const fetchLatestConfig = async () => {
+      // 1. Fetch from app_settings where welcome_offer is stored
+      try {
+        const { data: rawApp } = await supabase
+          .from('app_settings')
+          .select('announcement_text')
+          .eq('id', 1)
+          .maybeSingle();
+
+        if (rawApp?.announcement_text) {
+          const match = rawApp.announcement_text.match(/\[CONFIG:([\s\S]*?)\]/);
+          if (match && match[1]) {
+            const extra = JSON.parse(match[1]);
+            if (extra.welcome_offer?.points_amount) {
+              const pts = Number(extra.welcome_offer.points_amount);
+              setEffectivePoints(pts);
+              localStorage.setItem('jamr_welcome_points_amount', String(pts));
+              return;
+            }
+          }
+        }
+      } catch (e) {}
+
+      // 2. Fallback to loyalty_config
       try {
         const { data: loyaltyCfg } = await supabase
           .from('loyalty_config')
@@ -46,11 +68,7 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
         }
       } catch (e) {}
 
-      // Fallback to local storage or prop
-      const saved = localStorage.getItem('jamr_welcome_points_amount');
-      if (saved) {
-        setEffectivePoints(Number(saved));
-      } else if (welcomePointsAmount) {
+      if (welcomePointsAmount) {
         setEffectivePoints(welcomePointsAmount);
       }
     };
@@ -137,7 +155,7 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
       }
 
       // 2. Genuine New Customer: Register and grant welcome points
-      const initialPoints = effectivePoints || 50;
+      const initialPoints = effectivePoints || 100;
 
       const { error } = await client
         .from('customers')
