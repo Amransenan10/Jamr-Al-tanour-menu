@@ -22,6 +22,7 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [claimed, setClaimed] = useState(false);
+  const [existingGreeting, setExistingGreeting] = useState<{ name: string; balance: number } | null>(null);
 
   // Dynamic Points Amount State (Default 100)
   const [effectivePoints, setEffectivePoints] = useState<number>(() => {
@@ -132,16 +133,26 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
         .maybeSingle();
 
       if (existingCustomer) {
-        // Customer already exists! Save recognition quietly and dismiss without unwanted screens
+        // Customer already exists! Show gentle, warm recognition
+        const customerName = existingCustomer.full_name || cleanName;
+        const currentBalance = existingCustomer.points_balance || 0;
+
         localStorage.setItem('jamr_customer_phone', formattedPhone);
-        localStorage.setItem('jamr_customer_name', existingCustomer.full_name || cleanName);
+        localStorage.setItem('jamr_customer_name', customerName);
         localStorage.setItem('jamr_welcome_offer_claimed', 'true');
 
+        setExistingGreeting({
+          name: customerName,
+          balance: currentBalance
+        });
+
         if (onSuccess) {
-          onSuccess(formattedPhone, existingCustomer.points_balance || 0);
+          onSuccess(formattedPhone, currentBalance);
         }
 
-        setIsOpen(false);
+        setTimeout(() => {
+          setIsOpen(false);
+        }, 2600);
         return;
       }
 
@@ -217,7 +228,31 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
             <X size={20} />
           </button>
 
-          {!claimed ? (
+          {existingGreeting ? (
+            /* Gentle & Warm Returning Customer View */
+            <div className="text-center py-6 space-y-4">
+              <div className="w-16 h-16 bg-amber-500/15 text-amber-400 rounded-full flex items-center justify-center mx-auto border border-amber-500/30 shadow-lg shadow-amber-500/10">
+                <Sparkles size={30} className="animate-pulse" />
+              </div>
+
+              <div>
+                <h3 className="text-xl font-black text-white">
+                  أهلاً بعودتك يا {existingGreeting.name}! ✨
+                </h3>
+                <p className="text-xs text-amber-300/80 mt-1 font-medium">
+                  سعداء بتواجدك معنا دائماً
+                </p>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 max-w-xs mx-auto">
+                <p className="text-xs text-gray-400 font-medium">رقمك مسجل لدينا بالفعل ورصيدك الحالي:</p>
+                <p className="text-2xl font-black text-amber-400 mt-1.5 flex items-center justify-center gap-1.5">
+                  <span>{existingGreeting.balance}</span>
+                  <span className="text-sm font-bold text-gray-300">نقطة ولاء</span>
+                </p>
+              </div>
+            </div>
+          ) : !claimed ? (
             /* New Customer Registration Form */
             <div className="space-y-5">
               {/* Header Icon */}
