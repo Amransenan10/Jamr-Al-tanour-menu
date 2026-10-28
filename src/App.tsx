@@ -36,6 +36,9 @@ import { showSystemNotification } from './utils/pushSubscription';
 import { initOneSignal } from './utils/oneSignalService';
 import { parseAppSettings } from './utils/appSettingsUtils';
 import { fetchThemeSettings } from './utils/themeSettingsUtils';
+import { captureTrafficAttribution } from './services/trafficAttribution';
+import { initMarketingPixels, trackPageView } from './services/pixelTrackingService';
+import { WelcomeOfferModal } from './components/WelcomeOfferModal';
 
 export default function App() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -70,7 +73,23 @@ export default function App() {
 
   useEffect(() => {
     initOneSignal();
+    captureTrafficAttribution();
+    initMarketingPixels();
+    trackPageView('قائمة الطعام الرئيسية');
+
+    // Handle cart recovery parameter from WhatsApp reminders
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('recover_cart')) {
+      toast('أهلاً بك مجدداً! تم استرجاع وجباتك في السلة 🍔', { icon: '🛒', duration: 4500 });
+      setIsCartOpen(true);
+    }
   }, []);
+
+  useEffect(() => {
+    if (appSettings?.marketing_pixels) {
+      initMarketingPixels(appSettings.marketing_pixels);
+    }
+  }, [appSettings]);
 
   // Debugging & Resilience: Anti-hang timeout
   useEffect(() => {
@@ -876,6 +895,14 @@ export default function App() {
             onOpenCart={() => setIsCartOpen(true)}
             onOpenSpinWheel={() => setIsWheelOpen(true)}
             onPointsUpdate={(pts) => setLoyaltyPoints(pts)}
+          />
+
+          <WelcomeOfferModal
+            welcomePointsAmount={appSettings?.welcome_offer?.points_amount || 50}
+            isEnabled={appSettings?.welcome_offer?.enabled !== false}
+            onSuccess={(phone, points) => {
+              setLoyaltyPoints(points);
+            }}
           />
 
           {activeStoryIndex !== null && (

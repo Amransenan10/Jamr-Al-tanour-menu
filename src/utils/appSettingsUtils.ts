@@ -29,9 +29,12 @@ export const parseAppSettings = (data: any) => {
     }
   }
 
-  // Clean the display value of popular_subtitle
+  // Clean the display value of popular_subtitle and announcement_text
   if (typeof parsed.popular_subtitle === 'string') {
     parsed.popular_subtitle = parsed.popular_subtitle.replace(/\[CONFIG:[\s\S]*?\]/, '').trim();
+  }
+  if (typeof parsed.announcement_text === 'string') {
+    parsed.announcement_text = parsed.announcement_text.replace(/\[CONFIG:[\s\S]*?\]/, '').trim();
   }
 
   // Force correct boolean types with safe defaults
@@ -95,10 +98,20 @@ export const saveAppSettings = async (newPartial: Record<string, any>) => {
   console.log(`[saveAppSettings] Writing → event_active=${merged.event_active}`);
 
   // ── 3. Full DB payload using ONLY columns that exist in the schema ────────────
-  // NOTE: popular_subtitle does NOT exist in app_settings — never include it!
+  // Clean announcement text from any previous CONFIG tags
+  const cleanAnnouncement = (merged.announcement_text || '').replace(/\[CONFIG:[\s\S]*?\]/, '').trim();
+  const extraConfig: any = {};
+  if (merged.marketing_pixels) extraConfig.marketing_pixels = merged.marketing_pixels;
+  if (merged.welcome_offer) extraConfig.welcome_offer = merged.welcome_offer;
+
+  const hasExtra = Object.keys(extraConfig).length > 0;
+  const packedAnnouncement = hasExtra
+    ? `${cleanAnnouncement} [CONFIG:${JSON.stringify(extraConfig)}]`.trim()
+    : cleanAnnouncement;
+
   const fullPayload: Record<string, any> = {
     id:                  1,
-    announcement_text:   merged.announcement_text   || '',
+    announcement_text:   packedAnnouncement,
     announcement_active: merged.announcement_active,
     offers_active:       merged.offers_active,
     wheel_active:        merged.wheel_active,

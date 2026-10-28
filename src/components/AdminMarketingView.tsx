@@ -5,7 +5,8 @@ import { sendOneSignalPushNotification } from '../utils/oneSignalService';
 import { 
   Send, Bell, Users, Crown, MessageSquare, Sparkles, 
   Search, Copy, CheckCircle2, Loader2, RefreshCw, Ticket, ExternalLink,
-  Calendar, Flag, Gift, Check, ToggleLeft, ToggleRight, Layers, Flame
+  Calendar, Flag, Gift, Check, ToggleLeft, ToggleRight, Layers, Flame,
+  Activity, ShoppingCart, Compass, Link2, Share2, Play, BarChart3, TrendingUp, AlertTriangle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -13,6 +14,23 @@ import { SeasonalEventSettings, EventPreset } from '../types';
 import { getPresetDetails } from './SeasonalEventOverlay';
 
 import { parseAppSettings, saveAppSettings } from '../utils/appSettingsUtils';
+import { 
+  getSavedPixelConfig, 
+  savePixelConfigLocal, 
+  initMarketingPixels, 
+  trackViewContent, 
+  MarketingPixelsConfig 
+} from '../services/pixelTrackingService';
+import { 
+  fetchAbandonedCarts, 
+  generateWhatsAppRecoveryUrl, 
+  markCartAsRecovered, 
+  AbandonedCartRecord 
+} from '../services/abandonedCartService';
+import { parseTrafficSourceFromOrder } from '../services/trafficAttribution';
+import { AdminPixelsView } from './AdminPixelsView';
+import { AdminAbandonedCartsView } from './AdminAbandonedCartsView';
+import { AdminTrafficAttributionView } from './AdminTrafficAttributionView';
 
 interface CustomerAggregated {
   phone: string;
@@ -24,7 +42,7 @@ interface CustomerAggregated {
 }
 
 export const AdminMarketingView: React.FC = () => {
-  const [subView, setSubView] = useState<'broadcast' | 'vip' | 'events'>('broadcast');
+  const [subView, setSubView] = useState<'events' | 'pixels' | 'abandoned' | 'traffic' | 'broadcast' | 'vip'>('pixels');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [savingEvents, setSavingEvents] = useState(false);
@@ -33,6 +51,30 @@ export const AdminMarketingView: React.FC = () => {
   const [customers, setCustomers] = useState<CustomerAggregated[]>([]);
   const [searchPhone, setSearchPhone] = useState('');
   const [filterLevel, setFilterLevel] = useState<'all' | 'vip' | 'preferred' | 'new'>('all');
+
+  // Pixels & Marketing State
+  const [pixelForm, setPixelForm] = useState<MarketingPixelsConfig>({
+    snapchat_pixel_id: '',
+    snapchat_enabled: true,
+    tiktok_pixel_id: '',
+    tiktok_enabled: true,
+    meta_pixel_id: '',
+    meta_enabled: true,
+    ga4_measurement_id: '',
+    ga4_enabled: true
+  });
+  const [welcomeOfferForm, setWelcomeOfferForm] = useState({
+    enabled: true,
+    points_amount: 50
+  });
+  const [savingPixels, setSavingPixels] = useState(false);
+
+  // Abandoned Carts State
+  const [abandonedCarts, setAbandonedCarts] = useState<AbandonedCartRecord[]>([]);
+  const [loadingAbandoned, setLoadingAbandoned] = useState(false);
+
+  // Traffic Attribution Stats State
+  const [trafficStats, setTrafficStats] = useState<Record<string, { count: number; totalSales: number }>>({});
 
   // Form State for Sending Notification
   const [notifForm, setNotifForm] = useState({
@@ -59,6 +101,7 @@ export const AdminMarketingView: React.FC = () => {
   useEffect(() => {
     fetchEventSettings();
     fetchCustomersData();
+    loadAbandonedCarts();
 
     // Realtime: customers/orders updates ONLY refresh customer list, NEVER eventForm
     const channel = supabase.channel('admin-marketing-realtime')
@@ -114,6 +157,25 @@ export const AdminMarketingView: React.FC = () => {
           event_show_confetti: parsedSettings.event_show_confetti ?? true,
           event_show_modal:    parsedSettings.event_show_modal     ?? true
         });
+
+        // Load marketing pixels configuration
+        const localPixels = getSavedPixelConfig();
+        const mergedPixels: MarketingPixelsConfig = { ...localPixels, ...(parsedSettings.marketing_pixels || {}) };
+        setPixelForm(prev => ({
+          ...prev,
+          ...mergedPixels,
+          snapchat_enabled: mergedPixels.snapchat_enabled ?? true,
+          tiktok_enabled: mergedPixels.tiktok_enabled ?? true,
+          meta_enabled: mergedPixels.meta_enabled ?? true,
+          ga4_enabled: mergedPixels.ga4_enabled ?? true
+        }));
+
+        if (parsedSettings.welcome_offer) {
+          setWelcomeOfferForm({
+            enabled: parsedSettings.welcome_offer.enabled !== false,
+            points_amount: parsedSettings.welcome_offer.points_amount || 50
+          });
+        }
       }
     } catch (e) {
       console.error('[AdminMarketingView] fetchEventSettings error:', e);
@@ -146,6 +208,18 @@ export const AdminMarketingView: React.FC = () => {
         const fallbackOrders = await supabase.from('orders').select('*').order('created_at', { ascending: false });
         rawOrders = fallbackOrders.data || [];
       }
+
+      // Compute Traffic Attribution breakdown from orders
+      const sourcesMap: Record<string, { count: number; totalSales: number }> = {};
+      rawOrders.forEach((o: any) => {
+        const { source } = parseTrafficSourceFromOrder(o);
+        if (!sourcesMap[source]) {
+          sourcesMap[source] = { count: 0, totalSales: 0 };
+        }
+        sourcesMap[source].count += 1;
+        sourcesMap[source].totalSales += Number(o.total_price || 0);
+      });
+      setTrafficStats(sourcesMap);
 
       let rawLoyaltyCust = loyaltyCustRes.data || [];
       if (loyaltyCustRes.error) {
@@ -420,6 +494,63 @@ export const AdminMarketingView: React.FC = () => {
     return `https://wa.me/${cleaned}?text=${text}`;
   };
 
+  const loadAbandonedCarts = async () => {
+    setLoadingAbandoned(true);
+    try {
+      const carts = await fetchAbandonedCarts();
+      setAbandonedCarts(carts);
+    } catch (e) {
+      console.error('Error fetching abandoned carts:', e);
+    } finally {
+      setLoadingAbandoned(false);
+    }
+  };
+
+  const handleSavePixels = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingPixels(true);
+    try {
+      savePixelConfigLocal(pixelForm);
+      initMarketingPixels(pixelForm);
+
+      await saveAppSettings({
+        marketing_pixels: pixelForm,
+        welcome_offer: welcomeOfferForm
+      });
+
+      toast.success('تم حفظ وتفعيل إعدادات أدوات التتبع بنجاح! 📡');
+    } catch (err: any) {
+      console.error('Save pixels error:', err);
+      toast.error('حدث خطأ أثناء حفظ إعدادات البيكسل');
+    } finally {
+      setSavingPixels(false);
+    }
+  };
+
+  const handleTestPixelEvent = () => {
+    try {
+      trackViewContent({
+        id: 'test_item_1',
+        name_ar: 'وجبة تجريبية لفحص البيكسل',
+        price: 25,
+        category_name: 'فحص الأنظمة'
+      });
+      toast.success('تم إرسال حدث تجريبي (ViewContent) بنجاح! افحص لوحة إعلاناتك 🚀');
+    } catch (e) {
+      toast.error('حدث خطأ أثناء إرسال الحدث التجريبي');
+    }
+  };
+
+  const handleRecoverCartAction = async (cartId: string, phone: string) => {
+    try {
+      await markCartAsRecovered(cartId, phone);
+      setAbandonedCarts(prev => prev.filter(c => c.id !== cartId));
+      toast.success('تم وسم السلة كمسترجعة بنجاح! ✅');
+    } catch (e) {
+      toast.error('حدث خطأ أثناء تحديث حالة السلة');
+    }
+  };
+
   const filteredCustomers = customers.filter(c => {
     const matchesPhone = c.phone.toLowerCase().includes(searchPhone.trim().toLowerCase()) ||
       (c.name && c.name.toLowerCase().includes(searchPhone.trim().toLowerCase()));
@@ -520,6 +651,50 @@ export const AdminMarketingView: React.FC = () => {
         >
           <Crown size={18} />
           <span>تسويق العملاء المميزين (WhatsApp VIP)</span>
+        </button>
+
+        <button
+          onClick={() => setSubView('pixels')}
+          className={cn(
+            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm cursor-pointer",
+            subView === 'pixels'
+              ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 font-black"
+              : "bg-zinc-900 text-gray-400 hover:bg-zinc-800"
+          )}
+        >
+          <Activity size={18} />
+          <span>أدوات التتبع والبيكسل (سناب، تيك توك، ميتا)</span>
+        </button>
+
+        <button
+          onClick={() => { setSubView('abandoned'); loadAbandonedCarts(); }}
+          className={cn(
+            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm cursor-pointer relative",
+            subView === 'abandoned'
+              ? "bg-rose-500 text-white shadow-lg shadow-rose-500/20 font-black"
+              : "bg-zinc-900 text-gray-400 hover:bg-zinc-800"
+          )}
+        >
+          <ShoppingCart size={18} />
+          <span>السلات المتروكة (Abandoned Carts)</span>
+          {abandonedCarts.length > 0 && (
+            <span className="bg-rose-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
+              {abandonedCarts.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setSubView('traffic')}
+          className={cn(
+            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm cursor-pointer",
+            subView === 'traffic'
+              ? "bg-cyan-500 text-black shadow-lg shadow-cyan-500/20 font-black"
+              : "bg-zinc-900 text-gray-400 hover:bg-zinc-800"
+          )}
+        >
+          <Compass size={18} />
+          <span>مصادر الزوار والطلبات (Traffic Sources)</span>
         </button>
 
         <button
@@ -1081,6 +1256,30 @@ export const AdminMarketingView: React.FC = () => {
             </table>
           </div>
         </div>
+      )}
+      {subView === 'pixels' && (
+        <AdminPixelsView
+          pixelForm={pixelForm}
+          setPixelForm={setPixelForm}
+          welcomeOfferForm={welcomeOfferForm}
+          setWelcomeOfferForm={setWelcomeOfferForm}
+          saving={savingPixels}
+          onSave={handleSavePixels}
+          onTest={handleTestPixelEvent}
+        />
+      )}
+
+      {subView === 'abandoned' && (
+        <AdminAbandonedCartsView
+          carts={abandonedCarts}
+          loading={loadingAbandoned}
+          onRefresh={loadAbandonedCarts}
+          onRecover={handleRecoverCartAction}
+        />
+      )}
+
+      {subView === 'traffic' && (
+        <AdminTrafficAttributionView trafficStats={trafficStats} />
       )}
     </div>
   );

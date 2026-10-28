@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useCart } from '../context/CartContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { trackViewContent, trackAddToCart } from '../services/pixelTrackingService';
 
 interface ProductModalProps {
   product: Product | null;
@@ -29,6 +30,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
       setSelectedOptions([]);
       setRemovedIngredients([]);
       setNotes('');
+      trackViewContent(product);
     }
   }, [product]);
 
@@ -198,6 +200,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
     };
 
     addToCart(cartItem);
+    trackAddToCart(product, quantity);
     onClose();
   };
 

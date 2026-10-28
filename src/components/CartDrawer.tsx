@@ -10,6 +10,9 @@ import { saveOrderLocally } from '../utils/orderStorage';
 import { normalizeCouponCode } from '../utils/couponUtils';
 import { getDeliveryPricingRules } from '../utils/distanceUtils';
 import { isValidSaudiPhone, normalizeSaudiPhone } from '../utils/phoneUtils';
+import { formatTrafficTagForOrderNotes } from '../services/trafficAttribution';
+import { trackInitiateCheckout, trackPurchase } from '../services/pixelTrackingService';
+import { syncActiveCartToRecovery, markCartAsRecovered } from '../services/abandonedCartService';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -104,6 +107,25 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
     const timeout = setTimeout(checkLoyalty, 600);
     return () => clearTimeout(timeout);
   }, [formData.phone]);
+
+  React.useEffect(() => {
+    if (isOpen && cart.length > 0) {
+      trackInitiateCheckout(cart, finalPrice);
+      if (formData.phone && formData.phone.length >= 9) {
+        syncActiveCartToRecovery(cart, finalPrice, formData.phone, formData.name);
+      }
+    }
+  }, [isOpen]);
+
+  React.useEffect(() => {
+    const clean = formData.phone.replace(/\D/g, '');
+    if (clean.length >= 9 && cart.length > 0) {
+      const timer = setTimeout(() => {
+        syncActiveCartToRecovery(cart, finalPrice, clean, formData.name);
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [formData.phone, cart.length, finalPrice]);
 
   const handleLocationClick = () => {
     if (navigator.geolocation) {
@@ -356,12 +378,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         cleanPhone.replace(/\D/g, '') !== boundPhone
       );
 
+      const trafficTag = formatTrafficTagForOrderNotes();
       const orderNotes = [
         formData.notes,
         deliveryRules.distanceKm ? `[DISTANCE:${deliveryRules.distanceKm}km]` : '',
         pointsToDeduct > 0 ? `[LOYALTY_USED:${pointsToDeduct}]` : '',
         loyaltyPointsEarned > 0 ? `[LOYALTY_EARNED:${loyaltyPointsEarned}]` : '',
-        isSecurityMismatch ? `[LOYALTY_SECURITY_CHECK]` : ''
+        isSecurityMismatch ? `[LOYALTY_SECURITY_CHECK]` : '',
+        trafficTag
       ].filter(Boolean).join('\n');
 
       const orderPayload: any = {
@@ -392,6 +416,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
 
       if (insertRes.error) throw insertRes.error;
       const data = insertRes.data;
+
+      // Track Purchase in Marketing Pixels (Snapchat, TikTok, Meta, GA4)
+      trackPurchase(data.id, cart, finalPrice);
+
+      // Mark cart as recovered in Abandoned Cart engine
+      markCartAsRecovered(undefined, cleanPhone);
 
       // Update coupon usage if a valid promo was applied
       if (appliedPromo) {
