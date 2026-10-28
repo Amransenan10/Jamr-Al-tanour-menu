@@ -81,19 +81,13 @@ export default function App() {
     const urlParams = new URLSearchParams(window.location.search);
     const recoverId = urlParams.get('recover_cart');
     if (recoverId) {
-      import('./services/abandonedCartService').then(({ fetchCartById }) => {
-        fetchCartById(recoverId).then((recovered) => {
-          if (recovered && Array.isArray(recovered.items) && recovered.items.length > 0) {
-            const current = localStorage.getItem('jamr_al_tannour_cart');
-            if (!current || current === '[]') {
-              localStorage.setItem('jamr_al_tannour_cart', JSON.stringify(recovered.items));
-              window.location.reload();
-            }
-          }
-        });
-      });
+      setTimeout(() => {
+        setIsCartOpen(true);
+      }, 400);
       toast('أهلاً بك مجدداً! تم استرجاع وجباتك في السلة 🍔', { icon: '🛒', duration: 4500 });
-      setIsCartOpen(true);
+      try {
+        window.history.replaceState({}, '', window.location.pathname);
+      } catch (e) {}
     }
   }, []);
 
@@ -910,7 +904,7 @@ export default function App() {
           />
 
           <WelcomeOfferModal
-            welcomePointsAmount={appSettings?.welcome_offer?.points_amount || 50}
+            welcomePointsAmount={Number(localStorage.getItem('jamr_welcome_points_amount')) || appSettings?.welcome_offer?.points_amount || 50}
             isEnabled={appSettings?.welcome_offer?.enabled !== false}
             onSuccess={(phone, points) => {
               setLoyaltyPoints(points);

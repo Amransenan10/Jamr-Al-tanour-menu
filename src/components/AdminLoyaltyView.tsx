@@ -189,8 +189,10 @@ export const AdminLoyaltyView: React.FC = () => {
         setSavingConfig(true);
         try {
             const maxPercentage = Math.min(100, Math.max(1, Number(config.max_redemption_percentage) || 50));
-            // Always preserve max percentage locally immediately
+            // Always preserve max percentage and welcome points locally immediately
             localStorage.setItem('jamr_loyalty_max_percentage', String(maxPercentage));
+            const welcomeBonus = Math.max(0, Number(config.welcome_bonus_points) || 0);
+            localStorage.setItem('jamr_welcome_points_amount', String(welcomeBonus));
 
             const corePayload: any = {
                 id: 1,

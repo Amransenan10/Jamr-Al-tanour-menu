@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Gift, Sparkles, X, Phone, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
+import { Gift, Sparkles, X, Phone, User, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { supabaseLoyaltyAdmin } from '../lib/loyaltySupabase';
 import toast from 'react-hot-toast';
@@ -22,6 +22,42 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [claimed, setClaimed] = useState(false);
 
+  // Dynamic Points Amount State
+  const [effectivePoints, setEffectivePoints] = useState<number>(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('jamr_welcome_points_amount') : null;
+    return saved ? Number(saved) : welcomePointsAmount;
+  });
+
+  // Sync points dynamically on mount
+  useEffect(() => {
+    const fetchLatestConfig = async () => {
+      try {
+        const { data: loyaltyCfg } = await supabase
+          .from('loyalty_config')
+          .select('welcome_bonus_points')
+          .eq('id', 1)
+          .maybeSingle();
+
+        if (loyaltyCfg && Number(loyaltyCfg.welcome_bonus_points) > 0) {
+          const pts = Number(loyaltyCfg.welcome_bonus_points);
+          setEffectivePoints(pts);
+          localStorage.setItem('jamr_welcome_points_amount', String(pts));
+          return;
+        }
+      } catch (e) {}
+
+      // Fallback to local storage or prop
+      const saved = localStorage.getItem('jamr_welcome_points_amount');
+      if (saved) {
+        setEffectivePoints(Number(saved));
+      } else if (welcomePointsAmount) {
+        setEffectivePoints(welcomePointsAmount);
+      }
+    };
+
+    fetchLatestConfig();
+  }, [welcomePointsAmount]);
+
   useEffect(() => {
     if (!isEnabled || typeof window === 'undefined') return;
 
@@ -34,10 +70,10 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
       return;
     }
 
-    // Trigger after 3 seconds for smooth, non-intrusive appearance
+    // Trigger after 2.5 seconds for smooth, non-intrusive appearance
     const timer = setTimeout(() => {
       setIsOpen(true);
-    }, 3000);
+    }, 2500);
 
     return () => clearTimeout(timer);
   }, [isEnabled]);
@@ -49,8 +85,16 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanPhone = phone.replace(/\D/g, '');
 
+    // Validate Name (REQUIRED)
+    const cleanName = name.trim();
+    if (!cleanName) {
+      toast.error('يرجى كتابة اسمك الكريم لتسجيل هديتك 🌸');
+      return;
+    }
+
+    // Validate Phone (REQUIRED)
+    const cleanPhone = phone.replace(/\D/g, '');
     if (!cleanPhone || cleanPhone.length < 9) {
       toast.error('يرجى إدخال رقم جوال صحيح مكون من 10 أرقام (05xxxxxxxx)');
       return;
@@ -64,45 +108,73 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
         formattedPhone = '0' + formattedPhone;
       }
 
-      // Check or create customer in Supabase customers table
       const client = supabaseLoyaltyAdmin || supabase;
+
+      // 1. Anti-fraud check: Check if phone already registered in database
       const { data: existingCustomer } = await client
         .from('customers')
-        .select('points_balance')
+        .select('phone_number, full_name, points_balance')
         .eq('phone_number', formattedPhone)
         .maybeSingle();
 
-      const currentPoints = existingCustomer?.points_balance || 0;
-      const newPoints = currentPoints + welcomePointsAmount;
+      if (existingCustomer) {
+        // Customer already exists! Do NOT grant welcome points again
+        toast(
+          `أهلاً بك مجدداً يا ${existingCustomer.full_name || cleanName}! رقمك مسجل بالفعل ورصيدك الحالي ${existingCustomer.points_balance || 0} نقطة 🌟`,
+          { icon: '👋', duration: 5000 }
+        );
+
+        localStorage.setItem('jamr_customer_phone', formattedPhone);
+        localStorage.setItem('jamr_customer_name', existingCustomer.full_name || cleanName);
+        localStorage.setItem('jamr_welcome_offer_claimed', 'true');
+
+        if (onSuccess) {
+          onSuccess(formattedPhone, existingCustomer.points_balance || 0);
+        }
+
+        setIsOpen(false);
+        return;
+      }
+
+      // 2. Genuine New Customer: Register and grant welcome points
+      const initialPoints = effectivePoints || 50;
 
       const { error } = await client
         .from('customers')
-        .upsert({
+        .insert({
           phone_number: formattedPhone,
-          full_name: name.trim() || 'عميل جديد',
-          points_balance: newPoints,
+          full_name: cleanName,
+          points_balance: initialPoints,
+          created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        }, { onConflict: 'phone_number' });
+        });
 
       if (error) {
-        console.warn('Customer welcome points upsert warning:', error.message);
+        console.warn('New customer registration warning:', error.message);
+        // Fallback upsert attempt
+        await client.from('customers').upsert({
+          phone_number: formattedPhone,
+          full_name: cleanName,
+          points_balance: initialPoints,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'phone_number' });
       }
 
-      // Save phone locally
+      // Save locally
       localStorage.setItem('jamr_customer_phone', formattedPhone);
-      if (name.trim()) localStorage.setItem('jamr_customer_name', name.trim());
+      localStorage.setItem('jamr_customer_name', cleanName);
       localStorage.setItem('jamr_welcome_offer_claimed', 'true');
 
       setClaimed(true);
-      toast.success(`🎉 مبروك! تم إضافة ${welcomePointsAmount} نقطة هدية في حسابك!`);
+      toast.success(`🎉 مبروك يا ${cleanName}! تم إضافة ${initialPoints} نقطة هدية في حسابك!`);
 
       if (onSuccess) {
-        onSuccess(formattedPhone, newPoints);
+        onSuccess(formattedPhone, initialPoints);
       }
 
       setTimeout(() => {
         setIsOpen(false);
-      }, 1800);
+      }, 2000);
     } catch (err: any) {
       console.error('Welcome offer error:', err);
       toast.error('حدث خطأ أثناء تفعيل الهدية، يرجى المحاولة لاحقاً');
@@ -115,7 +187,7 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
         <motion.div
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -155,9 +227,9 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
               {/* Offer description */}
               <div className="bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-amber-500/20 rounded-2xl p-4">
                 <p className="text-sm font-bold text-gray-200 leading-relaxed">
-                  سجّل رقم جوالك الآن واحصل على{' '}
+                  سجّل الآن واحصل على{' '}
                   <span className="text-amber-400 font-black text-base underline underline-offset-4">
-                    {welcomePointsAmount} نقطة مجانية
+                    {effectivePoints} نقطة مجانية
                   </span>{' '}
                   في رصيدك فوراً، واستبدلها بخصومات على أشهى وجباتنا! 🍕🍔
                 </p>
@@ -166,14 +238,20 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-gray-300 mb-1.5">الاسم (اختياري)</label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="مثال: محمد"
-                    className="w-full bg-black/40 border border-white/10 focus:border-amber-500 rounded-xl px-4 py-2.5 text-sm font-bold text-white placeholder:text-gray-500 outline-none transition-colors"
-                  />
+                  <label className="block text-xs font-bold text-gray-300 mb-1.5">
+                    الاسم الكريم <span className="text-amber-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <User size={18} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="اكتب اسمك هنا"
+                      className="w-full bg-black/40 border border-white/10 focus:border-amber-500 rounded-xl pr-10 pl-4 py-2.5 text-sm font-bold text-white placeholder:text-gray-500 outline-none transition-colors"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -196,7 +274,7 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
 
                 <button
                   type="submit"
-                  disabled={submitting || !phone}
+                  disabled={submitting || !phone || !name}
                   className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-black rounded-xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-98 disabled:opacity-50 cursor-pointer"
                 >
                   {submitting ? (
@@ -206,7 +284,7 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
                     </>
                   ) : (
                     <>
-                      <span>احصل على {welcomePointsAmount} نقطة الآن</span>
+                      <span>احصل على {effectivePoints} نقطة الآن</span>
                       <ArrowLeft size={16} />
                     </>
                   )}
@@ -215,7 +293,7 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
                 <button
                   type="button"
                   onClick={handleDismiss}
-                  className="w-full text-center text-xs font-bold text-gray-400 hover:text-gray-200 py-1 transition-colors"
+                  className="w-full text-center text-xs font-bold text-gray-400 hover:text-gray-200 py-1 transition-colors cursor-pointer"
                 >
                   تصفح المنيو أولاً
                 </button>
@@ -228,7 +306,7 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
               </div>
               <h3 className="text-2xl font-black text-white">تم تفعيل هديتك بنجاح! 🎉</h3>
               <p className="text-sm font-bold text-gray-300">
-                أضيفت <span className="text-amber-400 font-black">{welcomePointsAmount} نقطة</span> إلى حسابك! نتمنى لك وجبة هنيئة في جمر التنور.
+                أضيفت <span className="text-amber-400 font-black">{effectivePoints} نقطة</span> إلى حسابك! نتمنى لك وجبة هنيئة في جمر التنور.
               </p>
             </div>
           )}

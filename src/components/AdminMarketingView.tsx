@@ -512,6 +512,7 @@ export const AdminMarketingView: React.FC = () => {
     try {
       savePixelConfigLocal(pixelForm);
       initMarketingPixels(pixelForm);
+      localStorage.setItem('jamr_welcome_points_amount', String(welcomeOfferForm.points_amount));
 
       await saveAppSettings({
         marketing_pixels: pixelForm,

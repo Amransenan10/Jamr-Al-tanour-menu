@@ -245,6 +245,37 @@ export const fetchCartById = async (cartId: string): Promise<AbandonedCartRecord
   return null;
 };
 
+/** Encode cart items into compact URL-safe parameter for instant zero-DB cross-device recovery */
+export const encodeCartPayload = (cart: AbandonedCartRecord): string => {
+  try {
+    const compact = (cart.items || []).map(i => ({
+      i: i.id || '',
+      p: i.productId || '',
+      n: i.name || i.name_ar || (i as any).title || 'وجبة',
+      pr: Number(i.price || 0),
+      q: Number(i.quantity || 1),
+      o: (i.options || []).map((o: any) => ({
+        g: o.groupId || '',
+        gn: o.groupName || '',
+        id: o.itemId || '',
+        in: o.itemName || '',
+        p: Number(o.price || 0)
+      })),
+      r: i.removedIngredients || [],
+      t: Number(i.totalPrice || i.price || 0),
+      nt: i.notes || ''
+    }));
+
+    const json = JSON.stringify({ id: cart.id, c: compact });
+    return btoa(unescape(encodeURIComponent(json)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+  } catch (e) {
+    return cart.id;
+  }
+};
+
 /** Generate personalized WhatsApp Recovery URL */
 export const generateWhatsAppRecoveryUrl = (
   cart: AbandonedCartRecord,
@@ -277,7 +308,8 @@ export const generateWhatsAppRecoveryUrl = (
     : '';
 
   const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://jamr-al-tanour-menu.vercel.app';
-  const recoveryLink = `${siteUrl}/?recover_cart=${cart.id}`;
+  const recoveryPayload = encodeCartPayload(cart);
+  const recoveryLink = `${siteUrl}/?recover_cart=${recoveryPayload}`;
 
   const template = customTemplate || (
     typeof window !== 'undefined' 
