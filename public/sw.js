@@ -4,7 +4,7 @@ importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
 self.addEventListener('install', (e) => {
     self.skipWaiting();
     e.waitUntil(
-        caches.open('jamr-al-tanour-v1').then((cache) => cache.addAll([
+        caches.open('jamr-al-tanour-v2').then((cache) => cache.addAll([
             '/',
             '/index.html'
         ]))
@@ -12,12 +12,19 @@ self.addEventListener('install', (e) => {
 });
 
 self.addEventListener('activate', (e) => {
+    e.waitUntil(
+        caches.keys().then((keys) => {
+            return Promise.all(
+                keys.filter((key) => key !== 'jamr-al-tanour-v2' && key !== 'jamr-images-v1').map((key) => caches.delete(key))
+            );
+        })
+    );
     return self.clients.claim();
 });
 
 // Handle incoming background Push Notifications
 self.addEventListener('push', (event) => {
-    let data = { title: 'إشعار جديد من جمر التنور 🔥', body: 'تفقّد أحدث العروض والخصومات!' };
+    let data = { title: 'إشعار جديد من جمر التنور ✨', body: 'تفقّد أحدث العروض والخصومات!' };
     try {
         if (event.data) {
             data = event.data.json();

@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
-import { parseTrafficSourceFromOrder } from '../services/trafficAttribution';
 import { normalizeSaudiPhone, buildPhoneOrFilter } from '../utils/phoneUtils';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
