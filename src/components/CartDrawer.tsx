@@ -108,25 +108,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
     return () => clearTimeout(timeout);
   }, [formData.phone]);
 
-  React.useEffect(() => {
-    if (isOpen && cart.length > 0) {
-      trackInitiateCheckout(cart, finalPrice);
-      if (formData.phone && formData.phone.length >= 9) {
-        syncActiveCartToRecovery(cart, finalPrice, formData.phone, formData.name);
-      }
-    }
-  }, [isOpen]);
-
-  React.useEffect(() => {
-    const clean = formData.phone.replace(/\D/g, '');
-    if (clean.length >= 9 && cart.length > 0) {
-      const timer = setTimeout(() => {
-        syncActiveCartToRecovery(cart, finalPrice, clean, formData.name);
-      }, 1200);
-      return () => clearTimeout(timer);
-    }
-  }, [formData.phone, cart.length, finalPrice]);
-
   const handleLocationClick = () => {
     if (navigator.geolocation) {
       setLocationLoading(true);
@@ -196,6 +177,25 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
   // Ensure final price doesn't go below 0
   const finalPrice = Math.max(0, totalPrice + deliveryFee - discountAmount - loyaltyDiscountAmount);
   const loyaltyPointsEarned = loyaltyConfig.is_enabled ? Math.floor(finalPrice / earningRate) : 0;
+
+  React.useEffect(() => {
+    if (isOpen && cart.length > 0) {
+      trackInitiateCheckout(cart, finalPrice);
+      if (formData.phone && formData.phone.length >= 9) {
+        syncActiveCartToRecovery(cart, finalPrice, formData.phone, formData.name);
+      }
+    }
+  }, [isOpen, cart.length, finalPrice]);
+
+  React.useEffect(() => {
+    const clean = formData.phone.replace(/\D/g, '');
+    if (clean.length >= 9 && cart.length > 0) {
+      const timer = setTimeout(() => {
+        syncActiveCartToRecovery(cart, finalPrice, clean, formData.name);
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [formData.phone, cart.length, finalPrice]);
 
   const handleApplyPromo = async () => {
     const rawInput = promoCodeInput.trim();
