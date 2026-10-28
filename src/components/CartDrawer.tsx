@@ -10,7 +10,7 @@ import { saveOrderLocally } from '../utils/orderStorage';
 import { normalizeCouponCode } from '../utils/couponUtils';
 import { getDeliveryPricingRules } from '../utils/distanceUtils';
 import { isValidSaudiPhone, normalizeSaudiPhone, buildPhoneOrFilter } from '../utils/phoneUtils';
-import { formatTrafficTagForOrderNotes } from '../services/trafficAttribution';
+import { formatTrafficTagForOrderNotes, resetTrafficAttributionAfterOrder } from '../services/trafficAttribution';
 import { trackInitiateCheckout, trackPurchase } from '../services/pixelTrackingService';
 import { syncActiveCartToRecovery, markCartAsRecovered } from '../services/abandonedCartService';
 
@@ -426,6 +426,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
 
       // Mark cart as recovered in Abandoned Cart engine
       markCartAsRecovered(undefined, cleanPhone);
+      // Reset active campaign attribution so subsequent direct orders are counted as Direct
+      resetTrafficAttributionAfterOrder();
 
       // Update coupon usage if a valid promo was applied
       if (appliedPromo) {

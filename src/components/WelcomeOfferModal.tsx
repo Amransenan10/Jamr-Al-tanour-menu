@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Gift, Sparkles, X, Phone, User, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { supabaseLoyaltyAdmin } from '../lib/loyaltySupabase';
+import { supabaseAdmin } from '../lib/supabaseAdmin';
 import { normalizeSaudiPhone, buildPhoneOrFilter } from '../utils/phoneUtils';
 import toast from 'react-hot-toast';
 
@@ -22,6 +22,7 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [claimed, setClaimed] = useState(false);
+  const [existingGreeting, setExistingGreeting] = useState<{ name: string; balance: number } | null>(null);
 
   // Dynamic Points Amount State (Default 100)
   const [effectivePoints, setEffectivePoints] = useState<number>(() => {
@@ -89,7 +90,7 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
       return;
     }
 
-    // Trigger after 2.5 seconds for smooth, non-intrusive appearance
+    // Trigger after 2.5 seconds for smooth appearance
     const timer = setTimeout(() => {
       setIsOpen(true);
     }, 2500);
@@ -121,7 +122,7 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
 
     setSubmitting(true);
     try {
-      const client = supabaseLoyaltyAdmin || supabase;
+      const client = supabaseAdmin || supabase;
 
       // 1. Anti-fraud check: Check if phone already registered in database under ANY format (05..., 5..., 966...)
       const orFilter = buildPhoneOrFilter(formattedPhone, 'phone_number');
@@ -133,20 +134,22 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
 
       if (existingCustomer) {
         // Customer already exists! Do NOT grant welcome points again
-        toast(
-          `أهلاً بك مجدداً يا ${existingCustomer.full_name || cleanName}! رقمك مسجل بالفعل ورصيدك الحالي ${existingCustomer.points_balance || 0} نقطة 🌟`,
-          { icon: '👋', duration: 5000 }
-        );
-
         localStorage.setItem('jamr_customer_phone', formattedPhone);
         localStorage.setItem('jamr_customer_name', existingCustomer.full_name || cleanName);
         localStorage.setItem('jamr_welcome_offer_claimed', 'true');
+
+        setExistingGreeting({
+          name: existingCustomer.full_name || cleanName,
+          balance: existingCustomer.points_balance || 0
+        });
 
         if (onSuccess) {
           onSuccess(formattedPhone, existingCustomer.points_balance || 0);
         }
 
-        setIsOpen(false);
+        setTimeout(() => {
+          setIsOpen(false);
+        }, 3200);
         return;
       }
 
@@ -222,7 +225,23 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
             <X size={20} />
           </button>
 
-          {!claimed ? (
+          {existingGreeting ? (
+            /* Existing Customer Greeting View */
+            <div className="text-center py-6 space-y-4">
+              <div className="w-16 h-16 bg-blue-500/20 text-cyan-400 rounded-full flex items-center justify-center mx-auto border border-cyan-500/30">
+                <User size={32} />
+              </div>
+              <h3 className="text-xl font-black text-white">أهلاً بعودتك يا {existingGreeting.name}! 🌟</h3>
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 max-w-xs mx-auto">
+                <p className="text-xs text-gray-400">رقمك مسجل لدينا بالفعل ورصيدك الحالي:</p>
+                <p className="text-2xl font-black text-amber-400 mt-1">{existingGreeting.balance} نقطة ولاء</p>
+              </div>
+              <p className="text-[11px] text-gray-400">
+                (هذه الهدية مخصصة للعملاء الجدد مع أول تسجيل فقط)
+              </p>
+            </div>
+          ) : !claimed ? (
+            /* New Customer Registration Form */
             <div className="space-y-5">
               {/* Header Icon */}
               <div className="flex items-center gap-3">
@@ -314,6 +333,7 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
               </form>
             </div>
           ) : (
+            /* Successful Registration View */
             <div className="text-center py-6 space-y-4">
               <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-500/40">
                 <CheckCircle2 size={36} />

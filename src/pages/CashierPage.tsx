@@ -143,26 +143,6 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                             <Phone size={14} className="animate-pulse" /> <span className="tracking-widest" dir="ltr">{order.phone}</span>
                         </a>
                     )}
-                    {(() => {
-                        const traffic = parseTrafficSourceFromOrder(order);
-                        if (traffic && traffic.source && traffic.source !== 'غير محدد') {
-                            return (
-                                <span className={cn(
-                                    "flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-xl font-black border shadow-sm",
-                                    traffic.source.includes('TikTok') ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" :
-                                    traffic.source.includes('Snapchat') ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30" :
-                                    traffic.source.includes('Instagram') || traffic.source.includes('Meta') ? "bg-pink-500/10 text-pink-400 border-pink-500/30" :
-                                    traffic.source.includes('QR') || traffic.source.includes('طاولة') ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" :
-                                    traffic.source.includes('Google') ? "bg-blue-500/10 text-blue-400 border-blue-500/30" :
-                                    "bg-white/5 text-gray-300 border-white/10"
-                                )}>
-                                    <span>🎯 {traffic.source}</span>
-                                    {traffic.campaign && <span className="opacity-75 text-[10px]">({traffic.campaign})</span>}
-                                </span>
-                            );
-                        }
-                        return null;
-                    })()}
                     {order.notes?.includes('[LOYALTY_SECURITY_CHECK]') && (
                         <span className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-xl font-bold bg-red-500/10 text-red-400 border border-red-500/30 shadow-sm animate-pulse" title="الرقم المستخدم يختلف عن الجهاز، يرجى مطابقة الهوية">
                             🛡️ تحقق من رقم صاحب النقاط!

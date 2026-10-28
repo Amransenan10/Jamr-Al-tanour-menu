@@ -178,6 +178,14 @@ export const getSavedTrafficAttribution = (): TrafficData => {
   return captureTrafficAttribution();
 };
 
+/** Reset attribution after order completion so subsequent visits and orders are counted as Direct */
+export const resetTrafficAttributionAfterOrder = (): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(STORAGE_TRAFFIC_KEY);
+  } catch (e) {}
+};
+
 /** Format attribution tag to safely append to order notes without schema breaks */
 export const formatTrafficTagForOrderNotes = (): string => {
   const data = getSavedTrafficAttribution();
