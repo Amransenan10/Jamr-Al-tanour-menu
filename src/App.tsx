@@ -39,6 +39,7 @@ import { fetchThemeSettings } from './utils/themeSettingsUtils';
 import { captureTrafficAttribution } from './services/trafficAttribution';
 import { initMarketingPixels, trackPageView } from './services/pixelTrackingService';
 import { WelcomeOfferModal } from './components/WelcomeOfferModal';
+import { normalizeSaudiPhone, buildPhoneOrFilter } from './utils/phoneUtils';
 
 export default function App() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -304,15 +305,17 @@ export default function App() {
     fetchData(savedBranch || 'السويدي الغربي', hasCache);
     fetchAppSettings();
 
-    // Fetch customer loyalty points if phone exists
+    // Fetch customer loyalty points if phone exists (matches 05..., 5..., 966...)
     const fetchCustomerLoyalty = async () => {
       try {
-        const phone = (localStorage.getItem('jamr_customer_phone') || localStorage.getItem('customerPhone') || '').replace(/\D/g, '');
-        if (phone && phone.length >= 9 && supabaseLoyalty) {
+        const rawPhone = localStorage.getItem('jamr_customer_phone') || localStorage.getItem('customerPhone') || '';
+        const phone = normalizeSaudiPhone(rawPhone);
+        if (phone && phone.length >= 10 && supabaseLoyalty) {
+          const orFilter = buildPhoneOrFilter(phone, 'phone_number');
           const { data } = await supabaseLoyalty
             .from('customers')
             .select('points_balance')
-            .eq('phone_number', phone)
+            .or(orFilter)
             .maybeSingle();
           if (data && typeof data.points_balance === 'number') {
             setLoyaltyPoints(data.points_balance);

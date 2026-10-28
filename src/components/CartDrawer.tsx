@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { saveOrderLocally } from '../utils/orderStorage';
 import { normalizeCouponCode } from '../utils/couponUtils';
 import { getDeliveryPricingRules } from '../utils/distanceUtils';
-import { isValidSaudiPhone, normalizeSaudiPhone } from '../utils/phoneUtils';
+import { isValidSaudiPhone, normalizeSaudiPhone, buildPhoneOrFilter } from '../utils/phoneUtils';
 import { formatTrafficTagForOrderNotes } from '../services/trafficAttribution';
 import { trackInitiateCheckout, trackPurchase } from '../services/pixelTrackingService';
 import { syncActiveCartToRecovery, markCartAsRecovered } from '../services/abandonedCartService';
@@ -80,18 +80,20 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         console.warn('Loyalty config fetch warning', err);
       }
       
-      if (!formData.phone || formData.phone.length < 10) {
+      const normalized = normalizeSaudiPhone(formData.phone);
+      if (!normalized || normalized.length < 10) {
         setLoyaltyPoints(0);
         return;
       }
 
       setLoyaltyLoading(true);
       try {
+        const orFilter = buildPhoneOrFilter(normalized, 'phone_number');
         const { data, error } = await supabase
           .from('customers')
           .select('points_balance')
-          .eq('phone_number', formData.phone)
-          .single();
+          .or(orFilter)
+          .maybeSingle();
           
         if (!error && data) {
           setLoyaltyPoints(data.points_balance || 0);
@@ -394,7 +396,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         branch,
         order_type: orderType,
         customer_name: formData.name,
-        phone: cleanPhone,
+        phone: normalizeSaudiPhone(cleanPhone),
         location: orderType === 'delivery' ? formData.location : undefined,
         notes: orderNotes,
         total_price: finalPrice,

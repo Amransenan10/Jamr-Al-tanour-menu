@@ -7,6 +7,7 @@
 import { supabase } from '../lib/supabaseClient';
 import { supabaseAdmin } from '../lib/supabaseAdmin';
 import { getSavedTrafficAttribution } from './trafficAttribution';
+import { normalizeSaudiPhone } from '../utils/phoneUtils';
 
 export interface AbandonedCartRecord {
   id: string;
@@ -34,7 +35,7 @@ export const syncActiveCartToRecovery = async (
 ): Promise<string | null> => {
   if (typeof window === 'undefined') return null;
 
-  const cleanPhone = (phone || localStorage.getItem('jamr_customer_phone') || '').replace(/\D/g, '');
+  const cleanPhone = normalizeSaudiPhone(phone || localStorage.getItem('jamr_customer_phone') || '');
   const name = customerName || localStorage.getItem('jamr_customer_name') || 'عميل عزيز';
 
   if (!items || items.length === 0) {
@@ -114,7 +115,7 @@ export const markCartAsRecovered = async (cartId?: string, phone?: string): Prom
   if (typeof window === 'undefined') return;
 
   const targetId = cartId || localStorage.getItem(STORAGE_CURRENT_CART_SESSION);
-  const targetPhone = (phone || localStorage.getItem('jamr_customer_phone') || '').replace(/\D/g, '');
+  const targetPhone = normalizeSaudiPhone(phone || localStorage.getItem('jamr_customer_phone') || '');
 
   localStorage.removeItem(STORAGE_CURRENT_CART_SESSION);
 

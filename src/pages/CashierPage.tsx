@@ -11,6 +11,7 @@ import {
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
 import { parseTrafficSourceFromOrder } from '../services/trafficAttribution';
+import { normalizeSaudiPhone, buildPhoneOrFilter } from '../utils/phoneUtils';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 type OrderStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'completed' | 'cancelled';
@@ -455,16 +456,17 @@ export const CashierPage: React.FC = () => {
             }
         });
 
-        const phone = loyaltySearchPhone.trim();
-        if (phone.length >= 9) {
+        const normalizedPhone = normalizeSaudiPhone(loyaltySearchPhone);
+        if (normalizedPhone.length >= 10) {
             const search = async () => {
                 setIsLoyaltyProcessing(true);
-                const { data, error } = await supabaseAdmin.from('customers').select('*').eq('phone_number', phone).single();
+                const orFilter = buildPhoneOrFilter(normalizedPhone, 'phone_number');
+                const { data, error } = await supabaseAdmin.from('customers').select('*').or(orFilter).maybeSingle();
                 if (data) {
                     setLoyaltyCustomer(data);
                     setLoyaltyNewCustomerName(data.full_name || '');
                 } else {
-                    setLoyaltyCustomer({ phone_number: phone, points_balance: 0, is_new: true });
+                    setLoyaltyCustomer({ phone_number: normalizedPhone, points_balance: 0, is_new: true });
                     setLoyaltyNewCustomerName('');
                 }
                 setIsLoyaltyProcessing(false);
@@ -781,22 +783,24 @@ export const CashierPage: React.FC = () => {
                 
                 if (diff !== 0 || usedPoints > 0) {
                     try {
+                        const orderPhone = normalizeSaudiPhone(order.phone);
+                        const orFilter = buildPhoneOrFilter(orderPhone, 'phone_number');
                         const { data: customer } = await supabaseAdmin
                             .from('customers')
-                            .select('points_balance')
-                            .eq('phone_number', order.phone)
-                            .single();
+                            .select('phone_number, points_balance')
+                            .or(orFilter)
+                            .maybeSingle();
                             
                         if (customer) {
                             await supabaseAdmin
                                 .from('customers')
                                 .update({ points_balance: Math.max(0, customer.points_balance + diff) })
-                                .eq('phone_number', order.phone);
+                                .eq('phone_number', customer.phone_number);
                         } else if (diff > 0) {
                             await supabaseAdmin
                                 .from('customers')
                                 .insert([{
-                                    phone_number: order.phone,
+                                    phone_number: orderPhone,
                                     full_name: order.customer_name || 'عميل المنيو',
                                     points_balance: diff
                                 }]);

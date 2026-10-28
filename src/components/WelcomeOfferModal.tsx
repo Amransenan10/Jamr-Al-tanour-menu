@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Gift, Sparkles, X, Phone, User, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { supabaseLoyaltyAdmin } from '../lib/loyaltySupabase';
+import { normalizeSaudiPhone, buildPhoneOrFilter } from '../utils/phoneUtils';
 import toast from 'react-hot-toast';
 
 interface WelcomeOfferModalProps {
@@ -111,28 +112,23 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
       return;
     }
 
-    // Validate Phone (REQUIRED)
-    const cleanPhone = phone.replace(/\D/g, '');
-    if (!cleanPhone || cleanPhone.length < 9) {
+    // Validate & Normalize Phone (05xxxxxxxx standard)
+    const formattedPhone = normalizeSaudiPhone(phone);
+    if (!formattedPhone || formattedPhone.length < 10) {
       toast.error('يرجى إدخال رقم جوال صحيح مكون من 10 أرقام (05xxxxxxxx)');
       return;
     }
 
     setSubmitting(true);
     try {
-      // Format 05xxxxxxxx
-      let formattedPhone = cleanPhone;
-      if (!formattedPhone.startsWith('05') && formattedPhone.length === 9 && formattedPhone.startsWith('5')) {
-        formattedPhone = '0' + formattedPhone;
-      }
-
       const client = supabaseLoyaltyAdmin || supabase;
 
-      // 1. Anti-fraud check: Check if phone already registered in database
+      // 1. Anti-fraud check: Check if phone already registered in database under ANY format (05..., 5..., 966...)
+      const orFilter = buildPhoneOrFilter(formattedPhone, 'phone_number');
       const { data: existingCustomer } = await client
         .from('customers')
         .select('phone_number, full_name, points_balance')
-        .eq('phone_number', formattedPhone)
+        .or(orFilter)
         .maybeSingle();
 
       if (existingCustomer) {
