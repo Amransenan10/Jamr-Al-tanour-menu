@@ -71,7 +71,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
             earning_rate: Number(cfg.earning_rate) || 1,
             redemption_rate: Number(cfg.redemption_rate) || 10,
             min_points_to_redeem: Number(cfg.min_points_to_redeem) || 5,
-            max_redemption_percentage: cfg.max_redemption_percentage !== undefined && cfg.max_redemption_percentage !== null ? Number(cfg.max_redemption_percentage) : 50
+            max_redemption_percentage: cfg.max_redemption_percentage !== undefined && cfg.max_redemption_percentage !== null 
+              ? Number(cfg.max_redemption_percentage) 
+              : Number(localStorage.getItem('jamr_loyalty_max_percentage') || 50)
           });
         }
       } catch (err) {

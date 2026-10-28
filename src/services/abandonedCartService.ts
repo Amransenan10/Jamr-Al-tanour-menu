@@ -188,39 +188,113 @@ export const fetchAbandonedCarts = async (): Promise<AbandonedCartRecord[]> => {
   return list;
 };
 
+export const STORAGE_WHATSAPP_TEMPLATE_KEY = 'jamr_whatsapp_recovery_template';
+export const STORAGE_RECOVERY_PROMO_KEY = 'jamr_whatsapp_recovery_promo';
+
+export const DEFAULT_WHATSAPP_TEMPLATE = `يا هلا {customer_name}! 🌸
+لاحظنا أنك تركت وجبتك اللذيذة في سلة *مطعم جمر التنور* 🔥
+
+📋 أصنافك المحفوظة:
+{items}
+💰 الإجمالي: {total_price} ريال
+{promo_section}
+سلتك جاهزة، اضغط الرابط التالي لإكمال طلبك في ثوانٍ:
+{recovery_link}`;
+
+/** Fetch a specific cart by id for rehydration */
+export const fetchCartById = async (cartId: string): Promise<AbandonedCartRecord | null> => {
+  if (!cartId) return null;
+
+  // 1. Try local storage
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(STORAGE_LOCAL_ABANDONED_KEY);
+      if (raw) {
+        const list: AbandonedCartRecord[] = JSON.parse(raw);
+        const found = list.find(c => c.id === cartId);
+        if (found) return found;
+      }
+    } catch (e) {}
+  }
+
+  // 2. Try Supabase
+  try {
+    const client = supabaseAdmin || supabase;
+    const { data, error } = await client
+      .from('abandoned_carts')
+      .select('*')
+      .eq('id', cartId)
+      .maybeSingle();
+
+    if (!error && data) {
+      return {
+        id: data.id,
+        customer_name: data.customer_name || 'عميل عزيز',
+        phone: data.phone,
+        items: data.items || [],
+        items_count: Array.isArray(data.items) ? data.items.reduce((acc: number, i: any) => acc + (i.quantity || 1), 0) : 1,
+        total_price: Number(data.total_price || 0),
+        source: data.source || 'مباشر',
+        created_at: data.created_at || data.updated_at,
+        updated_at: data.updated_at,
+        recovered: Boolean(data.recovered)
+      };
+    }
+  } catch (e) {}
+
+  return null;
+};
+
 /** Generate personalized WhatsApp Recovery URL */
-export const generateWhatsAppRecoveryUrl = (cart: AbandonedCartRecord, promoCode?: string): string => {
-  let cleaned = cart.phone.replace(/\D/g, '');
+export const generateWhatsAppRecoveryUrl = (
+  cart: AbandonedCartRecord,
+  customTemplate?: string,
+  promoCode?: string
+): string => {
+  let cleaned = (cart.phone || '').replace(/\D/g, '');
   if (cleaned.startsWith('05')) {
     cleaned = '966' + cleaned.substring(1);
   } else if (cleaned.startsWith('5')) {
     cleaned = '966' + cleaned;
   }
 
-  const greeting = cart.customer_name && cart.customer_name !== 'عميل عزيز' 
-    ? `يا هلا أ/ ${cart.customer_name}! 🌸`
-    : 'يا هلا بك! 🌸';
+  const customerName = cart.customer_name && cart.customer_name !== 'عميل عزيز' 
+    ? `أ/ ${cart.customer_name}` 
+    : 'بك';
 
-  // Format first 3 items
+  // Format first 3 items safely using name or name_ar
   const itemsSummary = (cart.items || [])
     .slice(0, 3)
-    .map(i => `• ${i.name_ar} (x${i.quantity || 1})`)
+    .map(i => `• ${i.name || i.name_ar || (i as any).title || 'صنف'} (x${i.quantity || 1})`)
     .join('\n');
 
-  const moreCount = (cart.items || []).length > 3 ? `وغيرها...` : '';
-  const promoNotice = promoCode ? `\n🎁 استخدم كود الخصم الحصري: *${promoCode}* عند الطلب!` : '';
+  const moreCount = (cart.items || []).length > 3 ? `\n• + ${(cart.items || []).length - 3} أصناف أخرى` : '';
+  const finalItemsList = `${itemsSummary}${moreCount}`;
+
+  const cleanPromo = (promoCode || '').trim();
+  const promoSection = cleanPromo 
+    ? `\n🎁 استخدم كود الخصم الحصري: *${cleanPromo}* عند الطلب!` 
+    : '';
 
   const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://jamr-al-tanour-menu.vercel.app';
   const recoveryLink = `${siteUrl}/?recover_cart=${cart.id}`;
 
-  const message = 
-    `${greeting}\n` +
-    `لاحظنا أنك نسيت وجبتك اللذيذة في سلة *مطعم جمر التنور* 🔥\n\n` +
-    `📋 أصنافك المحفوظة:\n${itemsSummary} ${moreCount}\n` +
-    `💰 الإجمالي: ${cart.total_price} ريال\n` +
-    `${promoNotice}\n\n` +
-    `سلتك محفوظة وجاهزة، اضغط الرابط التالي لإكمال طلبك في ثوانٍ ليصلك ساخناً:\n` +
-    `${recoveryLink}`;
+  const template = customTemplate || (
+    typeof window !== 'undefined' 
+      ? localStorage.getItem(STORAGE_WHATSAPP_TEMPLATE_KEY) || DEFAULT_WHATSAPP_TEMPLATE 
+      : DEFAULT_WHATSAPP_TEMPLATE
+  );
+
+  let message = template
+    .replace(/{customer_name}/g, customerName)
+    .replace(/{items}/g, finalItemsList)
+    .replace(/{total_price}/g, `${cart.total_price}`)
+    .replace(/{promo_code}/g, cleanPromo)
+    .replace(/{promo_section}/g, promoSection)
+    .replace(/{recovery_link}/g, recoveryLink);
+
+  // Clean empty lines artifacts
+  message = message.replace(/\n{3,}/g, '\n\n').trim();
 
   return `https://wa.me/${cleaned}?text=${encodeURIComponent(message)}`;
 };

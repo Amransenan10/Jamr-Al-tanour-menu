@@ -79,7 +79,19 @@ export default function App() {
 
     // Handle cart recovery parameter from WhatsApp reminders
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('recover_cart')) {
+    const recoverId = urlParams.get('recover_cart');
+    if (recoverId) {
+      import('./services/abandonedCartService').then(({ fetchCartById }) => {
+        fetchCartById(recoverId).then((recovered) => {
+          if (recovered && Array.isArray(recovered.items) && recovered.items.length > 0) {
+            const current = localStorage.getItem('jamr_al_tannour_cart');
+            if (!current || current === '[]') {
+              localStorage.setItem('jamr_al_tannour_cart', JSON.stringify(recovered.items));
+              window.location.reload();
+            }
+          }
+        });
+      });
       toast('أهلاً بك مجدداً! تم استرجاع وجباتك في السلة 🍔', { icon: '🛒', duration: 4500 });
       setIsCartOpen(true);
     }

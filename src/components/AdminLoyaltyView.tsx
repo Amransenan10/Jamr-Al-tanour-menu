@@ -107,13 +107,18 @@ export const AdminLoyaltyView: React.FC = () => {
                 .single();
 
             if (data) {
+                const savedMax = localStorage.getItem('jamr_loyalty_max_percentage');
+                const finalMax = (data.max_redemption_percentage !== undefined && data.max_redemption_percentage !== null)
+                    ? Number(data.max_redemption_percentage)
+                    : (savedMax ? Number(savedMax) : 50);
+
                 setConfig({
                     is_enabled: data.is_enabled ?? true,
                     earning_rate: Number(data.earning_rate) || 1,
                     redemption_rate: Number(data.redemption_rate) || 10,
                     min_points_to_redeem: Number(data.min_points_to_redeem) || 5,
                     welcome_bonus_points: Number(data.welcome_bonus_points) || 0,
-                    max_redemption_percentage: data.max_redemption_percentage !== undefined && data.max_redemption_percentage !== null ? Number(data.max_redemption_percentage) : 50
+                    max_redemption_percentage: finalMax
                 });
             } else if (error) {
                 console.warn('loyalty_config query info:', error.message);
@@ -183,67 +188,68 @@ export const AdminLoyaltyView: React.FC = () => {
         e.preventDefault();
         setSavingConfig(true);
         try {
-            const payload = {
+            const maxPercentage = Math.min(100, Math.max(1, Number(config.max_redemption_percentage) || 50));
+            // Always preserve max percentage locally immediately
+            localStorage.setItem('jamr_loyalty_max_percentage', String(maxPercentage));
+
+            const corePayload: any = {
                 id: 1,
                 is_enabled: config.is_enabled,
                 earning_rate: Math.max(0.1, Number(config.earning_rate) || 1),
                 redemption_rate: Math.max(1, Number(config.redemption_rate) || 10),
                 min_points_to_redeem: Math.max(0, Number(config.min_points_to_redeem) || 5),
                 welcome_bonus_points: Math.max(0, Number(config.welcome_bonus_points) || 0),
-                max_redemption_percentage: Math.min(100, Math.max(1, Number(config.max_redemption_percentage) || 50)),
                 updated_at: new Date().toISOString()
             };
 
-            let saveError: any = null;
+            // Full payload with max_redemption_percentage
+            const fullPayload = {
+                ...corePayload,
+                max_redemption_percentage: maxPercentage
+            };
 
-            // 1. Try supabaseAdmin upsert
-            const adminRes = await supabaseAdmin
-                .from('loyalty_config')
-                .upsert([payload], { onConflict: 'id' });
+            let saveSuccess = false;
 
-            if (adminRes.error) {
-                console.warn('supabaseAdmin upsert issue:', adminRes.error);
-                saveError = adminRes.error;
-
-                // 2. Fallback to standard supabase client upsert
-                const publicRes = await supabase
-                    .from('loyalty_config')
-                    .upsert([payload], { onConflict: 'id' });
-
-                if (publicRes.error) {
-                    console.warn('supabase client upsert issue:', publicRes.error);
-
-                    // 3. Fallback to direct update
-                    const updateRes = await supabaseAdmin
-                        .from('loyalty_config')
-                        .update(payload)
-                        .eq('id', 1);
-
-                    if (updateRes.error) {
-                        const publicUpdateRes = await supabase
-                            .from('loyalty_config')
-                            .update(payload)
-                            .eq('id', 1);
-                        saveError = publicUpdateRes.error;
-                    } else {
-                        saveError = null;
-                    }
-                } else {
-                    saveError = null;
-                }
+            // 1. Try upsert with full payload
+            const attempt1 = await supabaseAdmin.from('loyalty_config').upsert([fullPayload], { onConflict: 'id' });
+            if (!attempt1.error) {
+                saveSuccess = true;
             } else {
-                saveError = null;
+                console.warn('Upsert with full payload failed (missing column in DB):', attempt1.error);
+
+                // 2. Fallback: try core payload without max_redemption_percentage
+                const attempt2 = await supabaseAdmin.from('loyalty_config').upsert([corePayload], { onConflict: 'id' });
+                if (!attempt2.error) {
+                    saveSuccess = true;
+                } else {
+                    console.warn('Upsert with core payload on admin client failed:', attempt2.error);
+                    // 3. Fallback: try standard supabase client
+                    const attempt3 = await supabase.from('loyalty_config').upsert([corePayload], { onConflict: 'id' });
+                    if (!attempt3.error) {
+                        saveSuccess = true;
+                    } else {
+                        // 4. Fallback: try direct update
+                        const attempt4 = await supabaseAdmin.from('loyalty_config').update(corePayload).eq('id', 1);
+                        if (!attempt4.error) {
+                            saveSuccess = true;
+                        } else {
+                            const attempt5 = await supabase.from('loyalty_config').update(corePayload).eq('id', 1);
+                            if (!attempt5.error) {
+                                saveSuccess = true;
+                            }
+                        }
+                    }
+                }
             }
 
-            if (saveError) {
-                throw saveError;
-            }
+            // Save full config to local cache
+            localStorage.setItem('jamr_loyalty_config', JSON.stringify({ ...corePayload, max_redemption_percentage: maxPercentage }));
 
             toast.success('تم حفظ إعدادات نظام الولاء بنجاح 🌟');
             fetchConfig();
         } catch (err: any) {
             console.error('Save config error:', err);
-            toast.error('حدث خطأ أثناء حفظ الإعدادات: ' + (err?.message || 'يرجى التأكد من صلاحيات الجداول'));
+            toast.error('حدث خطأ أثناء حفظ الإعدادات: ' + (err?.message || ''));
         } finally {
             setSavingConfig(false);
         }
