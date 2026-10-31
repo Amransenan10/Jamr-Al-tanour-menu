@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem } from '../types';
+import { fetchCartById } from '../services/abandonedCartService';
 
 interface CartContextType {
   cart: CartItem[];
@@ -32,12 +33,48 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [cart, setCart] = useState<CartItem[]>([]);
 
   useEffect(() => {
-    // 1. Check if URL contains recover_cart parameter
+    // 1. Check if URL contains recover_cart or cart/c parameter
     if (typeof window !== 'undefined') {
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const recoverParam = urlParams.get('recover_cart');
-        if (recoverParam) {
+        const cartIdParam = urlParams.get('cart') || urlParams.get('c');
+
+        if (cartIdParam) {
+          fetchCartById(cartIdParam).then(record => {
+            if (record && Array.isArray(record.items) && record.items.length > 0) {
+              const restoredItems: CartItem[] = record.items.map((item: any) => {
+                const basePrice = Number(item.price ?? item.pr ?? 0);
+                const qty = Number(item.quantity ?? item.q ?? 1);
+                const opts = Array.isArray(item.options || item.o) ? (item.options || item.o).map((opt: any) => ({
+                  groupId: opt.groupId || opt.g || '',
+                  groupName: opt.groupName || opt.gn || '',
+                  itemId: opt.itemId || opt.id || '',
+                  itemName: opt.itemName || opt.in || '',
+                  price: Number(opt.price ?? opt.p ?? 0)
+                })) : [];
+                const optionsSum = opts.reduce((s: number, o: any) => s + (Number(o.price) || 0), 0);
+                const unit = (basePrice + optionsSum) > 0 ? (basePrice + optionsSum) : (Number(item.totalPrice ?? item.t ?? 0) / (qty || 1));
+                const total = Math.round(unit * qty * 100) / 100;
+
+                return {
+                  id: item.id || item.i || `cart_item_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                  productId: item.productId || item.p || '',
+                  name: item.name || item.n || item.name_ar || 'وجبة',
+                  price: basePrice,
+                  quantity: qty,
+                  options: opts,
+                  removedIngredients: item.removedIngredients || item.r || [],
+                  totalPrice: total,
+                  notes: item.notes || item.nt || ''
+                };
+              });
+
+              setCart(restoredItems);
+              localStorage.setItem('jamr_al_tannour_cart', JSON.stringify(restoredItems));
+            }
+          }).catch(console.error);
+        } else if (recoverParam) {
           // Decode URL-safe base64 payload
           let base64 = recoverParam.replace(/-/g, '+').replace(/_/g, '/');
           while (base64.length % 4) {

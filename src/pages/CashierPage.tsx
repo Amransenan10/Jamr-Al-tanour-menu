@@ -6,11 +6,18 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
     Clock, CheckCircle2, Package, Loader2, Bell, RefreshCw,
     MapPin, ShoppingBag, Phone, Bike, Coffee, ChevronDown, LogOut, Copy, ExternalLink,
-    Settings, Volume2, X, LayoutList, Star, UserPlus, Search, Moon, Sun, Building2
+    Settings, Volume2, X, LayoutList, Star, UserPlus, Search, Moon, Sun, Building2,
+    MessageCircle, Check
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
 import { normalizeSaudiPhone, buildPhoneOrFilter } from '../utils/phoneUtils';
+import {
+    fetchAbandonedCartsByBranch,
+    generateWhatsAppRecoveryUrl,
+    markCartAsRecovered,
+    AbandonedCartRecord
+} from '../services/abandonedCartService';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 type OrderStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'completed' | 'cancelled';
@@ -372,6 +379,34 @@ export const playNotificationSound = (type: SoundType = 'standard') => {
     }
 };
 
+export const playAbandonedCartSound = () => {
+    try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        if (ctx.state === 'suspended') ctx.resume();
+
+        const playTone = (freq: number, oscType: OscillatorType, duration: number, startTime = ctx.currentTime) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = oscType;
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.35, startTime + 0.04);
+            gain.gain.exponentialRampToValueAtTime(0.005, startTime + duration);
+            osc.frequency.setValueAtTime(freq, startTime);
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+        };
+
+        // Dual soft melodic chime (F#5 -> A#5) distinct from normal order alarms
+        playTone(740, 'sine', 0.28);
+        playTone(932, 'sine', 0.45, ctx.currentTime + 0.16);
+    } catch (e) {
+        console.error('Abandoned cart audio play failed', e);
+    }
+};
+
 // ─── CashierPage ─────────────────────────────────────────────────────────────
 const BRANCHES: Branch[] = ['السويدي الغربي', 'طويق'];
 const FILTER_STATUSES: (OrderStatus | 'active')[] = ['active', 'new', 'accepted', 'preparing', 'ready', 'completed'];
@@ -405,11 +440,16 @@ export const CashierPage: React.FC = () => {
         return saved !== null ? saved === 'true' : true;
     });
 
+    // Abandoned Carts state for this cashier branch
+    const [abandonedCarts, setAbandonedCarts] = useState<AbandonedCartRecord[]>([]);
+    const [showAbandonedDrawer, setShowAbandonedDrawer] = useState(false);
+    const [hasNewAbandonedAlert, setHasNewAbandonedAlert] = useState(false);
+
     const toggleDarkMode = () => {
         setIsDark(prev => {
             const next = !prev;
             localStorage.setItem('jamr_cashier_dark_mode', String(next));
-            toast.success(next ? 'تم تفعيل الوضع الليلي (Dark Mode) 🌙' : 'تم تفعيل الوضع النهاري (Light Mode) ☀️');
+            toast.success(next ? 'تم تفعيل الوضع الليلي' : 'تم تفعيل الوضع النهاري');
             return next;
         });
     };
@@ -713,7 +753,7 @@ export const CashierPage: React.FC = () => {
                         
                         if (Notification.permission === 'granted' && localStorage.getItem('jamr_cashier_use_notifications') === 'true') {
                             navigator.serviceWorker.ready.then(registration => {
-                                registration.showNotification('🔔 طلب جديد وصل!', {
+                                registration.showNotification('طلب جديد وصل!', {
                                     body: `اسم العميل: ${payload.new.customer_name}\nالقيمة: ${payload.new.total_price} ر.س${payload.new.discount_amount ? `\nخصم: ${payload.new.discount_amount} ر.س` : ''}`,
                                     icon: '/assets/logo.png',
                                     tag: 'new-order',
@@ -721,7 +761,7 @@ export const CashierPage: React.FC = () => {
                                 });
                             }).catch(err => {
                                 try {
-                                    new window.Notification('🔔 طلب جديد وصل!', {
+                                    new window.Notification('طلب جديد وصل!', {
                                         body: `اسم العميل: ${payload.new.customer_name}\nالقيمة: ${payload.new.total_price} ر.س${payload.new.discount_amount ? `\nخصم: ${payload.new.discount_amount} ر.س` : ''}`,
                                         icon: '/assets/logo.png',
                                         tag: 'new-order',
@@ -745,6 +785,74 @@ export const CashierPage: React.FC = () => {
 
         return () => { supabase.removeChannel(channel); };
     }, [branch]);
+
+    // ── Abandoned Carts Realtime & Polling ─────────────────────────────────────
+    useEffect(() => {
+        if (!branch) return;
+
+        const loadAbandoned = async () => {
+            try {
+                const carts = await fetchAbandonedCartsByBranch(branch);
+                setAbandonedCarts(carts);
+            } catch (e) {
+                console.error('Failed to fetch abandoned carts', e);
+            }
+        };
+
+        loadAbandoned();
+
+        // Check for abandoned carts updates periodically
+        const interval = setInterval(loadAbandoned, 20000);
+
+        const abandonedChannel = supabase
+            .channel(`cashier-abandoned-${branch}`)
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'abandoned_carts' },
+                (payload) => {
+                    const row = (payload.new || payload.old) as any;
+                    if (payload.eventType === 'INSERT') {
+                        if (!row.recovered && (!row.branch || row.branch === branch || row.branch === 'الكل')) {
+                            setAbandonedCarts(prev => [row, ...prev.filter(c => c.id !== row.id)]);
+                            setHasNewAbandonedAlert(true);
+                            playAbandonedCartSound();
+                        }
+                    } else if (payload.eventType === 'UPDATE') {
+                        if (row.recovered) {
+                            setAbandonedCarts(prev => prev.filter(c => c.id !== row.id));
+                        } else if (!row.branch || row.branch === branch || row.branch === 'الكل') {
+                            setAbandonedCarts(prev => {
+                                const exists = prev.some(c => c.id === row.id);
+                                return exists ? prev.map(c => c.id === row.id ? row : c) : [row, ...prev];
+                            });
+                            setHasNewAbandonedAlert(true);
+                            playAbandonedCartSound();
+                        } else {
+                            setAbandonedCarts(prev => prev.filter(c => c.id !== row.id));
+                        }
+                    } else if (payload.eventType === 'DELETE') {
+                        setAbandonedCarts(prev => prev.filter(c => c.id !== payload.old.id));
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            clearInterval(interval);
+            supabase.removeChannel(abandonedChannel);
+        };
+    }, [branch]);
+
+    const formatElapsedArabic = (dateStr: string) => {
+        try {
+            const diffMin = Math.max(1, Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000));
+            if (diffMin < 60) return `منذ ${diffMin} دقيقة`;
+            const diffHours = Math.floor(diffMin / 60);
+            if (diffHours < 24) return `منذ ${diffHours} ساعة`;
+            return `منذ ${Math.floor(diffHours / 24)} يوم`;
+        } catch (e) {
+            return 'مؤخرا';
+        }
+    };
 
     // ── Update status ─────────────────────────────────────────────────────────
     const handleStatusChange = async (id: string, newStatus: OrderStatus) => {
@@ -1026,7 +1134,7 @@ export const CashierPage: React.FC = () => {
                         className="fixed top-0 inset-x-0 z-50 bg-primary text-white text-center py-4 font-black text-xl shadow-2xl shadow-primary/30 flex items-center justify-center gap-4 px-6"
                     >
                         <div className="flex items-center gap-3">
-                            <span className="animate-bounce">🔔</span>
+                            <Bell className="animate-bounce" size={22} />
                             <span>يوجد طلبات جديدة لم يتم قبولها!</span>
                         </div>
                         <button 
@@ -1070,9 +1178,9 @@ export const CashierPage: React.FC = () => {
                             title="تغيير حالة المطعم"
                         >
                             {isUpdatingStatus ? <Loader2 size={12} className="animate-spin" /> : 
-                             storeStatus === 'open' ? '🟢 مفتوح' : 
-                             storeStatus === 'busy' ? '🟠 مزدحم' : 
-                             storeStatus === 'prayer' ? '🕌 مشغول (صلاة)' : '🔴 مغلق'}
+                             storeStatus === 'open' ? 'مفتوح' : 
+                             storeStatus === 'busy' ? 'مزدحم' : 
+                             storeStatus === 'prayer' ? 'مشغول (صلاة)' : 'مغلق'}
                         </button>
                         <div className={cn("w-px h-6 mx-1", isDark ? 'bg-white/10' : 'bg-gray-200')}></div>
                         <button
@@ -1098,6 +1206,39 @@ export const CashierPage: React.FC = () => {
                             <Coffee size={12} /> {storeSettings.is_pickup_active ? 'استلام متاح' : 'استلام مغلق'}
                         </button>
                         <div className={cn("w-px h-6 mx-1", isDark ? 'bg-white/10' : 'bg-gray-200')}></div>
+                        
+                        {/* Abandoned Carts Header Button */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setShowAbandonedDrawer(true);
+                                setHasNewAbandonedAlert(false);
+                            }}
+                            className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all border shadow-sm relative cursor-pointer shrink-0",
+                                hasNewAbandonedAlert
+                                    ? "bg-amber-500/20 text-amber-300 border-amber-400 ring-2 ring-amber-400/50 animate-pulse"
+                                    : abandonedCarts.length > 0
+                                        ? isDark ? "bg-zinc-800 text-amber-400 border-amber-500/30 hover:bg-zinc-700" : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+                                        : isDark ? "bg-zinc-800 text-gray-400 border-white/5 hover:text-white" : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200"
+                            )}
+                            title="سلات تسوق لم يكتمل طلبها لهذا الفرع"
+                        >
+                            <ShoppingBag size={13} className={hasNewAbandonedAlert || abandonedCarts.length > 0 ? "text-amber-400" : "text-gray-400"} />
+                            <span>سلات متروكة</span>
+                            {abandonedCarts.length > 0 && (
+                                <span className={cn(
+                                    "px-1.5 py-0.2 rounded-full text-[10px] font-black",
+                                    hasNewAbandonedAlert ? "bg-amber-400 text-black" : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                )}>
+                                    {abandonedCarts.length}
+                                </span>
+                            )}
+                            {hasNewAbandonedAlert && (
+                                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping" />
+                            )}
+                        </button>
+
                         {counts.new > 0 && (
                             <span className="flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-black px-3 py-1.5 rounded-full animate-pulse">
                                 <Bell size={12} /> {counts.new} جديد
@@ -1725,6 +1866,151 @@ export const CashierPage: React.FC = () => {
                                             )}
                                         </div>
                                     </motion.div>
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+
+                {/* Abandoned Carts Drawer / Modal */}
+                {showAbandonedDrawer && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowAbandonedDrawer(false)}
+                            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 15 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 15 }}
+                            className={cn(
+                                "relative w-full max-w-2xl max-h-[85vh] rounded-3xl p-6 shadow-2xl overflow-hidden flex flex-col z-10 border text-right",
+                                isDark ? "bg-zinc-900 border-zinc-800 text-white" : "bg-white border-gray-200 text-gray-900"
+                            )}
+                            dir="rtl"
+                        >
+                            {/* Modal Header */}
+                            <div className="flex items-center justify-between pb-4 border-b border-zinc-800 shrink-0">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                                        <ShoppingBag size={20} />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="font-black text-lg">سلات التسوق المتروكة</h3>
+                                            <span className="text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-0.5 rounded-full">
+                                                فرع {branch}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-gray-400 mt-0.5">
+                                            عملاء لم يكملوا طلباتهم، يمكنك استعادتهم عبر إرسال رابط مباشر لواتساب العميل
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAbandonedDrawer(false)}
+                                    className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            {/* Modal Body */}
+                            <div className="flex-1 overflow-y-auto py-4 space-y-3.5 pr-1">
+                                {abandonedCarts.length === 0 ? (
+                                    <div className="py-16 text-center space-y-3">
+                                        <div className="w-14 h-14 rounded-full bg-zinc-800/80 text-gray-500 flex items-center justify-center mx-auto">
+                                            <ShoppingBag size={24} />
+                                        </div>
+                                        <p className="font-bold text-gray-400 text-sm">لا توجد سلات متروكة لهذا الفرع حالياً</p>
+                                        <p className="text-xs text-gray-500">ستصل السلات المتروكة هنا فور قيام أي عميل بترك طلبه بدون إكمال</p>
+                                    </div>
+                                ) : (
+                                    abandonedCarts.map((cart) => {
+                                        const timeAgo = formatElapsedArabic(cart.updated_at || cart.created_at);
+                                        return (
+                                            <div
+                                                key={cart.id}
+                                                className={cn(
+                                                    "p-4 rounded-2xl border transition-all space-y-3",
+                                                    isDark ? "bg-zinc-950/70 border-zinc-800 hover:border-zinc-700" : "bg-gray-50 border-gray-200"
+                                                )}
+                                            >
+                                                {/* Cart Top Row */}
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-black text-sm text-white">
+                                                                {cart.customer_name && cart.customer_name !== 'عميل عزيز' ? cart.customer_name : 'عميل بدون اسم'}
+                                                            </span>
+                                                            <span className="text-[11px] font-mono text-zinc-400 dir-ltr bg-zinc-800/60 px-2 py-0.5 rounded-lg border border-zinc-700">
+                                                                {cart.phone}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                                                            <Clock size={12} className="text-amber-400" />
+                                                            <span>{timeAgo}</span>
+                                                            {cart.source && (
+                                                                <span className="text-[11px] text-zinc-500 mr-2">المصدر: {cart.source}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="text-left">
+                                                        <span className="text-xs text-gray-400 block font-bold">القيمة</span>
+                                                        <span className="text-base font-black text-emerald-400">{Number(cart.total_price || 0).toFixed(2)} ر.س</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Items List */}
+                                                <div className="bg-zinc-900/90 border border-zinc-800/80 rounded-xl p-3 space-y-1.5">
+                                                    {(cart.items || []).map((item: any, idx: number) => {
+                                                        const itemName = item.name || item.name_ar || item.title || 'صنف';
+                                                        const qty = item.quantity || 1;
+                                                        return (
+                                                            <div key={idx} className="flex items-center justify-between text-xs text-gray-300">
+                                                                <span>• {itemName} <span className="text-amber-400 font-bold">x{qty}</span></span>
+                                                                <span className="text-gray-400 font-mono">{(Number(item.totalPrice || item.price || 0)).toFixed(2)} ر.س</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+
+                                                {/* Actions */}
+                                                <div className="flex items-center gap-2 pt-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const waUrl = generateWhatsAppRecoveryUrl(cart);
+                                                            window.open(waUrl, '_blank', 'noopener,noreferrer');
+                                                        }}
+                                                        className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-950/40 cursor-pointer"
+                                                    >
+                                                        <MessageCircle size={15} />
+                                                        <span>إرسال تذكير عبر واتساب</span>
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={async () => {
+                                                            await markCartAsRecovered(cart.id, cart.phone);
+                                                            setAbandonedCarts(prev => prev.filter(c => c.id !== cart.id));
+                                                            toast.success('تم تحديد السلة كمعالجة');
+                                                        }}
+                                                        className="py-2 px-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-xl text-xs font-bold border border-zinc-700 transition-colors cursor-pointer"
+                                                        title="تحديد كمعالجة / إخفاء"
+                                                    >
+                                                        <Check size={14} />
+                                                        <span className="hidden sm:inline mr-1">اكتمال</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
                                 )}
                             </div>
                         </motion.div>

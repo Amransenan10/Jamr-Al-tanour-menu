@@ -253,20 +253,20 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
     if (isOpen && cart.length > 0) {
       trackInitiateCheckout(cart, finalPrice);
       if (formData.phone && formData.phone.length >= 9) {
-        syncActiveCartToRecovery(cart, finalPrice, formData.phone, formData.name);
+        syncActiveCartToRecovery(cart, finalPrice, formData.phone, formData.name, branch);
       }
     }
-  }, [isOpen, cart.length, finalPrice]);
+  }, [isOpen, cart.length, finalPrice, branch]);
 
   React.useEffect(() => {
     const clean = formData.phone.replace(/\D/g, '');
     if (clean.length >= 9 && cart.length > 0) {
       const timer = setTimeout(() => {
-        syncActiveCartToRecovery(cart, finalPrice, clean, formData.name);
+        syncActiveCartToRecovery(cart, finalPrice, clean, formData.name, branch);
       }, 1200);
       return () => clearTimeout(timer);
     }
-  }, [formData.phone, cart.length, finalPrice]);
+  }, [formData.phone, cart.length, finalPrice, branch]);
 
   const handleApplyPromo = async () => {
     const rawInput = promoCodeInput.trim();

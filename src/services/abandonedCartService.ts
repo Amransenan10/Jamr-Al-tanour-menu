@@ -17,6 +17,7 @@ export interface AbandonedCartRecord {
   items_count: number;
   total_price: number;
   source?: string;
+  branch?: string;
   created_at: string;
   updated_at: string;
   recovered: boolean;
@@ -31,12 +32,14 @@ export const syncActiveCartToRecovery = async (
   items: any[],
   totalPrice: number,
   phone?: string,
-  customerName?: string
+  customerName?: string,
+  branch?: string
 ): Promise<string | null> => {
   if (typeof window === 'undefined') return null;
 
   const cleanPhone = normalizeSaudiPhone(phone || localStorage.getItem('jamr_customer_phone') || '');
   const name = customerName || localStorage.getItem('jamr_customer_name') || 'عميل عزيز';
+  const currentBranch = branch || localStorage.getItem('jamr_customer_branch') || localStorage.getItem('jamr_al_tannour_branch') || undefined;
 
   if (!items || items.length === 0) {
     // If cart was emptied, clear active session
@@ -67,6 +70,7 @@ export const syncActiveCartToRecovery = async (
     items_count: itemsCount,
     total_price: Number(totalPrice || 0),
     source: attribution.source,
+    branch: currentBranch,
     created_at: now,
     updated_at: now,
     recovered: false
@@ -89,7 +93,7 @@ export const syncActiveCartToRecovery = async (
   // 2. Persist to Supabase abandoned_carts table if available
   try {
     const client = supabaseAdmin || supabase;
-    const { error } = await client.from('abandoned_carts').upsert({
+    const upsertPayload: any = {
       id: cartRecord.id,
       customer_name: cartRecord.customer_name,
       phone: cartRecord.phone,
@@ -98,9 +102,17 @@ export const syncActiveCartToRecovery = async (
       source: cartRecord.source,
       recovered: false,
       updated_at: now
-    });
+    };
+    if (cartRecord.branch) {
+      upsertPayload.branch = cartRecord.branch;
+    }
 
-    if (error && !error.message?.includes('relation "abandoned_carts" does not exist')) {
+    let { error } = await client.from('abandoned_carts').upsert(upsertPayload);
+    if (error && (error.message?.includes('branch') || (error as any).details?.includes('branch'))) {
+      // If branch column does not exist in schema, retry without it
+      delete upsertPayload.branch;
+      await client.from('abandoned_carts').upsert(upsertPayload);
+    } else if (error && !error.message?.includes('relation "abandoned_carts" does not exist')) {
       console.warn('[AbandonedCart] Supabase upsert non-critical warning:', error.message);
     }
   } catch (e) {
@@ -168,6 +180,7 @@ export const fetchAbandonedCarts = async (): Promise<AbandonedCartRecord[]> => {
         items_count: Array.isArray(d.items) ? d.items.reduce((acc: number, i: any) => acc + (i.quantity || 1), 0) : 1,
         total_price: Number(d.total_price || 0),
         source: d.source || 'مباشر',
+        branch: d.branch || undefined,
         created_at: d.created_at || d.updated_at,
         updated_at: d.updated_at,
         recovered: Boolean(d.recovered)
@@ -189,17 +202,24 @@ export const fetchAbandonedCarts = async (): Promise<AbandonedCartRecord[]> => {
   return list;
 };
 
+/** Get abandoned carts filtered by branch for Cashier screen */
+export const fetchAbandonedCartsByBranch = async (branch?: string): Promise<AbandonedCartRecord[]> => {
+  const all = await fetchAbandonedCarts();
+  if (!branch || branch === 'الكل') return all;
+  return all.filter(c => !c.branch || c.branch === branch || c.branch === 'الكل');
+};
+
 export const STORAGE_WHATSAPP_TEMPLATE_KEY = 'jamr_whatsapp_recovery_template';
 export const STORAGE_RECOVERY_PROMO_KEY = 'jamr_whatsapp_recovery_promo';
 
-export const DEFAULT_WHATSAPP_TEMPLATE = `يا هلا {customer_name}! 🌸
-لاحظنا أنك تركت وجبتك اللذيذة في سلة *مطعم جمر التنور*
+export const DEFAULT_WHATSAPP_TEMPLATE = `مرحبا {customer_name}
+نحيطك علما بأن طلبك لا يزال محفوظا في سلة مطعم جمر التنور.
 
-📋 أصنافك المحفوظة:
+أصنافك المحفوظة:
 {items}
-💰 الإجمالي: {total_price} ريال
+الإجمالي: {total_price} ريال
 {promo_section}
-سلتك جاهزة، اضغط الرابط التالي لإكمال طلبك في ثوانٍ:
+يمكنك إكمال طلبك مباشرة عبر الرابط التالي:
 {recovery_link}`;
 
 /** Fetch a specific cart by id for rehydration */
@@ -236,6 +256,7 @@ export const fetchCartById = async (cartId: string): Promise<AbandonedCartRecord
         items_count: Array.isArray(data.items) ? data.items.reduce((acc: number, i: any) => acc + (i.quantity || 1), 0) : 1,
         total_price: Number(data.total_price || 0),
         source: data.source || 'مباشر',
+        branch: data.branch || undefined,
         created_at: data.created_at || data.updated_at,
         updated_at: data.updated_at,
         recovered: Boolean(data.recovered)
@@ -297,7 +318,7 @@ export const generateWhatsAppRecoveryUrl = (
   // Format first 3 items safely using name or name_ar
   const itemsSummary = (cart.items || [])
     .slice(0, 3)
-    .map(i => `• ${i.name || i.name_ar || (i as any).title || 'صنف'} (x${i.quantity || 1})`)
+    .map(i => `• ${i.name || i.name_ar || (i as any).title || 'صنف'} (العدد: ${i.quantity || 1})`)
     .join('\n');
 
   const moreCount = (cart.items || []).length > 3 ? `\n• + ${(cart.items || []).length - 3} أصناف أخرى` : '';
@@ -305,12 +326,12 @@ export const generateWhatsAppRecoveryUrl = (
 
   const cleanPromo = (promoCode || '').trim();
   const promoSection = cleanPromo 
-    ? `\n🎁 استخدم كود الخصم الحصري: *${cleanPromo}* عند الطلب!` 
+    ? `\nاستخدم كود الخصم: *${cleanPromo}* عند الطلب!` 
     : '';
 
   const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://jamr-al-tanour-menu.vercel.app';
-  const recoveryPayload = encodeCartPayload(cart);
-  const recoveryLink = `${siteUrl}/?recover_cart=${recoveryPayload}`;
+  // Use short clean recovery URL by cart ID
+  const recoveryLink = `${siteUrl}/?cart=${cart.id}`;
 
   const template = customTemplate || (
     typeof window !== 'undefined' 
