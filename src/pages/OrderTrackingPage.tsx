@@ -329,7 +329,12 @@ export const OrderTrackingPage: React.FC = () => {
                                             {item.name}
                                         </div>
                                         <div className="font-bold text-gray-900 dark:text-white">
-                                            {item.totalPrice} ر.س
+                                            {(() => {
+                                                const optionsSum = item.options?.reduce((s: number, o: any) => s + (Number(o.price) || 0), 0) || 0;
+                                                const unit = (Number(item.price) || 0) + optionsSum;
+                                                const total = unit > 0 ? (unit * (item.quantity || 1)) : (item.totalPrice || 0);
+                                                return Number(total.toFixed(2));
+                                            })()} ر.س
                                         </div>
                                     </div>
                                 ))}

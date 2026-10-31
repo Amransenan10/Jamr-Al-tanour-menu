@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Trash2, Minus, Plus, MapPin, Phone, User, Clock, CheckCircle2, Loader2, ShoppingBag, Building2, RotateCw, AlertTriangle, ExternalLink } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { Branch, OrderType, Order } from '../types';
+import { Branch, OrderType, Order, CartItem } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -33,6 +33,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
   const [locationError, setLocationError] = useState('');
   const [showManualFallback, setShowManualFallback] = useState(false);
   const [manualLocationInput, setManualLocationInput] = useState('');
+  const [itemToDelete, setItemToDelete] = useState<CartItem | null>(null);
   const [addressDetails, setAddressDetails] = useState(() => {
     return localStorage.getItem('jamr_customer_address_details') || '';
   });
@@ -589,35 +590,46 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                       <p className="text-gray-500 text-sm">أضف بعض الوجبات اللذيذة لتبدأ طلبك</p>
                     </div>
                   ) : (
-                    cart.map((item) => (
-                      <div key={item.id} className="flex gap-4 p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
-                        <div className="flex-1">
-                          <h4 className="font-bold text-gray-900 dark:text-white mb-1">{item.name}</h4>
-                          <div className="text-xs text-gray-500 space-y-0.5">
-                            {item.options.map(o => (
-                              <div key={o.itemId}>• {o.itemName}</div>
-                            ))}
-                            {item.removedIngredients.map(i => (
-                              <div key={i} className="text-red-400">× بدون {i}</div>
-                            ))}
-                            {item.notes && (
-                              <div className="text-amber-600 dark:text-amber-400 mt-1 font-bold border-r-[3px] border-amber-500 pr-2 pt-0.5 whitespace-pre-wrap">📝 {item.notes}</div>
-                            )}
-                          </div>
-                          <div className="mt-3 flex items-center justify-between">
-                            <div className="flex items-center bg-white dark:bg-zinc-800 rounded-xl p-0.5 border border-gray-100 dark:border-white/10">
-                              <button onClick={() => updateQuantity(item.id, -1)} className="p-1.5 text-gray-400 hover:text-primary"><Minus size={14} /></button>
-                              <span className="w-8 text-center text-sm font-bold text-gray-900 dark:text-white">{item.quantity}</span>
-                              <button onClick={() => updateQuantity(item.id, 1)} className="p-1.5 text-gray-400 hover:text-primary"><Plus size={14} /></button>
+                    cart.map((item) => {
+                      const optionsSum = item.options?.reduce((s, o) => s + (Number(o.price) || 0), 0) || 0;
+                      const unit = (Number(item.price) || 0) + optionsSum;
+                      const itemDisplayPrice = unit > 0 ? (unit * item.quantity) : (item.totalPrice || 0);
+
+                      return (
+                        <div key={item.id} className="flex gap-4 p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5">
+                          <div className="flex-1">
+                            <h4 className="font-bold text-gray-900 dark:text-white mb-1">{item.name}</h4>
+                            <div className="text-xs text-gray-500 space-y-0.5">
+                              {item.options.map(o => (
+                                <div key={o.itemId}>• {o.itemName}</div>
+                              ))}
+                              {item.removedIngredients.map(i => (
+                                <div key={i} className="text-red-400">× بدون {i}</div>
+                              ))}
+                              {item.notes && (
+                                <div className="text-amber-600 dark:text-amber-400 mt-1 font-bold border-r-[3px] border-amber-500 pr-2 pt-0.5 whitespace-pre-wrap">ملاحظة: {item.notes}</div>
+                              )}
                             </div>
-                            <span className="font-black text-primary">{item.totalPrice} ر.س</span>
+                            <div className="mt-3 flex items-center justify-between">
+                              <div className="flex items-center bg-white dark:bg-zinc-800 rounded-xl p-0.5 border border-gray-100 dark:border-white/10">
+                                <button onClick={() => updateQuantity(item.id, -1)} className="p-1.5 text-gray-400 hover:text-primary"><Minus size={14} /></button>
+                                <span className="w-8 text-center text-sm font-bold text-gray-900 dark:text-white">{item.quantity}</span>
+                                <button onClick={() => updateQuantity(item.id, 1)} className="p-1.5 text-gray-400 hover:text-primary"><Plus size={14} /></button>
+                              </div>
+                              <span className="font-black text-primary">{Number(itemDisplayPrice.toFixed(2))} ر.س</span>
+                            </div>
                           </div>
+                          <button 
+                            type="button"
+                            onClick={() => setItemToDelete(item)} 
+                            className="text-gray-300 hover:text-red-500 transition-colors p-1"
+                            title="حذف من السلة"
+                          >
+                            <Trash2 size={18} />
+                          </button>
                         </div>
-                        <button onClick={() => removeFromCart(item.id)} className="text-gray-300 hover:text-red-500 transition-colors">
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               )}
@@ -876,13 +888,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                       </div>
                     )}
 
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-400 mr-2">ملاحظات إضافية</label>
-                      <textarea
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-400 mr-1">ملاحظات إضافية</label>
+                      <input
+                        type="text"
                         value={formData.notes}
                         onChange={e => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                        placeholder="أي طلبات خاصة؟"
-                        className="w-full p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border-none focus:ring-2 focus:ring-primary/50 outline-none text-sm h-24 resize-none"
+                        placeholder="أي طلبات خاصة بالطلب؟ (اختياري)"
+                        className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/10 text-xs font-medium outline-none focus:border-primary/50 placeholder:text-gray-400"
                       />
                     </div>
 
@@ -1183,6 +1196,56 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
           </motion.div>
         </div>
       )}
+
+      {/* Delete Item Confirmation Modal */}
+      <AnimatePresence>
+        {itemToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="w-full max-w-xs bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-100 dark:border-white/10 shadow-2xl text-center space-y-4"
+            >
+              <div className="w-12 h-12 rounded-full bg-red-500/10 text-red-500 mx-auto flex items-center justify-center">
+                <Trash2 size={22} />
+              </div>
+              <div className="space-y-1">
+                <h4 className="font-bold text-base text-gray-900 dark:text-white">
+                  تأكيد حذف الصنف
+                </h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                  هل تريد حذف &quot;{itemToDelete.name}&quot; من السلة؟
+                </p>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setItemToDelete(null)}
+                  className="flex-1 py-2.5 bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 font-bold text-xs rounded-xl hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                >
+                  تراجع
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    removeFromCart(itemToDelete.id);
+                    setItemToDelete(null);
+                  }}
+                  className="flex-1 py-2.5 bg-red-500 text-white font-bold text-xs rounded-xl hover:bg-red-600 transition-colors shadow-sm cursor-pointer"
+                >
+                  حذف
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </AnimatePresence>
   );
 };

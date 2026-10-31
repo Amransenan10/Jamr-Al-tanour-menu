@@ -248,7 +248,14 @@ export const OrderTracking: React.FC = () => {
                      </div>
                   )}
                 </div>
-                <span className="font-bold text-gray-900 dark:text-white">{item.totalPrice} ر.س</span>
+                <span className="font-bold text-gray-900 dark:text-white">
+                  {(() => {
+                    const optionsSum = item.options?.reduce((s: number, o: any) => s + (Number(o.price) || 0), 0) || 0;
+                    const unit = (Number(item.price) || 0) + optionsSum;
+                    const total = unit > 0 ? (unit * item.quantity) : (item.totalPrice || 0);
+                    return Number(total.toFixed(2));
+                  })()} ر.س
+                </span>
               </div>
             ))}
           </div>

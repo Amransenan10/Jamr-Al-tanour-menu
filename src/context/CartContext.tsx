@@ -14,6 +14,20 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+const calculateItemUnitPrice = (item: CartItem): number => {
+  const optionsTotal = Array.isArray(item.options)
+    ? item.options.reduce((sum, opt) => sum + (Number(opt.price) || 0), 0)
+    : 0;
+  const base = Number(item.price) || 0;
+  if (base > 0 || optionsTotal > 0) {
+    return base + optionsTotal;
+  }
+  if (item.totalPrice && item.quantity) {
+    return item.totalPrice / item.quantity;
+  }
+  return 0;
+};
+
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
 
@@ -34,23 +48,32 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const rawItems = Array.isArray(parsed) ? parsed : (parsed.items || parsed.c || []);
 
           if (Array.isArray(rawItems) && rawItems.length > 0) {
-            const restoredItems: CartItem[] = rawItems.map((item: any) => ({
-              id: item.id || item.i || `cart_item_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-              productId: item.productId || item.p || '',
-              name: item.name || item.n || item.name_ar || 'وجبة',
-              price: Number(item.price ?? item.pr ?? 0),
-              quantity: Number(item.quantity ?? item.q ?? 1),
-              options: Array.isArray(item.options || item.o) ? (item.options || item.o).map((opt: any) => ({
+            const restoredItems: CartItem[] = rawItems.map((item: any) => {
+              const basePrice = Number(item.price ?? item.pr ?? 0);
+              const qty = Number(item.quantity ?? item.q ?? 1);
+              const opts = Array.isArray(item.options || item.o) ? (item.options || item.o).map((opt: any) => ({
                 groupId: opt.groupId || opt.g || '',
                 groupName: opt.groupName || opt.gn || '',
                 itemId: opt.itemId || opt.id || '',
                 itemName: opt.itemName || opt.in || '',
                 price: Number(opt.price ?? opt.p ?? 0)
-              })) : [],
-              removedIngredients: item.removedIngredients || item.r || [],
-              totalPrice: Number(item.totalPrice ?? item.t ?? item.price ?? 0),
-              notes: item.notes || item.nt || ''
-            }));
+              })) : [];
+              const optionsSum = opts.reduce((s: number, o: any) => s + (Number(o.price) || 0), 0);
+              const unit = (basePrice + optionsSum) > 0 ? (basePrice + optionsSum) : (Number(item.totalPrice ?? item.t ?? 0) / (qty || 1));
+              const total = Math.round(unit * qty * 100) / 100;
+
+              return {
+                id: item.id || item.i || `cart_item_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                productId: item.productId || item.p || '',
+                name: item.name || item.n || item.name_ar || 'وجبة',
+                price: basePrice,
+                quantity: qty,
+                options: opts,
+                removedIngredients: item.removedIngredients || item.r || [],
+                totalPrice: total,
+                notes: item.notes || item.nt || ''
+              };
+            });
 
             setCart(restoredItems);
             localStorage.setItem('jamr_al_tannour_cart', JSON.stringify(restoredItems));
@@ -65,7 +88,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedCart = localStorage.getItem('jamr_al_tannour_cart');
     if (savedCart) {
       try {
-        setCart(JSON.parse(savedCart));
+        const parsed = JSON.parse(savedCart);
+        if (Array.isArray(parsed)) {
+          const selfHealed = parsed.map((item: CartItem) => {
+            const unitPrice = calculateItemUnitPrice(item);
+            const correctedTotal = unitPrice > 0 ? Math.round(unitPrice * item.quantity * 100) / 100 : (item.totalPrice || 0);
+            return { ...item, totalPrice: correctedTotal };
+          });
+          setCart(selfHealed);
+        }
       } catch (e) {
         console.error('Failed to parse cart', e);
       }
@@ -74,8 +105,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const restoreCart = (items: CartItem[]) => {
     if (Array.isArray(items) && items.length > 0) {
-      setCart(items);
-      localStorage.setItem('jamr_al_tannour_cart', JSON.stringify(items));
+      const selfHealed = items.map((item: CartItem) => {
+        const unitPrice = calculateItemUnitPrice(item);
+        const correctedTotal = unitPrice > 0 ? Math.round(unitPrice * item.quantity * 100) / 100 : (item.totalPrice || 0);
+        return { ...item, totalPrice: correctedTotal };
+      });
+      setCart(selfHealed);
+      localStorage.setItem('jamr_al_tannour_cart', JSON.stringify(selfHealed));
     }
   };
 
@@ -84,7 +120,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [cart]);
 
   const addToCart = (item: CartItem) => {
-    setCart((prev) => [...prev, item]);
+    const unitPrice = calculateItemUnitPrice(item);
+    const correctedTotal = Math.round(unitPrice * item.quantity * 100) / 100;
+    setCart((prev) => [...prev, { ...item, totalPrice: correctedTotal }]);
   };
 
   const removeFromCart = (cartItemId: string) => {
@@ -96,7 +134,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       prev.map((item) => {
         if (item.id === cartItemId) {
           const newQty = Math.max(1, item.quantity + delta);
-          return { ...item, quantity: newQty };
+          const unitPrice = calculateItemUnitPrice(item);
+          const newTotal = Math.round(unitPrice * newQty * 100) / 100;
+          return { ...item, quantity: newQty, totalPrice: newTotal };
         }
         return item;
       })
@@ -109,9 +149,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => {
-    const itemBasePrice = item.price;
-    const optionsPrice = item.options.reduce((s, o) => s + o.price, 0);
-    return sum + (itemBasePrice + optionsPrice) * item.quantity;
+    const unitPrice = calculateItemUnitPrice(item);
+    return sum + (unitPrice * item.quantity);
   }, 0);
 
   return (

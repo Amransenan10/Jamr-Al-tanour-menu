@@ -157,7 +157,14 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                                 <span className={cn("font-bold", isDark ? 'text-white' : 'text-gray-900')}>
                                     <span className="text-primary ml-1">×{item?.quantity || 1}</span> {item?.name || 'صنف غير معروف'}
                                 </span>
-                                <span className="text-gray-500 text-xs">{item?.totalPrice || 0} ر.س</span>
+                                <span className="text-gray-500 text-xs">
+                                    {(() => {
+                                        const optionsSum = item?.options?.reduce((s: number, o: any) => s + (Number(o.price) || 0), 0) || 0;
+                                        const unit = (Number(item?.price) || 0) + optionsSum;
+                                        const total = unit > 0 ? (unit * (item?.quantity || 1)) : (item?.totalPrice || 0);
+                                        return Number(total.toFixed(2));
+                                    })()} ر.س
+                                </span>
                             </div>
                             
                             {/* Options and Additives */}
