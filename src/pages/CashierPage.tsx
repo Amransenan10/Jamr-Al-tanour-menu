@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
     Clock, CheckCircle2, Package, Loader2, Bell, RefreshCw,
     MapPin, ShoppingBag, Phone, Bike, Coffee, ChevronDown, LogOut, Copy, ExternalLink,
-    Settings, Volume2, X, LayoutList, Star, UserPlus, Search, Moon, Sun
+    Settings, Volume2, X, LayoutList, Star, UserPlus, Search, Moon, Sun, Building2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -190,7 +190,7 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
 
                 {/* Notes */}
                 {(() => {
-                    const cleanNotes = order.notes?.replace(/\[(LOYALTY_(USED|EARNED):\d+|DISTANCE:[\d.]+km|LOYALTY_SECURITY_CHECK|TRAFFIC:[^\]]+)\]/g, '').trim();
+                    const cleanNotes = order.notes?.replace(/\[(LOYALTY_(USED|EARNED):\d+|DISTANCE:[\d.]+km|LOYALTY_SECURITY_CHECK|TRAFFIC:[^\]]+|العنوان:[^\]]+)\]/g, '').trim();
                     return cleanNotes ? (
                         <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mt-3">
                             <p className="text-amber-600 dark:text-amber-400 text-xs font-bold leading-relaxed whitespace-pre-wrap">ملاحظات: {cleanNotes}</p>
@@ -215,30 +215,41 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                                 }
                             }
 
+                            const addressMatch = order.notes?.match(/\[العنوان:\s*([^\]]+)\]/);
+                            const addressDetail = addressMatch ? addressMatch[1] : null;
+
                             if (mapUrl) {
                                 return (
-                                    <div className="flex items-center gap-2">
-                                        <a
-                                            href={mapUrl}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="flex-1 flex items-center justify-center gap-2 text-sm font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-xl py-2 hover:bg-blue-500/20 transition-colors"
-                                        >
-                                            <MapPin size={16} />
-                                            فتح في الخرائط
-                                            <ExternalLink size={14} className="opacity-50" />
-                                        </a>
-                                        <button
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(mapUrl);
-                                                toast.success('تم نسخ موقع العميل', { position: 'top-center' });
-                                            }}
-                                            className={cn("flex items-center gap-2 px-3 py-2 rounded-xl transition-colors shrink-0 text-sm font-bold", isDark ? 'bg-zinc-800 text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-900')}
-                                            title="نسخ موقع العميل"
-                                        >
-                                            <Copy size={16} />
-                                            نسخ موقع العميل
-                                        </button>
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center gap-2">
+                                            <a
+                                                href={mapUrl}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="flex-1 flex items-center justify-center gap-2 text-sm font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-xl py-2 hover:bg-blue-500/20 transition-colors"
+                                            >
+                                                <MapPin size={16} />
+                                                فتح في الخرائط
+                                                <ExternalLink size={14} className="opacity-50" />
+                                            </a>
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(mapUrl);
+                                                    toast.success('تم نسخ موقع العميل', { position: 'top-center' });
+                                                }}
+                                                className={cn("flex items-center gap-2 px-3 py-2 rounded-xl transition-colors shrink-0 text-sm font-bold", isDark ? 'bg-zinc-800 text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-900')}
+                                                title="نسخ موقع العميل"
+                                            >
+                                                <Copy size={16} />
+                                                نسخ موقع العميل
+                                            </button>
+                                        </div>
+                                        {addressDetail && (
+                                            <div className={cn("flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl border", isDark ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : "bg-amber-50 text-amber-700 border-amber-200")}>
+                                                <Building2 size={14} className="shrink-0" />
+                                                <span>تفاصيل إضافية: {addressDetail}</span>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             }

@@ -8,6 +8,32 @@ export const DEFAULT_BRANCH_COORDINATES: Record<string, { lat: number; lng: numb
   'طويق': { lat: 24.5593042, lng: 46.5714602 }
 };
 
+export interface RiyadhDistrict {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+}
+
+// Pre-configured delivery districts around Suwaidi & Tuwaiq branches
+export const RIYADH_DELIVERY_DISTRICTS: RiyadhDistrict[] = [
+  { id: 'suwaidi_west', name: 'حي السويدي الغربي', lat: 24.5760, lng: 46.6288 },
+  { id: 'tuwaiq', name: 'حي طويق', lat: 24.5600, lng: 46.5700 },
+  { id: 'suwaidi', name: 'حي السويدي', lat: 24.5900, lng: 46.6500 },
+  { id: 'shubra', name: 'حي شبرا', lat: 24.5750, lng: 46.6580 },
+  { id: 'urija_west', name: 'حي العريجاء الغربية', lat: 24.5980, lng: 46.5950 },
+  { id: 'urija_mid', name: 'حي العريجاء الوسطى', lat: 24.6050, lng: 46.6150 },
+  { id: 'urija_south', name: 'حي العريجاء الجنوبية', lat: 24.5850, lng: 46.6080 },
+  { id: 'zahra', name: 'حي الزهرة', lat: 24.6020, lng: 46.6450 },
+  { id: 'duraihimya', name: 'حي الدريهمية', lat: 24.5910, lng: 46.6710 },
+  { id: 'namar', name: 'حي نمار', lat: 24.5500, lng: 46.6150 },
+  { id: 'hazm', name: 'حي الحزم', lat: 24.5420, lng: 46.6500 },
+  { id: 'sultana', name: 'حي سلطانة', lat: 24.6050, lng: 46.6650 },
+  { id: 'badiah', name: 'حي البديعة', lat: 24.6150, lng: 46.6450 },
+  { id: 'dhahrat_laban', name: 'حي ظهرة لبن', lat: 24.6300, lng: 46.5500 },
+  { id: 'shifa', name: 'حي الشفاء', lat: 24.5300, lng: 46.6800 }
+];
+
 /**
  * Calculates Haversine distance in kilometers between two GPS coordinates
  */
@@ -37,25 +63,53 @@ export function calculateHaversineDistance(
 }
 
 /**
- * Parses latitude and longitude from Google Maps URLs or string coordinates
+ * Parses latitude and longitude from Google Maps URLs, district tags, or string coordinates
  */
 export function extractCoordinatesFromLocation(locationStr: string): { lat: number; lng: number } | null {
-  if (!locationStr) return null;
+  if (!locationStr || typeof locationStr !== 'string') return null;
 
-  // Case 1: URL query like ?q=24.5937,46.6111 or @24.5937,46.6111
-  const qMatch = locationStr.match(/(?:q=|@|loc:)(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/i);
+  const trimmed = locationStr.trim();
+
+  // Case 1: Tag [COORDS:24.1234,46.1234]
+  const tagCoordsMatch = trimmed.match(/\[COORDS:(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\]/i);
+  if (tagCoordsMatch) {
+    const lat = parseFloat(tagCoordsMatch[1]);
+    const lng = parseFloat(tagCoordsMatch[2]);
+    if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+  }
+
+  // Case 2: Tag [DISTRICT:id]
+  const tagDistrictMatch = trimmed.match(/\[DISTRICT:([a-z0-9_]+)\]/i);
+  if (tagDistrictMatch) {
+    const found = RIYADH_DELIVERY_DISTRICTS.find(d => d.id === tagDistrictMatch[1]);
+    if (found) return { lat: found.lat, lng: found.lng };
+  }
+
+  // Case 3: URL query like ?q=24.5937,46.6111 or @24.5937,46.6111 or place/24.5937,46.6111
+  const qMatch = trimmed.match(/(?:q=|@|loc:|ll=|place\/)(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/i);
   if (qMatch) {
     const lat = parseFloat(qMatch[1]);
     const lng = parseFloat(qMatch[2]);
     if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
   }
 
-  // Case 2: Plain coordinate pair like "24.5937, 46.6111"
-  const plainMatch = locationStr.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
+  // Case 4: Plain coordinate pair like "24.5937, 46.6111"
+  const plainMatch = trimmed.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
   if (plainMatch) {
     const lat = parseFloat(plainMatch[1]);
     const lng = parseFloat(plainMatch[2]);
-    if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+    // Extra validation for plausible Saudi latitude (15 - 32) and longitude (34 - 56)
+    if (!isNaN(lat) && !isNaN(lng) && lat >= 10 && lat <= 35 && lng >= 30 && lng <= 60) {
+      return { lat, lng };
+    }
+  }
+
+  // Case 5: Direct match with known Riyadh district name
+  const matchedDistrict = RIYADH_DELIVERY_DISTRICTS.find(d => 
+    trimmed.includes(d.name) || trimmed.replace(/^(حي\s*)/, '') === d.name.replace(/^(حي\s*)/, '')
+  );
+  if (matchedDistrict) {
+    return { lat: matchedDistrict.lat, lng: matchedDistrict.lng };
   }
 
   return null;
@@ -82,14 +136,15 @@ export function getDeliveryPricingRules(
   // Extract customer coordinates
   const customerCoords = extractCoordinatesFromLocation(customerLocationStr);
 
-  // If customer location is plain text address without GPS coordinates, return base default
+  // If customer location has NO valid GPS coordinates, do NOT allow order and do NOT default to 5 SAR!
   if (!customerCoords) {
     return {
       distanceKm: null,
-      deliveryFee: 5,
+      deliveryFee: 0,
       minOrderValue: 20,
-      isAllowed: true,
-      tierLabel: 'رسوم افتراضية (عن طريق العنوان النصي)'
+      isAllowed: false,
+      statusMessage: 'يرجى التقاط موقعك الجغرافي عبر زر الدبوس لحساب رسوم التوصيل بدقة والتأكد من نطاق التغطية.',
+      tierLabel: 'الموقع غير محدد'
     };
   }
 
@@ -114,7 +169,7 @@ export function getDeliveryPricingRules(
       deliveryFee: 5,
       minOrderValue: 20,
       isAllowed: true,
-      tierLabel: `ضمن نطاق 4 كم (يبعد ${distanceKm} كم)`
+      tierLabel: `ضمن نطاق 4 كم (يبعد ${distanceKm} كم - رسوم 5 ر.س)`
     };
   }
 
@@ -125,7 +180,7 @@ export function getDeliveryPricingRules(
       deliveryFee: 7,
       minOrderValue: 20,
       isAllowed: true,
-      tierLabel: `نطاق متوسط (يبعد ${distanceKm} كم)`
+      tierLabel: `نطاق متوسط (يبعد ${distanceKm} كم - رسوم 7 ر.س)`
     };
   }
 
@@ -136,17 +191,17 @@ export function getDeliveryPricingRules(
       deliveryFee: 10,
       minOrderValue: 30,
       isAllowed: true,
-      tierLabel: `نطاق بعيد (يبعد ${distanceKm} كم)`
+      tierLabel: `نطاق أقصى (يبعد ${distanceKm} كم - رسوم 10 ر.س)`
     };
   }
 
-  // Tier 4: > 10.00 km -> Out of Delivery Zone
+  // Tier 4: > 10.00 km -> Out of Delivery Zone (BLOCKED)
   return {
     distanceKm,
     deliveryFee: 10,
     minOrderValue: 30,
     isAllowed: false,
-    statusMessage: `موقعك يبعد ${distanceKm} كم عن فرع ${branchName}، وهو خارج نطاق التوصيل المسموح (أقصى حد للتوصيل 10 كم). يمكنك اختيار الاستلام من الفرع.`,
+    statusMessage: `موقعك يبعد ${distanceKm} كم عن فرع ${branchName}، وهو خارج نطاق التوصيل المسموح (الحد الأقصى للتوصيل 10 كم). يمكنك اختيار الاستلام من الفرع.`,
     tierLabel: `خارج نطاق التوصيل (يبعد ${distanceKm} كم)`
   };
 }

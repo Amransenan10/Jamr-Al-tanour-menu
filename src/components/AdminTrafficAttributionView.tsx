@@ -67,8 +67,9 @@ const PRESET_CHANNELS: QuickChannel[] = [
 ];
 
 export const AdminTrafficAttributionView: React.FC<AdminTrafficAttributionViewProps> = ({ trafficStats }) => {
-  const totalOrders = Object.values(trafficStats).reduce((acc, d) => acc + d.count, 0) || 1;
-  const totalRevenue = Object.values(trafficStats).reduce((acc, d) => acc + d.totalSales, 0);
+  const statsList = Object.values(trafficStats) as Array<{ count: number; totalSales: number }>;
+  const totalOrders = statsList.reduce((acc, d) => acc + d.count, 0) || 1;
+  const totalRevenue = statsList.reduce((acc, d) => acc + d.totalSales, 0);
 
   const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://jamr-al-tanour-menu.vercel.app';
 
@@ -150,7 +151,7 @@ export const AdminTrafficAttributionView: React.FC<AdminTrafficAttributionViewPr
               لا توجد طلبات مسجلة بعد لحساب مصادر الزوار
             </div>
           ) : (
-            Object.entries(trafficStats).map(([sourceName, data]) => {
+            (Object.entries(trafficStats) as Array<[string, { count: number; totalSales: number }]>).map(([sourceName, data]) => {
               const percentage = Math.round((data.count / totalOrders) * 100);
 
               return (

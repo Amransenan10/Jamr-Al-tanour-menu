@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Trash2, Minus, Plus, MapPin, Phone, User, Clock, CheckCircle2, Loader2, ShoppingBag } from 'lucide-react';
+import { X, Trash2, Minus, Plus, MapPin, Phone, User, Clock, CheckCircle2, Loader2, ShoppingBag, Building2, RotateCw, AlertTriangle, ExternalLink } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Branch, OrderType, Order } from '../types';
@@ -8,7 +8,7 @@ import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { saveOrderLocally } from '../utils/orderStorage';
 import { normalizeCouponCode } from '../utils/couponUtils';
-import { getDeliveryPricingRules } from '../utils/distanceUtils';
+import { getDeliveryPricingRules, extractCoordinatesFromLocation, RIYADH_DELIVERY_DISTRICTS } from '../utils/distanceUtils';
 import { isValidSaudiPhone, normalizeSaudiPhone, buildPhoneOrFilter } from '../utils/phoneUtils';
 import { formatTrafficTagForOrderNotes, resetTrafficAttributionAfterOrder } from '../services/trafficAttribution';
 import { trackInitiateCheckout, trackPurchase } from '../services/pixelTrackingService';
@@ -30,6 +30,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState('');
+  const [showManualFallback, setShowManualFallback] = useState(false);
+  const [manualLocationInput, setManualLocationInput] = useState('');
+  const [addressDetails, setAddressDetails] = useState(() => {
+    return localStorage.getItem('jamr_customer_address_details') || '';
+  });
+  const [locationLabel, setLocationLabel] = useState(() => {
+    return localStorage.getItem('jamr_customer_location_label') || '';
+  });
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{code: string; type: 'fixed' | 'percentage' | 'free_delivery'; value: number} | null>(null);
   const [promoError, setPromoError] = useState('');
@@ -112,42 +121,99 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
     return () => clearTimeout(timeout);
   }, [formData.phone]);
 
-  const handleLocationClick = () => {
-    if (navigator.geolocation) {
-      setLocationLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setLocationLoading(false);
-          setFormData(prev => ({
-            ...prev,
-            location: `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`
-          }));
-        }, 
-        (err) => {
-          setLocationLoading(false);
-          console.error("Geolocation error:", err);
-          let errorMessage = 'تعذر تحديد الموقع تلقائياً، يرجى تفعيل إعدادات الموقع من متصفحك أو إدخاله يدوياً';
-          if (err.code === 1) { // PERMISSION_DENIED
-            errorMessage = 'عذراً، تم رفض صلاحية الوصول للموقع. يرجى السماح للمتصفح (مثل Safari أو Chrome) بمعرفة موقعك من إعدادات جهازك لتتمكن من استخدام هذه الميزة، أو قم بإدخال العنوان يدوياً.';
-          } else if (err.code === 2) { // POSITION_UNAVAILABLE
-            errorMessage = 'معلومات الموقع غير متوفرة حالياً. حاول التحرك لمكان مكشوف، تأكد من تشغيل الـ GPS، أو أدخل الموقع يدوياً.';
-          } else if (err.code === 3) { // TIMEOUT
-            errorMessage = 'انتهى وقت المحاولة للحصول على الموقع. يرجى التحقق من اتصالك وإعدادات الموقع، أو إدخاله يدوياً.';
-          }
-          alert(errorMessage);
-        },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-      );
+  const applyLocationCoords = (lat: number, lng: number, label: string) => {
+    setLocationLoading(false);
+    setLocationError('');
+    setShowManualFallback(false);
+    
+    const roundedLat = Math.round(lat * 1000000) / 1000000;
+    const roundedLng = Math.round(lng * 1000000) / 1000000;
+    const mapUrl = `https://www.google.com/maps?q=${roundedLat},${roundedLng}`;
+
+    setFormData(prev => ({
+      ...prev,
+      location: mapUrl
+    }));
+    setLocationLabel(label);
+    localStorage.setItem('jamr_customer_location', mapUrl);
+    localStorage.setItem('jamr_customer_location_label', label);
+  };
+
+  const captureCurrentLocation = () => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setLocationError('المتصفح في جهازك لا يدعم تحديد الموقع التلقائي. يمكنك اختيار حيك من القائمة أدناه.');
+      setShowManualFallback(true);
+      return;
+    }
+
+    setLocationLoading(true);
+    setLocationError('');
+
+    // Strategy 1: High Accuracy GPS (Satellite) with 7-second timeout
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        applyLocationCoords(pos.coords.latitude, pos.coords.longitude, 'موقعك الحالي (تم الالتقاط عبر الـ GPS 🛰️)');
+      },
+      (err1) => {
+        console.warn('Satellite GPS timed out/failed, trying cellular/WiFi geolocation fallback...', err1);
+        
+        // Strategy 2: Fast network/WiFi/cellular fallback with 6-second timeout
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            applyLocationCoords(pos.coords.latitude, pos.coords.longitude, 'موقعك الحالي (عبر الشبكة)');
+          },
+          (err2) => {
+            setLocationLoading(false);
+            console.error('All geolocation attempts failed:', err2);
+            let msg = 'تعذر التقاط الموقع تلقائياً. يمكنك اختيار حيك المباشر من القائمة أدناه بكل سهولة.';
+            if (err2.code === 1) { // PERMISSION_DENIED
+              msg = 'تم رفض إذن الوصول للموقع. يرجى تفعيل إذن الموقع للمتصفح أو اختيار حيك من القائمة أدناه.';
+            } else if (err2.code === 2) { // POSITION_UNAVAILABLE
+              msg = 'إشارة الـ GPS غير متوفرة حالياً، يرجى اختيار حيك من القائمة أدناه.';
+            }
+            setLocationError(msg);
+            setShowManualFallback(true);
+          },
+          { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 }
+        );
+      },
+      { enableHighAccuracy: true, timeout: 7000, maximumAge: 0 }
+    );
+  };
+
+  const handleSelectDistrict = (districtId: string) => {
+    const district = RIYADH_DELIVERY_DISTRICTS.find(d => d.id === districtId);
+    if (!district) return;
+    applyLocationCoords(district.lat, district.lng, district.name);
+  };
+
+  const handleManualLocationSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualLocationInput.trim()) return;
+    const coords = extractCoordinatesFromLocation(manualLocationInput);
+    if (coords) {
+      applyLocationCoords(coords.lat, coords.lng, 'موقع محدد عبر الرابط');
+      setManualLocationInput('');
     } else {
-      alert('المتصفح الخاص بك لا يدعم تحديد الموقع');
+      setLocationError('تعذر قراءة الإحداثيات من هذا الرابط. يرجى اختيار حيك من القائمة أو التأكد من صيغة الرابط.');
     }
   };
 
-  const deliveryRules = orderType === 'delivery'
-    ? getDeliveryPricingRules(formData.location, branch, storeSettings?.latitude, storeSettings?.longitude)
-    : { distanceKm: null, deliveryFee: 0, minOrderValue: 20, isAllowed: true, tierLabel: '' };
+  const customerCoords = orderType === 'delivery' ? extractCoordinatesFromLocation(formData.location) : null;
+  const hasValidCoords = Boolean(customerCoords);
 
-  const baseDeliveryFee = orderType === 'delivery' ? deliveryRules.deliveryFee : 0;
+  const deliveryRules = (orderType === 'delivery' && hasValidCoords)
+    ? getDeliveryPricingRules(formData.location, branch, storeSettings?.latitude, storeSettings?.longitude)
+    : { 
+        distanceKm: null, 
+        deliveryFee: 0, 
+        minOrderValue: 20, 
+        isAllowed: false, 
+        statusMessage: 'يرجى التقاط موقعك أولاً عبر زر الدبوس لحساب رسوم التوصيل بدقة والتأكد من نطاق التغطية.',
+        tierLabel: 'الموقع غير محدد' 
+      };
+
+  const baseDeliveryFee = (orderType === 'delivery' && hasValidCoords && deliveryRules.isAllowed) ? deliveryRules.deliveryFee : 0;
   let deliveryFee = baseDeliveryFee;
   
   let discountAmount = 0;
@@ -309,7 +375,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
   };
 
   const handleSubmitOrder = async () => {
-    if (!formData.name || !formData.phone || !orderType || (orderType === 'delivery' && !formData.location)) {
+    if (!formData.name || !formData.phone || !orderType) {
       alert('يرجى اختيار نوع الطلب (توصيل/استلام) وإكمال جميع البيانات المطلوبة');
       return;
     }
@@ -324,6 +390,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
     setFormData(prev => ({ ...prev, phone: cleanPhone }));
 
     if (orderType === 'delivery') {
+      const coords = extractCoordinatesFromLocation(formData.location);
+      if (!coords) {
+        alert('يرجى التقاط موقعك الجغرافي أولاً عبر زر (التقاط موقعي الحالي 📍) لإتمام طلب التوصيل.');
+        return;
+      }
       if (!deliveryRules.isAllowed) {
         alert(deliveryRules.statusMessage || 'عذراً، موقعك خارج نطاق التوصيل المسموح (أقصى حد 10 كم). يرجى اختيار الاستلام من الفرع.');
         return;
@@ -385,6 +456,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
       const trafficTag = formatTrafficTagForOrderNotes();
       const orderNotes = [
         formData.notes,
+        addressDetails ? `[العنوان: ${addressDetails}]` : '',
         deliveryRules.distanceKm ? `[DISTANCE:${deliveryRules.distanceKm}km]` : '',
         pointsToDeduct > 0 ? `[LOYALTY_USED:${pointsToDeduct}]` : '',
         loyaltyPointsEarned > 0 ? `[LOYALTY_EARNED:${loyaltyPointsEarned}]` : '',
@@ -448,6 +520,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
       localStorage.setItem('jamr_customer_phone', formData.phone);
       if (orderType === 'delivery' && formData.location) {
         localStorage.setItem('jamr_customer_location', formData.location);
+        if (addressDetails) {
+          localStorage.setItem('jamr_customer_address_details', addressDetails);
+        }
       }
 
       localStorage.setItem('jamr_active_order', data.id);
@@ -616,32 +691,205 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                     </div>
 
                     {orderType === 'delivery' ? (
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-gray-400 mr-2">عنوان التوصيل (موقعك أو العنوان يدوياً)</label>
-                        <div className="relative">
-                          <button
-                            type="button"
-                            onClick={handleLocationClick}
-                            disabled={locationLoading}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-zinc-800 text-primary rounded-xl hover:bg-primary hover:text-white transition-colors disabled:opacity-50"
-                            title="تحديد موقعي التلقائي 📍"
-                          >
-                            {locationLoading ? <Loader2 size={18} className="animate-spin" /> : <MapPin size={18} />}
-                          </button>
-                          <input
-                            type="text"
-                            value={formData.location}
-                            onChange={e => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                            placeholder="اكتب الحي/الشارع يدوياً، أو اضغط الدبوس للوصول التلقائي 👈"
-                            className="w-full pr-14 pl-4 py-3.5 bg-gray-50 dark:bg-white/5 rounded-2xl border-none focus:ring-2 focus:ring-primary/50 outline-none text-sm font-medium"
-                          />
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-black text-gray-400 flex items-center gap-1.5">
+                            <MapPin size={14} className="text-primary" />
+                            موقع التوصيل
+                          </label>
+                          {hasValidCoords && (
+                            <button
+                              type="button"
+                              onClick={captureCurrentLocation}
+                              disabled={locationLoading}
+                              className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+                            >
+                              <RotateCw size={12} className={cn(locationLoading && "animate-spin")} />
+                              تحديث الموقع
+                            </button>
+                          )}
                         </div>
-                        {formData.location && deliveryRules.tierLabel && (
+
+                        {/* State 1: Location successfully captured and valid */}
+                        {hasValidCoords ? (
                           <div className={cn(
-                            "text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 mt-1",
-                            !deliveryRules.isAllowed ? "bg-red-500/10 text-red-500 border border-red-500/20" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                            "p-4 rounded-2xl border transition-all",
+                            deliveryRules.isAllowed
+                              ? "bg-emerald-500/5 border-emerald-500/20 dark:bg-emerald-950/20"
+                              : "bg-red-500/5 border-red-500/20 dark:bg-red-950/20"
                           )}>
-                            <span>📍 {deliveryRules.tierLabel}</span>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-start gap-3">
+                                <div className={cn(
+                                  "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5",
+                                  deliveryRules.isAllowed ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
+                                )}>
+                                  {deliveryRules.isAllowed ? <CheckCircle2 size={20} /> : <AlertTriangle size={20} />}
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={cn(
+                                      "font-black text-sm",
+                                      deliveryRules.isAllowed ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"
+                                    )}>
+                                      {deliveryRules.isAllowed ? 'تم تحديد موقعك بدقة' : 'خارج نطاق التوصيل المتاح'}
+                                    </span>
+                                    {locationLabel && (
+                                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-500 font-bold">
+                                        {locationLabel}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">
+                                    {deliveryRules.distanceKm !== null ? (
+                                      <>يبعد <strong className="font-black text-gray-900 dark:text-white">{deliveryRules.distanceKm} كم</strong> عن فرع {branch}</>
+                                    ) : (
+                                      'الموقع محدد'
+                                    )}
+                                  </p>
+
+                                  {deliveryRules.isAllowed ? (
+                                    <div className="flex items-center gap-2 pt-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                      <span>💵 رسوم التوصيل: {deliveryFee} ر.س</span>
+                                      {deliveryRules.minOrderValue > 20 && (
+                                        <span className="text-[10px] text-gray-400">
+                                          (الحد الأدنى للطلب: {deliveryRules.minOrderValue} ر.س)
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <p className="text-xs text-red-500 font-bold pt-1 leading-relaxed">
+                                      الحد الأقصى للتوصيل هو 10 كم. يمكنك تغيير الفرع أو اختيار الاستلام من الفرع.
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <a
+                                href={formData.location}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="p-2 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-400 hover:text-primary transition-colors shrink-0"
+                                title="معاينة في خرائط Google"
+                              >
+                                <ExternalLink size={16} />
+                              </a>
+                            </div>
+                          </div>
+                        ) : (
+                          /* State 2: No location captured yet -> Prominent 1-click Pin Button */
+                          <div className="space-y-2">
+                            <button
+                              type="button"
+                              onClick={captureCurrentLocation}
+                              disabled={locationLoading}
+                              className="w-full py-4 px-5 bg-gradient-to-r from-primary to-orange-600 hover:from-primary/95 hover:to-orange-500 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-primary/25 hover:shadow-xl active:scale-[0.99] transition-all disabled:opacity-60 cursor-pointer"
+                            >
+                              {locationLoading ? (
+                                <>
+                                  <Loader2 size={20} className="animate-spin" />
+                                  <span>جاري التقاط الموقع بالأقمار الصناعية 🛰️...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <MapPin size={20} className="animate-pulse" />
+                                  <span>التقاط موقعي الحالي بنقرة واحدة 📍</span>
+                                </>
+                              )}
+                            </button>
+
+                            <p className="text-[11px] text-gray-400 text-center font-medium">
+                              ضغطة واحدة تكفي لتحديد موقعك وتوجيه المندوب مباشرة لبابك
+                            </p>
+
+                            {locationError && (
+                              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-xs font-bold leading-relaxed">
+                                {locationError}
+                              </div>
+                            )}
+
+                            {/* Fallback toggle link */}
+                            <div className="text-center pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setShowManualFallback(!showManualFallback)}
+                                className="text-[11px] text-gray-400 hover:text-primary transition-colors font-bold underline cursor-pointer"
+                              >
+                                {showManualFallback ? 'إخفاء الخيارات البديلة ▲' : 'تعذر التقاط الموقع؟ اضغط هنا لاختيار حيك أو إدخال رابط ▼'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Fallback Drawer / Dropdown when GPS is denied or user wants to pick neighborhood */}
+                        {showManualFallback && (
+                          <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-200 dark:border-white/10 space-y-3 mt-2">
+                            <div className="space-y-1">
+                              <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
+                                🏘️ اختر حيك من قائمة التغطية:
+                              </label>
+                              <select
+                                defaultValue=""
+                                onChange={(e) => {
+                                  if (e.target.value) handleSelectDistrict(e.target.value);
+                                }}
+                                className="w-full py-2.5 px-3 bg-white dark:bg-zinc-800 rounded-xl border border-gray-200 dark:border-white/10 text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-primary"
+                              >
+                                <option value="" disabled>-- اضغط لاختيار الحي --</option>
+                                {RIYADH_DELIVERY_DISTRICTS.map(d => (
+                                  <option key={d.id} value={d.id}>{d.name}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div className="relative flex py-1 items-center">
+                              <div className="flex-grow border-t border-gray-200 dark:border-white/10"></div>
+                              <span className="flex-shrink mx-2 text-[10px] text-gray-400 font-bold">أو</span>
+                              <div className="flex-grow border-t border-gray-200 dark:border-white/10"></div>
+                            </div>
+
+                            <form onSubmit={handleManualLocationSubmit} className="space-y-1.5">
+                              <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
+                                🔗 أو لصق رابط خرائط Google:
+                              </label>
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  value={manualLocationInput}
+                                  onChange={e => setManualLocationInput(e.target.value)}
+                                  placeholder="https://maps.google.com/?q=..."
+                                  className="flex-1 px-3 py-2 bg-white dark:bg-zinc-800 rounded-xl border border-gray-200 dark:border-white/10 text-xs outline-none focus:border-primary font-mono text-left"
+                                  dir="ltr"
+                                />
+                                <button
+                                  type="submit"
+                                  className="px-4 py-2 bg-primary text-white text-xs font-black rounded-xl hover:brightness-110 shrink-0 cursor-pointer"
+                                >
+                                  تطبيق
+                                </button>
+                              </div>
+                            </form>
+                          </div>
+                        )}
+
+                        {/* Additional Building/Apartment notes (Optional) */}
+                        {hasValidCoords && (
+                          <div className="space-y-1.5 pt-1">
+                            <label className="text-xs font-bold text-gray-400 mr-1 flex items-center gap-1">
+                              <Building2 size={13} />
+                              تفاصيل إضافية للعنوان (اختياري)
+                            </label>
+                            <input
+                              type="text"
+                              value={addressDetails}
+                              onChange={e => {
+                                setAddressDetails(e.target.value);
+                                localStorage.setItem('jamr_customer_address_details', e.target.value);
+                              }}
+                              placeholder="مثال: عمارة رقم 12، الدور الثاني، شقة 4، بجانب مسجد..."
+                              className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 text-xs font-medium outline-none focus:ring-2 focus:ring-primary/40 placeholder:text-gray-400"
+                            />
                           </div>
                         )}
                       </div>
@@ -803,7 +1051,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                       {orderType === 'delivery' ? (
                         <div className="flex flex-col gap-1 pb-2 border-b border-gray-200 dark:border-white/10">
                           <span className="text-gray-500 font-bold text-sm">موقع التوصيل</span>
-                          <span className="font-bold text-gray-900 dark:text-white text-sm break-words">{formData.location}</span>
+                          <span className="font-bold text-gray-900 dark:text-white text-sm">
+                            {locationLabel || 'موقع محدد عبر الخريطة'} {deliveryRules.distanceKm !== null ? `(يبعد ${deliveryRules.distanceKm} كم)` : ''}
+                          </span>
+                          {addressDetails && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                              تفاصيل إضافية: {addressDetails}
+                            </span>
+                          )}
                         </div>
                       ) : (
                         <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-white/10">
@@ -910,20 +1165,28 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                       رجوع
                     </button>
                     <button
-                      disabled={storeStatus === 'closed' || !orderType || (orderType === 'delivery' && (!deliveryRules.isAllowed || totalPrice < deliveryRules.minOrderValue)) || !formData.name || !formData.phone || !isValidSaudiPhone(formData.phone) || (orderType === 'delivery' && !formData.location)}
+                      disabled={storeStatus === 'closed' || !orderType || (orderType === 'delivery' && (!hasValidCoords || !deliveryRules.isAllowed || totalPrice < deliveryRules.minOrderValue)) || !formData.name || !formData.phone || !isValidSaudiPhone(formData.phone)}
                       onClick={() => setStep('review')}
                       className={cn(
                         "flex-[2] py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all disabled:opacity-50",
                         storeStatus === 'closed' ? "bg-red-500/50 text-white cursor-not-allowed" : 
                         (!orderType) ? "bg-zinc-800 text-gray-500 cursor-not-allowed" :
+                        (orderType === 'delivery' && !hasValidCoords) ? "bg-zinc-800 text-amber-400 cursor-pointer" :
                         (orderType === 'delivery' && !deliveryRules.isAllowed) ? "bg-zinc-800 text-gray-500 cursor-not-allowed" :
                         (orderType === 'delivery' && totalPrice < deliveryRules.minOrderValue) ? "bg-zinc-800 text-gray-500 cursor-not-allowed" :
                         (!formData.name || !formData.phone) ? "bg-zinc-800 text-gray-500 cursor-not-allowed cursor-pointer" :
                         (!isValidSaudiPhone(formData.phone)) ? "bg-zinc-800 text-red-400 cursor-not-allowed" :
-                        "bg-primary text-white shadow-xl shadow-primary/30 hover:scale-[1.02] active:scale-95"
+                        "bg-primary text-white shadow-xl shadow-primary/30 hover:scale-[1.02] active:scale-95 cursor-pointer"
                       )}
                     >
-                      {storeStatus === 'closed' ? 'المطعم مغلق' : !orderType ? 'اختر نوع الطلب' : (orderType === 'delivery' && !deliveryRules.isAllowed) ? 'خارج نطاق التوصيل' : (orderType === 'delivery' && totalPrice < deliveryRules.minOrderValue) ? 'لم تصل للحد الأدنى' : (!formData.name || !formData.phone) ? 'أكمل البيانات' : (!isValidSaudiPhone(formData.phone)) ? 'رقم الجوال غير صحيح' : 'مراجعة الطلب'}
+                      {storeStatus === 'closed' ? 'المطعم مغلق' : 
+                       !orderType ? 'اختر نوع الطلب' : 
+                       (orderType === 'delivery' && !hasValidCoords) ? 'حدد موقع التوصيل 📍' :
+                       (orderType === 'delivery' && !deliveryRules.isAllowed) ? 'خارج نطاق التوصيل ⚠️' : 
+                       (orderType === 'delivery' && totalPrice < deliveryRules.minOrderValue) ? `الحد الأدنى ${deliveryRules.minOrderValue} ر.س` : 
+                       (!formData.name || !formData.phone) ? 'أكمل البيانات' : 
+                       (!isValidSaudiPhone(formData.phone)) ? 'رقم الجوال غير صحيح' : 
+                       'مراجعة الطلب'}
                     </button>
                   </div>
                 ) : (

@@ -265,7 +265,17 @@ export const OrderTracking: React.FC = () => {
                 </div>
                 <div>
                   <p className="font-bold">{order.order_type === 'delivery' ? 'عنوان التوصيل' : 'تفضيل الطلب'}</p>
-                  <p>{order.order_type === 'delivery' ? (order.location || 'لم يتم تحديده') : 'استلام من الفرع'}</p>
+                  {order.order_type === 'delivery' ? (
+                    order.location?.includes('google.com/maps') ? (
+                      <a href={order.location} target="_blank" rel="noreferrer" className="text-primary hover:underline font-bold inline-flex items-center gap-1 text-xs mt-0.5">
+                        📍 تم تحديد الموقع عبر الخريطة (عرض في خرائط Google ↗)
+                      </a>
+                    ) : (
+                      <p className="text-xs">{order.location || 'لم يتم تحديده'}</p>
+                    )
+                  ) : (
+                    <p className="text-xs">استلام من الفرع</p>
+                  )}
                 </div>
              </div>
           </div>
