@@ -152,7 +152,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
     // Strategy 1: High Accuracy GPS (Satellite) with 7-second timeout
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        applyLocationCoords(pos.coords.latitude, pos.coords.longitude, 'موقعك الحالي (تم الالتقاط عبر الـ GPS 🛰️)');
+        applyLocationCoords(pos.coords.latitude, pos.coords.longitude, 'موقعك الحالي عبر GPS');
       },
       (err1) => {
         console.warn('Satellite GPS timed out/failed, trying cellular/WiFi geolocation fallback...', err1);
@@ -160,7 +160,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         // Strategy 2: Fast network/WiFi/cellular fallback with 6-second timeout
         navigator.geolocation.getCurrentPosition(
           (pos) => {
-            applyLocationCoords(pos.coords.latitude, pos.coords.longitude, 'موقعك الحالي (عبر الشبكة)');
+            applyLocationCoords(pos.coords.latitude, pos.coords.longitude, 'موقعك الحالي عبر الشبكة');
           },
           (err2) => {
             setLocationLoading(false);
@@ -392,7 +392,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
     if (orderType === 'delivery') {
       const coords = extractCoordinatesFromLocation(formData.location);
       if (!coords) {
-        alert('يرجى التقاط موقعك الجغرافي أولاً عبر زر (التقاط موقعي الحالي 📍) لإتمام طلب التوصيل.');
+        alert('يرجى تحديد موقع التوصيل أولاً لإتمام طلب التوصيل.');
         return;
       }
       if (!deliveryRules.isAllowed) {
@@ -691,150 +691,122 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                     </div>
 
                     {orderType === 'delivery' ? (
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <label className="text-xs font-black text-gray-400 flex items-center gap-1.5">
-                            <MapPin size={14} className="text-primary" />
+                          <label className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
+                            <MapPin size={13} className="text-primary" />
                             موقع التوصيل
                           </label>
-                          {hasValidCoords && (
-                            <button
-                              type="button"
-                              onClick={captureCurrentLocation}
-                              disabled={locationLoading}
-                              className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1 disabled:opacity-50 cursor-pointer"
-                            >
-                              <RotateCw size={12} className={cn(locationLoading && "animate-spin")} />
-                              تحديث الموقع
-                            </button>
-                          )}
                         </div>
 
-                        {/* State 1: Location successfully captured and valid */}
+                        {/* State 1: Location successfully captured (Compact & Sleek) */}
                         {hasValidCoords ? (
                           <div className={cn(
-                            "p-4 rounded-2xl border transition-all",
+                            "px-3 py-2.5 rounded-xl border flex items-center justify-between gap-2.5 transition-colors",
                             deliveryRules.isAllowed
-                              ? "bg-emerald-500/5 border-emerald-500/20 dark:bg-emerald-950/20"
-                              : "bg-red-500/5 border-red-500/20 dark:bg-red-950/20"
+                              ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-900 dark:text-emerald-300"
+                              : "bg-red-500/5 border-red-500/20 text-red-700 dark:text-red-400"
                           )}>
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex items-start gap-3">
-                                <div className={cn(
-                                  "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5",
-                                  deliveryRules.isAllowed ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
-                                )}>
-                                  {deliveryRules.isAllowed ? <CheckCircle2 size={20} /> : <AlertTriangle size={20} />}
-                                </div>
-                                <div className="space-y-1">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className={cn(
-                                      "font-black text-sm",
-                                      deliveryRules.isAllowed ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"
-                                    )}>
-                                      {deliveryRules.isAllowed ? 'تم تحديد موقعك بدقة' : 'خارج نطاق التوصيل المتاح'}
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className={cn(
+                                "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
+                                deliveryRules.isAllowed ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-red-500/15 text-red-600 dark:text-red-400"
+                              )}>
+                                {deliveryRules.isAllowed ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-xs font-bold text-gray-900 dark:text-white">
+                                    {deliveryRules.isAllowed ? 'الموقع محدد بدقة' : 'خارج نطاق التوصيل'}
+                                  </span>
+                                  {deliveryRules.distanceKm !== null && (
+                                    <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">
+                                      ({deliveryRules.distanceKm} كم)
                                     </span>
-                                    {locationLabel && (
-                                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-500 font-bold">
-                                        {locationLabel}
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">
-                                    {deliveryRules.distanceKm !== null ? (
-                                      <>يبعد <strong className="font-black text-gray-900 dark:text-white">{deliveryRules.distanceKm} كم</strong> عن فرع {branch}</>
-                                    ) : (
-                                      'الموقع محدد'
-                                    )}
-                                  </p>
-
-                                  {deliveryRules.isAllowed ? (
-                                    <div className="flex items-center gap-2 pt-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                                      <span>💵 رسوم التوصيل: {deliveryFee} ر.س</span>
-                                      {deliveryRules.minOrderValue > 20 && (
-                                        <span className="text-[10px] text-gray-400">
-                                          (الحد الأدنى للطلب: {deliveryRules.minOrderValue} ر.س)
-                                        </span>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <p className="text-xs text-red-500 font-bold pt-1 leading-relaxed">
-                                      الحد الأقصى للتوصيل هو 10 كم. يمكنك تغيير الفرع أو اختيار الاستلام من الفرع.
-                                    </p>
                                   )}
                                 </div>
+                                <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                                  {deliveryRules.isAllowed ? `رسوم التوصيل: ${deliveryFee} ر.س` : 'أقصى مسافة توصيل 10 كم'}
+                                </p>
                               </div>
+                            </div>
 
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={captureCurrentLocation}
+                                disabled={locationLoading}
+                                className="px-2 py-1 text-gray-600 dark:text-gray-300 hover:text-primary transition-colors text-[11px] font-bold flex items-center gap-1 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-50 cursor-pointer"
+                                title="تحديث الموقع"
+                              >
+                                <RotateCw size={12} className={cn(locationLoading && "animate-spin")} />
+                                <span>تحديث</span>
+                              </button>
                               <a
                                 href={formData.location}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="p-2 rounded-xl bg-gray-100 dark:bg-white/5 text-gray-400 hover:text-primary transition-colors shrink-0"
-                                title="معاينة في خرائط Google"
+                                className="p-1.5 text-gray-400 hover:text-primary transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800"
+                                title="فتح في خرائط Google"
                               >
-                                <ExternalLink size={16} />
+                                <ExternalLink size={13} />
                               </a>
                             </div>
                           </div>
                         ) : (
-                          /* State 2: No location captured yet -> Prominent 1-click Pin Button */
-                          <div className="space-y-2">
+                          /* State 2: No location captured yet -> Clean, compact 1-click Pin Button */
+                          <div className="space-y-1.5">
                             <button
                               type="button"
                               onClick={captureCurrentLocation}
                               disabled={locationLoading}
-                              className="w-full py-4 px-5 bg-gradient-to-r from-primary to-orange-600 hover:from-primary/95 hover:to-orange-500 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-primary/25 hover:shadow-xl active:scale-[0.99] transition-all disabled:opacity-60 cursor-pointer"
+                              className="w-full py-3 px-4 bg-primary text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:brightness-105 active:scale-[0.99] transition-all disabled:opacity-60 cursor-pointer shadow-sm"
                             >
                               {locationLoading ? (
                                 <>
-                                  <Loader2 size={20} className="animate-spin" />
-                                  <span>جاري التقاط الموقع بالأقمار الصناعية 🛰️...</span>
+                                  <Loader2 size={15} className="animate-spin" />
+                                  <span>جاري تحديد موقعك عبر الـ GPS...</span>
                                 </>
                               ) : (
                                 <>
-                                  <MapPin size={20} className="animate-pulse" />
-                                  <span>التقاط موقعي الحالي بنقرة واحدة 📍</span>
+                                  <MapPin size={15} />
+                                  <span>تحديد موقع التوصيل الحالي</span>
                                 </>
                               )}
                             </button>
 
-                            <p className="text-[11px] text-gray-400 text-center font-medium">
-                              ضغطة واحدة تكفي لتحديد موقعك وتوجيه المندوب مباشرة لبابك
-                            </p>
-
-                            {locationError && (
-                              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-xs font-bold leading-relaxed">
-                                {locationError}
-                              </div>
-                            )}
-
-                            {/* Fallback toggle link */}
-                            <div className="text-center pt-1">
+                            <div className="flex items-center justify-between text-[11px] text-gray-400 px-1">
+                              <span>بنقرة واحدة لتحديد العنوان بدقة</span>
                               <button
                                 type="button"
                                 onClick={() => setShowManualFallback(!showManualFallback)}
-                                className="text-[11px] text-gray-400 hover:text-primary transition-colors font-bold underline cursor-pointer"
+                                className="text-gray-500 hover:text-primary font-medium underline cursor-pointer"
                               >
-                                {showManualFallback ? 'إخفاء الخيارات البديلة ▲' : 'تعذر التقاط الموقع؟ اضغط هنا لاختيار حيك أو إدخال رابط ▼'}
+                                {showManualFallback ? 'إخفاء الخيارات' : 'اختيار الحي يدوياً'}
                               </button>
                             </div>
+
+                            {locationError && (
+                              <div className="p-2.5 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-xs font-medium leading-relaxed">
+                                {locationError}
+                              </div>
+                            )}
                           </div>
                         )}
 
                         {/* Fallback Drawer / Dropdown when GPS is denied or user wants to pick neighborhood */}
                         {showManualFallback && (
-                          <div className="p-4 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-200 dark:border-white/10 space-y-3 mt-2">
+                          <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10 space-y-2.5 mt-1.5">
                             <div className="space-y-1">
-                              <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
-                                🏘️ اختر حيك من قائمة التغطية:
+                              <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block">
+                                اختر حيك من قائمة التغطية:
                               </label>
                               <select
                                 defaultValue=""
                                 onChange={(e) => {
                                   if (e.target.value) handleSelectDistrict(e.target.value);
                                 }}
-                                className="w-full py-2.5 px-3 bg-white dark:bg-zinc-800 rounded-xl border border-gray-200 dark:border-white/10 text-xs font-bold text-gray-800 dark:text-gray-200 outline-none focus:border-primary"
+                                className="w-full py-2 px-3 bg-white dark:bg-zinc-800 rounded-lg border border-gray-200 dark:border-white/10 text-xs font-medium text-gray-800 dark:text-gray-200 outline-none focus:border-primary"
                               >
                                 <option value="" disabled>-- اضغط لاختيار الحي --</option>
                                 {RIYADH_DELIVERY_DISTRICTS.map(d => (
@@ -843,15 +815,15 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                               </select>
                             </div>
 
-                            <div className="relative flex py-1 items-center">
+                            <div className="relative flex py-0.5 items-center">
                               <div className="flex-grow border-t border-gray-200 dark:border-white/10"></div>
-                              <span className="flex-shrink mx-2 text-[10px] text-gray-400 font-bold">أو</span>
+                              <span className="flex-shrink mx-2 text-[10px] text-gray-400">أو</span>
                               <div className="flex-grow border-t border-gray-200 dark:border-white/10"></div>
                             </div>
 
-                            <form onSubmit={handleManualLocationSubmit} className="space-y-1.5">
-                              <label className="text-xs font-bold text-gray-700 dark:text-gray-300 block">
-                                🔗 أو لصق رابط خرائط Google:
+                            <form onSubmit={handleManualLocationSubmit} className="space-y-1">
+                              <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block">
+                                لصق رابط الموقع من خرائط Google:
                               </label>
                               <div className="flex gap-2">
                                 <input
@@ -859,12 +831,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                                   value={manualLocationInput}
                                   onChange={e => setManualLocationInput(e.target.value)}
                                   placeholder="https://maps.google.com/?q=..."
-                                  className="flex-1 px-3 py-2 bg-white dark:bg-zinc-800 rounded-xl border border-gray-200 dark:border-white/10 text-xs outline-none focus:border-primary font-mono text-left"
+                                  className="flex-1 px-3 py-1.5 bg-white dark:bg-zinc-800 rounded-lg border border-gray-200 dark:border-white/10 text-xs outline-none focus:border-primary font-mono text-left"
                                   dir="ltr"
                                 />
                                 <button
                                   type="submit"
-                                  className="px-4 py-2 bg-primary text-white text-xs font-black rounded-xl hover:brightness-110 shrink-0 cursor-pointer"
+                                  className="px-3 py-1.5 bg-primary text-white text-xs font-bold rounded-lg hover:brightness-105 shrink-0 cursor-pointer"
                                 >
                                   تطبيق
                                 </button>
@@ -875,11 +847,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
 
                         {/* Additional Building/Apartment notes (Optional) */}
                         {hasValidCoords && (
-                          <div className="space-y-1.5 pt-1">
-                            <label className="text-xs font-bold text-gray-400 mr-1 flex items-center gap-1">
-                              <Building2 size={13} />
-                              تفاصيل إضافية للعنوان (اختياري)
-                            </label>
+                          <div className="pt-0.5">
                             <input
                               type="text"
                               value={addressDetails}
@@ -887,8 +855,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                                 setAddressDetails(e.target.value);
                                 localStorage.setItem('jamr_customer_address_details', e.target.value);
                               }}
-                              placeholder="مثال: عمارة رقم 12، الدور الثاني، شقة 4، بجانب مسجد..."
-                              className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 text-xs font-medium outline-none focus:ring-2 focus:ring-primary/40 placeholder:text-gray-400"
+                              placeholder="تفاصيل إضافية: رقم العمارة / الشقة / الدور (اختياري)"
+                              className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/10 text-xs font-medium outline-none focus:border-primary/50 placeholder:text-gray-400"
                             />
                           </div>
                         )}
@@ -1129,13 +1097,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                 )}
                 {storeStatus === 'prayer' && (
                   <div className="text-indigo-500 bg-indigo-500/10 p-2.5 rounded-xl text-xs font-bold text-center border border-indigo-500/20">
-                    ملاحظة: عذراً مغلق للصلاة. يمكنك إرسال طلبك وسيتم تحضيره بعد الصلاة 🕌
+                    ملاحظة: عذراً مغلق للصلاة. يمكنك إرسال طلبك وسيتم تحضيره بعد الصلاة
                   </div>
                 )}
 
                 {step === 'checkout' && orderType === 'delivery' && !deliveryRules.isAllowed && (
                   <div className="text-red-500 bg-red-500/10 p-3 rounded-2xl text-xs font-bold text-center border border-red-500/20 leading-relaxed">
-                    🚫 {deliveryRules.statusMessage || 'عذراً، موقعك خارج نطاق التوصيل المسموح (أقصى حد 10 كم). يرجى تغيير خيار الطلب إلى الاستلام من الفرع.'}
+                    {deliveryRules.statusMessage || 'عذراً، موقعك خارج نطاق التوصيل المسموح (أقصى حد 10 كم). يرجى تغيير خيار الطلب إلى الاستلام من الفرع.'}
                   </div>
                 )}
 
@@ -1181,8 +1149,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                     >
                       {storeStatus === 'closed' ? 'المطعم مغلق' : 
                        !orderType ? 'اختر نوع الطلب' : 
-                       (orderType === 'delivery' && !hasValidCoords) ? 'حدد موقع التوصيل 📍' :
-                       (orderType === 'delivery' && !deliveryRules.isAllowed) ? 'خارج نطاق التوصيل ⚠️' : 
+                       (orderType === 'delivery' && !hasValidCoords) ? 'حدد موقع التوصيل' :
+                       (orderType === 'delivery' && !deliveryRules.isAllowed) ? 'خارج نطاق التوصيل' : 
                        (orderType === 'delivery' && totalPrice < deliveryRules.minOrderValue) ? `الحد الأدنى ${deliveryRules.minOrderValue} ر.س` : 
                        (!formData.name || !formData.phone) ? 'أكمل البيانات' : 
                        (!isValidSaudiPhone(formData.phone)) ? 'رقم الجوال غير صحيح' : 

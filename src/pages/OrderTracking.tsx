@@ -268,7 +268,7 @@ export const OrderTracking: React.FC = () => {
                   {order.order_type === 'delivery' ? (
                     order.location?.includes('google.com/maps') ? (
                       <a href={order.location} target="_blank" rel="noreferrer" className="text-primary hover:underline font-bold inline-flex items-center gap-1 text-xs mt-0.5">
-                        📍 تم تحديد الموقع عبر الخريطة (عرض في خرائط Google ↗)
+                        تم تحديد الموقع (عرض في خرائط Google)
                       </a>
                     ) : (
                       <p className="text-xs">{order.location || 'لم يتم تحديده'}</p>
