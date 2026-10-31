@@ -13,6 +13,7 @@ import { updateStoredOrderStatus } from '../utils/orderStorage';
 import { notifyCustomerStatusChange, testCustomerNotificationAndSound, unlockCustomerAudio } from '../utils/customerNotifications';
 import { SpinWheelModal } from '../components/SpinWheelModal';
 import { parseAppSettings } from '../utils/appSettingsUtils';
+import { formatOrderNumber } from '../utils/orderUtils';
 
 type OrderStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 
@@ -170,7 +171,7 @@ export const OrderTrackingPage: React.FC = () => {
                         </div>
                     </Link>
                     <h1 className="text-xl font-black text-gray-900 dark:text-white">تتبع طلبك</h1>
-                    <p className="text-gray-500 mt-0.5 text-xs font-medium">رقم الطلب: {order.id.slice(0, 8).toUpperCase()}</p>
+                    <p className="text-gray-500 mt-1 text-xs font-medium font-mono">رقم الطلب: <span className="font-bold text-amber-500 text-sm tracking-wide">{formatOrderNumber(order)}</span></p>
                 </div>
 
                 {/* Notification Permission Card */}
@@ -185,7 +186,7 @@ export const OrderTrackingPage: React.FC = () => {
                                 <Bell size={20} className="animate-bounce text-amber-500" />
                             </div>
                             <div>
-                                <p className="text-xs font-black">تفعيل التنبيهات الفورية 🔔</p>
+                                <p className="text-xs font-black">تفعيل التنبيهات الفورية</p>
                                 <p className="text-[11px] opacity-90 font-medium">احصل على تنبيه فور جاهزية طلبك</p>
                             </div>
                         </div>

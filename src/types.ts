@@ -104,6 +104,7 @@ export type Branch = 'السويدي الغربي' | 'طويق';
 
 export interface Order {
   id?: string;
+  order_number?: number;
   branch: Branch;
   order_type: OrderType;
   customer_name: string;

@@ -13,6 +13,7 @@ import { isValidSaudiPhone, normalizeSaudiPhone, buildPhoneOrFilter } from '../u
 import { formatTrafficTagForOrderNotes, resetTrafficAttributionAfterOrder } from '../services/trafficAttribution';
 import { trackInitiateCheckout, trackPurchase } from '../services/pixelTrackingService';
 import { syncActiveCartToRecovery, markCartAsRecovered } from '../services/abandonedCartService';
+import { getNextOrderNumber } from '../utils/orderUtils';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -465,13 +466,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         trafficTag
       ].filter(Boolean).join('\n');
 
+      const nextOrderNum = await getNextOrderNumber();
+      const orderNotesWithNum = `[ORDER_NUM:${nextOrderNum}]\n` + orderNotes;
+
       const orderPayload: any = {
         branch,
         order_type: orderType,
         customer_name: formData.name,
         phone: normalizeSaudiPhone(cleanPhone),
         location: orderType === 'delivery' ? formData.location : undefined,
-        notes: orderNotes,
+        notes: orderNotesWithNum,
         total_price: finalPrice,
         items: cart,
         status: 'new',
@@ -479,20 +483,43 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
         delivery_fee: deliveryFee,
         distance_km: deliveryRules.distanceKm,
         discount_amount: discountAmount + loyaltyDiscountAmount, // merge both discounts visually in total/subtotal
-        promo_code: appliedPromo?.code || null
+        promo_code: appliedPromo?.code || null,
+        order_number: nextOrderNum
       };
 
       let insertRes = await supabase.from('orders').insert([orderPayload]).select('id, created_at, status').single();
 
-      // If missing distance_km column in database schema cache, retry without distance_km property
-      if (insertRes.error && (insertRes.error.message?.includes('distance_km') || insertRes.error.details?.includes('distance_km'))) {
-        const fallbackPayload = { ...orderPayload };
-        delete fallbackPayload.distance_km;
-        insertRes = await supabase.from('orders').insert([fallbackPayload]).select('id, created_at, status').single();
+      // Robust fallback if column order_number or distance_km does not exist in schema cache
+      if (insertRes.error) {
+        let fallbackPayload = { ...orderPayload };
+        let shouldRetry = false;
+
+        if (insertRes.error.message?.includes('order_number') || (insertRes.error as any).details?.includes('order_number')) {
+          delete fallbackPayload.order_number;
+          shouldRetry = true;
+        }
+        if (insertRes.error.message?.includes('distance_km') || (insertRes.error as any).details?.includes('distance_km')) {
+          delete fallbackPayload.distance_km;
+          shouldRetry = true;
+        }
+
+        if (shouldRetry) {
+          insertRes = await supabase.from('orders').insert([fallbackPayload]).select('id, created_at, status').single();
+          if (insertRes.error && insertRes.error.message?.includes('order_number')) {
+            delete fallbackPayload.order_number;
+            insertRes = await supabase.from('orders').insert([fallbackPayload]).select('id, created_at, status').single();
+          }
+        }
       }
 
       if (insertRes.error) throw insertRes.error;
       const data = insertRes.data;
+
+      // Save order number to local device cache for instant retrieval
+      try {
+        localStorage.setItem(`jamr_order_num_${data.id}`, String(nextOrderNum));
+        localStorage.setItem('jamr_last_order_num', String(nextOrderNum));
+      } catch (e) {}
 
       // Track Purchase in Marketing Pixels (Snapchat, TikTok, Meta, GA4)
       trackPurchase(data.id, cart, finalPrice);

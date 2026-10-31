@@ -18,6 +18,7 @@ import {
     markCartAsRecovered,
     AbandonedCartRecord
 } from '../services/abandonedCartService';
+import { formatOrderNumber } from '../utils/orderUtils';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 type OrderStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'completed' | 'cancelled';
@@ -97,6 +98,9 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
             <div className={cn("p-5 flex items-start justify-between gap-3 border-b", isDark ? 'border-white/5' : 'border-gray-100')}>
                 <div>
                     <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono font-black text-xs px-2.5 py-0.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            {formatOrderNumber(order)}
+                        </span>
                         <span className={cn('flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border', cfg.bg, cfg.color)}>
                             {cfg.icon} {cfg.label}
                         </span>
@@ -753,7 +757,7 @@ export const CashierPage: React.FC = () => {
                         
                         if (Notification.permission === 'granted' && localStorage.getItem('jamr_cashier_use_notifications') === 'true') {
                             navigator.serviceWorker.ready.then(registration => {
-                                registration.showNotification('طلب جديد وصل!', {
+                                registration.showNotification(`طلب جديد وصل (${formatOrderNumber(payload.new)})`, {
                                     body: `اسم العميل: ${payload.new.customer_name}\nالقيمة: ${payload.new.total_price} ر.س${payload.new.discount_amount ? `\nخصم: ${payload.new.discount_amount} ر.س` : ''}`,
                                     icon: '/assets/logo.png',
                                     tag: 'new-order',

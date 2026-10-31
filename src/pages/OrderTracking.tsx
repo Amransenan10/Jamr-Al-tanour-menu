@@ -7,6 +7,7 @@ import { ArrowRight, CheckCircle2, Clock, MapPin, ChefHat, Bike, Receipt, Bell }
 import { updateStoredOrderStatus } from '../utils/orderStorage';
 import { notifyCustomerStatusChange, testCustomerNotificationAndSound, unlockCustomerAudio } from '../utils/customerNotifications';
 import toast from 'react-hot-toast';
+import { formatOrderNumber } from '../utils/orderUtils';
 
 const STATUS_STEPS = [
   { id: 'new', label: 'تم الاستلام', icon: Clock, description: 'نراجع طلبك الآن' },
@@ -149,11 +150,11 @@ export const OrderTracking: React.FC = () => {
       <div className="max-w-xl mx-auto px-4 space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-2">تتبع الطلب</h1>
-          <p className="text-gray-500 text-sm">رقم الطلب: #{order.id?.slice(0, 8).toUpperCase()}</p>
+          <p className="text-gray-500 text-sm font-mono font-bold">رقم الطلب: <span className="text-amber-500">{formatOrderNumber(order)}</span></p>
           <button
             onClick={() => {
               testCustomerNotificationAndSound();
-              toast.success('تم اختبار نغمة التنبيه والاهتزاز! 🎵', { icon: '🔔' });
+              toast.success('تم اختبار نغمة التنبيه والاهتزاز');
             }}
             className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-bold transition-all border border-primary/20"
           >

@@ -12,6 +12,7 @@ import {
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
+import { formatOrderNumber } from '../utils/orderUtils';
 
 export type TimeframeOption = 
     | 'today' 
@@ -986,6 +987,7 @@ export const AdminAnalyticsView: React.FC = () => {
                                 {filteredOrders.slice(0, 10).map(order => (
                                     <tr key={order.id} className="hover:bg-white/[0.02]">
                                         <td className="py-2.5">
+                                            <span className="font-mono text-xs text-amber-400 font-bold block">{formatOrderNumber(order)}</span>
                                             <span className="font-bold text-white block truncate max-w-[120px]">{order.customer_name}</span>
                                             <span className="text-[10px] text-gray-500 font-mono">{order.phone}</span>
                                         </td>

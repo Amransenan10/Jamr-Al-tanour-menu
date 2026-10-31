@@ -18,6 +18,7 @@ import { AdminLoyaltyView } from '../components/AdminLoyaltyView';
 import { normalizeCouponCode } from '../utils/couponUtils';
 import { extractCoordinatesFromLocation } from '../utils/distanceUtils';
 import { saveAppSettings } from '../utils/appSettingsUtils';
+import { formatOrderNumber } from '../utils/orderUtils';
 
 export const AdminPage: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -534,6 +535,7 @@ const AdminOrdersView = () => {
                                                 )}
                                             >
                                                 <td className="p-4">
+                                                    <span className="font-mono font-bold text-xs text-amber-400 block">{formatOrderNumber(order)}</span>
                                                     <span className="font-bold text-white block">{order.customer_name}</span>
                                                     <span className="text-[10px] text-gray-500 font-mono">{order.phone}</span>
                                                 </td>

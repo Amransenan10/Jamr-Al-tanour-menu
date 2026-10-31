@@ -21,6 +21,7 @@ import { supabase } from './lib/supabaseClient';
 import { supabaseAdmin } from './lib/supabaseAdmin';
 import { CartProvider } from './context/CartContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { formatOrderNumber } from './utils/orderUtils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader2, UtensilsCrossed, Navigation, AlertCircle, Clock, CheckCircle2, Bike, Utensils, FileText, Sparkles, Tag, ShieldAlert, ArrowDown, ChevronLeft, X } from 'lucide-react';
 import { BranchSelectorModal } from './components/BranchSelectorModal';
@@ -974,15 +975,20 @@ export default function App() {
 
                     {/* Text */}
                     <div className="flex-1 min-w-0">
-                      <p className="font-black text-sm text-white leading-tight truncate">
-                        {activeOrder?.status === 'ready'
-                          ? (activeOrder.order_type === 'delivery' ? '🛵 المندوب في الطريق إليك!' : '✅ طلبك جاهز للاستلام!')
-                          : activeOrder?.status === 'preparing'
-                          ? '👨‍🍳 جاري تحضير وجبتك في المطبخ'
-                          : activeOrder?.status === 'accepted'
-                          ? '✅ تم قبول طلبك، سيبدأ تحضيره'
-                          : '📝 تم استلام طلبك وجاري مراجعته'}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-black text-sm text-white leading-tight truncate">
+                          {activeOrder?.status === 'ready'
+                            ? (activeOrder.order_type === 'delivery' ? 'المندوب في الطريق إليك!' : 'طلبك جاهز للاستلام!')
+                            : activeOrder?.status === 'preparing'
+                            ? 'جاري تحضير وجبتك في المطبخ'
+                            : activeOrder?.status === 'accepted'
+                            ? 'تم قبول طلبك، سيبدأ تحضيره'
+                            : 'تم استلام طلبك وجاري مراجعته'}
+                        </p>
+                        <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+                          {formatOrderNumber(activeOrder)}
+                        </span>
+                      </div>
                       <p className="text-[11px] text-gray-400 mt-0.5 flex items-center gap-1">
                         <span>اضغط لتتبع الطلب</span>
                         <Navigation size={9} className="rotate-45 text-primary" />

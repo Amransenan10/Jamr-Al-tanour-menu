@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ShoppingBag, Clock, ChevronLeft } from 'lucide-react';
 import { getStoredOrders, StoredOrder } from '../utils/orderStorage';
+import { formatOrderNumber } from '../utils/orderUtils';
 import { motion } from 'motion/react';
 
 export const MyOrders: React.FC = () => {
@@ -78,7 +79,7 @@ export const MyOrders: React.FC = () => {
                          <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${getStatusColor(order.status)}`}>
                            {getStatusLabel(order.status)}
                          </span>
-                         <h3 className="font-bold text-gray-900 dark:text-white mt-3">طلب #{order.id.slice(0, 8).toUpperCase()}</h3>
+                         <h3 className="font-bold text-gray-900 dark:text-white mt-3 font-mono">طلب <span className="text-amber-500">{formatOrderNumber(order)}</span></h3>
                        </div>
                        <div className="text-left text-sm text-gray-500">
                          <div className="flex items-center gap-1.5 justify-end">
