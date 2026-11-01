@@ -103,6 +103,8 @@ export const saveAppSettings = async (newPartial: Record<string, any>) => {
   const extraConfig: any = {};
   if (merged.marketing_pixels) extraConfig.marketing_pixels = merged.marketing_pixels;
   if (merged.welcome_offer) extraConfig.welcome_offer = merged.welcome_offer;
+  if (merged.whatsapp_recovery_template) extraConfig.whatsapp_recovery_template = merged.whatsapp_recovery_template;
+  if (merged.whatsapp_recovery_promo !== undefined) extraConfig.whatsapp_recovery_promo = merged.whatsapp_recovery_promo;
 
   const hasExtra = Object.keys(extraConfig).length > 0;
   const packedAnnouncement = hasExtra

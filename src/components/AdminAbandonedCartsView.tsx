@@ -23,6 +23,9 @@ import {
   STORAGE_WHATSAPP_TEMPLATE_KEY,
   STORAGE_RECOVERY_PROMO_KEY
 } from '../services/abandonedCartService';
+import { saveAppSettings } from '../utils/appSettingsUtils';
+import { supabase } from '../lib/supabaseClient';
+import { supabaseAdmin } from '../lib/supabaseAdmin';
 
 interface AdminAbandonedCartsViewProps {
   carts: AbandonedCartRecord[];
@@ -47,22 +50,62 @@ export const AdminAbandonedCartsView: React.FC<AdminAbandonedCartsViewProps> = (
   const [copiedCartId, setCopiedCartId] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const savedTemplate = localStorage.getItem(STORAGE_WHATSAPP_TEMPLATE_KEY);
-      if (savedTemplate) setTemplateText(savedTemplate);
-
-      const savedPromo = localStorage.getItem(STORAGE_RECOVERY_PROMO_KEY);
-      if (savedPromo) setPromoCode(savedPromo);
-    } catch (e) {}
+    const loadTemplate = async () => {
+      try {
+        // Try Supabase first
+        const client = supabaseAdmin || supabase;
+        const { data } = await client
+          .from('app_settings')
+          .select('announcement_text, popular_subtitle')
+          .eq('id', 1)
+          .maybeSingle();
+        
+        if (data) {
+          const subStr = data.popular_subtitle || data.announcement_text || '';
+          if (typeof subStr === 'string' && subStr.includes('[CONFIG:')) {
+            const startIdx = subStr.indexOf('[CONFIG:') + 8;
+            const endIdx = subStr.lastIndexOf(']');
+            if (startIdx > 8 && endIdx > startIdx) {
+              try {
+                const config = JSON.parse(subStr.substring(startIdx, endIdx));
+                if (config.whatsapp_recovery_template) {
+                  setTemplateText(config.whatsapp_recovery_template);
+                  setPromoCode(config.whatsapp_recovery_promo || '');
+                  return; // loaded from Supabase successfully
+                }
+              } catch (e) {}
+            }
+          }
+        }
+      } catch (e) {}
+      
+      // Fallback to localStorage
+      try {
+        const savedTemplate = localStorage.getItem(STORAGE_WHATSAPP_TEMPLATE_KEY);
+        if (savedTemplate) setTemplateText(savedTemplate);
+        const savedPromo = localStorage.getItem(STORAGE_RECOVERY_PROMO_KEY);
+        if (savedPromo) setPromoCode(savedPromo);
+      } catch (e) {}
+    };
+    loadTemplate();
   }, []);
 
-  const handleSaveSettings = () => {
+  const handleSaveSettings = async () => {
     try {
+      // Save to localStorage first (instant)
       localStorage.setItem(STORAGE_WHATSAPP_TEMPLATE_KEY, templateText);
       localStorage.setItem(STORAGE_RECOVERY_PROMO_KEY, promoCode.trim());
+      
+      // Save to Supabase so it's persistent across devices
+      await saveAppSettings({
+        whatsapp_recovery_template: templateText,
+        whatsapp_recovery_promo: promoCode.trim()
+      });
+      
       toast.success('تم حفظ قالب ورسالة الواتساب بنجاح! 💾');
     } catch (e) {
-      toast.error('تعذر حفظ القالب محلياً');
+      // Even if Supabase fails, localStorage is saved
+      toast.success('تم حفظ القالب محلياً 💾');
     }
   };
 
