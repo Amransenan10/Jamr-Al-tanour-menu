@@ -16,7 +16,10 @@ import {
     fetchAbandonedCartsByBranch,
     generateWhatsAppRecoveryUrl,
     markCartAsRecovered,
-    AbandonedCartRecord
+    AbandonedCartRecord,
+    DEFAULT_WHATSAPP_TEMPLATE,
+    STORAGE_WHATSAPP_TEMPLATE_KEY,
+    STORAGE_RECOVERY_PROMO_KEY
 } from '../services/abandonedCartService';
 import { formatOrderNumber } from '../utils/orderUtils';
 
@@ -448,6 +451,9 @@ export const CashierPage: React.FC = () => {
     const [abandonedCarts, setAbandonedCarts] = useState<AbandonedCartRecord[]>([]);
     const [showAbandonedDrawer, setShowAbandonedDrawer] = useState(false);
     const [hasNewAbandonedAlert, setHasNewAbandonedAlert] = useState(false);
+    // WhatsApp template loaded from Supabase (same as Admin panel)
+    const [waTemplate, setWaTemplate] = useState<string>(DEFAULT_WHATSAPP_TEMPLATE);
+    const [waPromoCode, setWaPromoCode] = useState<string>('');
 
     const toggleDarkMode = () => {
         setIsDark(prev => {
@@ -803,7 +809,51 @@ export const CashierPage: React.FC = () => {
             }
         };
 
+        // Load WhatsApp template from Supabase (same source as Admin panel)
+        const loadWaTemplate = async () => {
+            try {
+                const client = supabaseAdmin || supabase;
+                const { data } = await client
+                    .from('app_settings')
+                    .select('announcement_text, popular_subtitle')
+                    .eq('id', 1)
+                    .maybeSingle();
+
+                if (data) {
+                    const subStr = data.popular_subtitle || data.announcement_text || '';
+                    if (typeof subStr === 'string' && subStr.includes('[CONFIG:')) {
+                        const startIdx = subStr.indexOf('[CONFIG:') + 8;
+                        const endIdx = subStr.lastIndexOf(']');
+                        if (startIdx > 8 && endIdx > startIdx) {
+                            try {
+                                const config = JSON.parse(subStr.substring(startIdx, endIdx));
+                                if (config.whatsapp_recovery_template) {
+                                    setWaTemplate(config.whatsapp_recovery_template);
+                                    // Also cache in localStorage for offline fallback
+                                    localStorage.setItem(STORAGE_WHATSAPP_TEMPLATE_KEY, config.whatsapp_recovery_template);
+                                }
+                                if (config.whatsapp_recovery_promo !== undefined) {
+                                    setWaPromoCode(config.whatsapp_recovery_promo || '');
+                                    localStorage.setItem(STORAGE_RECOVERY_PROMO_KEY, config.whatsapp_recovery_promo || '');
+                                }
+                                return;
+                            } catch (e) {}
+                        }
+                    }
+                }
+            } catch (e) {}
+
+            // Fallback: read from localStorage
+            try {
+                const saved = localStorage.getItem(STORAGE_WHATSAPP_TEMPLATE_KEY);
+                if (saved) setWaTemplate(saved);
+                const savedPromo = localStorage.getItem(STORAGE_RECOVERY_PROMO_KEY);
+                if (savedPromo) setWaPromoCode(savedPromo);
+            } catch (e) {}
+        };
+
         loadAbandoned();
+        loadWaTemplate();
 
         // Check for abandoned carts updates periodically
         const interval = setInterval(loadAbandoned, 20000);
@@ -1989,7 +2039,7 @@ export const CashierPage: React.FC = () => {
                                                     <button
                                                         type="button"
                                                         onClick={() => {
-                                                            const waUrl = generateWhatsAppRecoveryUrl(cart);
+                                                            const waUrl = generateWhatsAppRecoveryUrl(cart, waTemplate, waPromoCode);
                                                             window.open(waUrl, '_blank', 'noopener,noreferrer');
                                                         }}
                                                         className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-950/40 cursor-pointer"
