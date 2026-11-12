@@ -58,7 +58,7 @@ export const AdminPage: React.FC = () => {
                 }
             }
 
-            const { data, error } = await supabase
+            const { data, error } = await supabaseAdmin
                 .from('branch_credentials')
                 .select('password')
                 .eq('branch_name', 'admin')
@@ -1387,12 +1387,19 @@ const AdminSettingsView = () => {
     const fetchSettings = async () => {
         setLoading(true);
         const [branchesRes, appRes, storeRes] = await Promise.all([
-            supabase.from('branch_credentials').select('*'),
+            supabaseAdmin.from('branch_credentials').select('*'),
             supabase.from('app_settings').select('*').eq('id', 1).single(),
             supabase.from('store_settings').select('*')
         ]);
         
-        if (branchesRes.data) setBranches(branchesRes.data.filter(b => b.branch_name !== 'admin'));
+        if (branchesRes.data && branchesRes.data.length > 0) {
+            setBranches(branchesRes.data.filter(b => b.branch_name !== 'admin'));
+        } else {
+            setBranches([
+                { branch_name: 'السويدي الغربي', password: '••••' },
+                { branch_name: 'طويق', password: '••••' }
+            ]);
+        }
         if (storeRes.data) setStoreSettingsList(storeRes.data);
         if (appRes.data) {
             setAppSettings({

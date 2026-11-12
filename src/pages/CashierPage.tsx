@@ -7,7 +7,7 @@ import {
     Clock, CheckCircle2, Package, Loader2, Bell, RefreshCw,
     MapPin, ShoppingBag, Phone, Bike, Coffee, ChevronDown, LogOut, Copy, ExternalLink,
     Settings, Volume2, X, LayoutList, Star, UserPlus, Search, Moon, Sun, Building2,
-    MessageCircle, Check
+    MessageCircle, Check, ShieldAlert, Lock, ShieldCheck
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -22,7 +22,7 @@ import {
     STORAGE_RECOVERY_PROMO_KEY
 } from '../services/abandonedCartService';
 import { formatOrderNumber } from '../utils/orderUtils';
-import { secureAuth } from '../utils/securityGuard';
+import { secureAuth, deviceSecurity } from '../utils/securityGuard';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 type OrderStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'completed' | 'cancelled';
@@ -430,6 +430,11 @@ export const CashierPage: React.FC = () => {
     const [password, setPassword] = useState('');
     const [loginError, setLoginError] = useState('');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
+    const [isDeviceAuthorized, setIsDeviceAuthorized] = useState<boolean | null>(null);
+    const [managerPin, setManagerPin] = useState('');
+    const [managerPinError, setManagerPinError] = useState('');
+    const [isAuthorizingDevice, setIsAuthorizingDevice] = useState(false);
+    const [showAuthorizeForm, setShowAuthorizeForm] = useState(false);
 
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -615,6 +620,21 @@ export const CashierPage: React.FC = () => {
 
     // ── Load saved branch and settings ─────────────────────────────────────────
     useEffect(() => {
+        // Check device authorization
+        deviceSecurity.isDeviceAuthorized().then(async (authorized) => {
+            if (authorized) {
+                setIsDeviceAuthorized(true);
+            } else {
+                const existingSession = await secureAuth.verifySession('cashier');
+                if (existingSession.isValid) {
+                    await deviceSecurity.authorizeDevice();
+                    setIsDeviceAuthorized(true);
+                } else {
+                    setIsDeviceAuthorized(false);
+                }
+            }
+        });
+
         secureAuth.verifySession('cashier').then(({ isValid, identifier }) => {
             if (isValid && identifier) {
                 setBranch(identifier as Branch);
@@ -655,6 +675,49 @@ export const CashierPage: React.FC = () => {
             setUseNotifications(true);
             localStorage.setItem('jamr_cashier_use_notifications', 'true');
             toast.success('تم تفعيل إشعارات النظام بنجاح');
+        }
+    };
+
+    const handleAuthorizeDevice = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!managerPin) return;
+        setIsAuthorizingDevice(true);
+        setManagerPinError('');
+
+        try {
+            // First attempt: call secure database function if available
+            const { data: rpcData, error: rpcError } = await supabase.rpc('verify_branch_login', {
+                p_branch_name: 'admin',
+                p_password: managerPin
+            });
+
+            let isValid = false;
+            if (!rpcError && rpcData && typeof rpcData === 'object' && rpcData.success) {
+                isValid = true;
+            } else {
+                const { data } = await supabaseAdmin
+                    .from('branch_credentials')
+                    .select('password')
+                    .eq('branch_name', 'admin')
+                    .single();
+                if (data && data.password === managerPin) {
+                    isValid = true;
+                }
+            }
+
+            if (isValid) {
+                await deviceSecurity.authorizeDevice();
+                setIsDeviceAuthorized(true);
+                setShowAuthorizeForm(false);
+                setManagerPin('');
+                toast.success('تم تفويض واعتماد هذا التابلت بنجاح! 🔒');
+            } else {
+                setManagerPinError('رمز تفويض المدير غير صحيح');
+            }
+        } catch {
+            setManagerPinError('حدث خطأ أثناء التحقق');
+        } finally {
+            setIsAuthorizingDevice(false);
         }
     };
 
@@ -1074,6 +1137,87 @@ export const CashierPage: React.FC = () => {
         }
         return () => clearInterval(interval);
     }, [counts.new]);
+
+    // ── Device authorization lock screen ──────────────────────────────────────
+    if (isDeviceAuthorized === false) {
+        return (
+            <div className={cn("min-h-screen flex items-center justify-center p-6 text-right select-none", isDark ? 'bg-charcoal text-white' : 'bg-gray-100 text-gray-900')} dir="rtl">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    className={cn("w-full max-w-md rounded-3xl p-8 border shadow-2xl relative overflow-hidden", isDark ? 'bg-zinc-900 border-red-500/20' : 'bg-white border-red-200')}
+                >
+                    <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-red-600 via-amber-500 to-red-600"></div>
+
+                    <div className="text-center mb-6">
+                        <div className="w-16 h-16 bg-red-500/10 text-red-500 border border-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-red-500/10">
+                            <ShieldAlert size={36} />
+                        </div>
+                        <h2 className="text-2xl font-black text-red-500">جهاز غير مصرح به</h2>
+                        <p className={cn("text-xs font-semibold mt-2 leading-relaxed", isDark ? 'text-gray-400' : 'text-gray-600')}>
+                            كاشير جمر التنور مخصص حصرياً لأجهزة الفروع اللوحية المعتمدة رسمياً. هذا الجهاز غير مسجل ضمن قائمة أجهزة الكاشير المصرح لها.
+                        </p>
+                    </div>
+
+                    <div className={cn("rounded-2xl p-4 border mb-6 text-center space-y-1.5", isDark ? 'bg-zinc-800/60 border-white/5' : 'bg-gray-50 border-gray-200')}>
+                        <span className="text-[11px] text-gray-400 font-bold">معرّف هذا الجهاز (Device ID):</span>
+                        <p className="font-mono font-black text-base text-amber-400 tracking-wider">
+                            {deviceSecurity.getDeviceId()}
+                        </p>
+                        <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                            حالة الجهاز: محظور من فتح الكاشير
+                        </span>
+                    </div>
+
+                    {!showAuthorizeForm ? (
+                        <button
+                            type="button"
+                            onClick={() => setShowAuthorizeForm(true)}
+                            className="w-full bg-zinc-800 hover:bg-zinc-700 text-gray-200 font-bold p-3.5 rounded-xl transition-all border border-white/10 flex items-center justify-center gap-2 text-sm cursor-pointer"
+                        >
+                            <Lock size={15} />
+                            <span>اعتماد هذا الجهاز (خاص بالمدير فقط)</span>
+                        </button>
+                    ) : (
+                        <form onSubmit={handleAuthorizeDevice} className="space-y-4 pt-2 border-t border-white/5">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-300 mb-1.5">
+                                    أدخل رمز تفويض الإدارة لربط هذا التابلت:
+                                </label>
+                                <input
+                                    type="password"
+                                    value={managerPin}
+                                    onChange={(e) => setManagerPin(e.target.value)}
+                                    placeholder="رمز تفويض المدير العام..."
+                                    className={cn("w-full px-4 py-3 rounded-xl border text-center font-bold tracking-widest text-lg outline-none transition-all", isDark ? 'bg-zinc-800 border-white/10 focus:border-primary text-white' : 'bg-white border-gray-300 focus:border-primary text-gray-900')}
+                                    autoFocus
+                                />
+                                {managerPinError && (
+                                    <p className="text-red-400 text-xs font-bold text-center mt-2">{managerPinError}</p>
+                                )}
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={isAuthorizingDevice || !managerPin}
+                                className="w-full bg-primary hover:bg-primary/90 text-white font-black p-3.5 rounded-xl transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                            >
+                                {isAuthorizingDevice ? <Loader2 size={18} className="animate-spin" /> : <><ShieldCheck size={18} /><span>توثيق واعتماد الجهاز</span></>}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => { setShowAuthorizeForm(false); setManagerPin(''); setManagerPinError(''); }}
+                                className="w-full text-xs text-gray-400 hover:text-white font-bold py-1"
+                            >
+                                إلغاء
+                            </button>
+                        </form>
+                    )}
+                </motion.div>
+            </div>
+        );
+    }
 
     // ── Branch login screen ───────────────────────────────────────────────────
     if (!isAuthenticated) {
@@ -1620,6 +1764,34 @@ export const CashierPage: React.FC = () => {
                                             <Sun size={16} />
                                             <span>الوضع النهاري ☀️</span>
                                             {!isDark && <CheckCircle2 size={14} className="text-amber-600 mr-auto" />}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className={cn("pt-6 border-t space-y-3", isDark ? 'border-white/5' : 'border-gray-100')}>
+                                    <h4 className="text-xs font-bold text-gray-500 mb-2 mr-1">أمان الجهاز (Device Security)</h4>
+                                    <div className={cn("p-4 rounded-2xl border space-y-2.5", isDark ? 'bg-zinc-800/60 border-white/5' : 'bg-gray-50 border-gray-200')}>
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className="font-bold text-gray-400">معرّف الجهاز:</span>
+                                            <span className="font-mono font-black text-amber-400 tracking-wider">{deviceSecurity.getDeviceId()}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className="font-bold text-gray-400">حالة الاعتماد:</span>
+                                            <span className="font-bold text-green-400 bg-green-500/10 px-2.5 py-0.5 rounded-full border border-green-500/20">معتمد رسمياً ✓</span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (window.confirm('هل أنت متأكد من إلغاء اعتماد هذا التابلت؟ سيتطلب إدخال رمز المدير لإعادة فتحه.')) {
+                                                    deviceSecurity.revokeDevice();
+                                                    setIsDeviceAuthorized(false);
+                                                    setShowSettings(false);
+                                                    toast('تم إلغاء اعتماد هذا الجهاز', { icon: '🔒' });
+                                                }
+                                            }}
+                                            className="w-full mt-2 text-[11px] font-bold text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 py-2.5 rounded-xl border border-red-500/20 transition-colors cursor-pointer"
+                                        >
+                                            إلغاء اعتماد هذا التابلت 🔒
                                         </button>
                                     </div>
                                 </div>

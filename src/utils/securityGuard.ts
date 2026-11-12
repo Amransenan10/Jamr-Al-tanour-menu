@@ -178,3 +178,39 @@ export function initSecurityGuard() {
         return false;
     });
 }
+
+// ─── Device Authorization System (نظام قفل واعتماد أجهزة الكاشير) ─────────────
+export const deviceSecurity = {
+    getDeviceId(): string {
+        let deviceId = localStorage.getItem('jt_pos_device_id');
+        if (!deviceId) {
+            const randomPart = Math.random().toString(36).substring(2, 7).toUpperCase();
+            deviceId = `JT-POS-${randomPart}`;
+            localStorage.setItem('jt_pos_device_id', deviceId);
+        }
+        return deviceId;
+    },
+
+    async isDeviceAuthorized(): Promise<boolean> {
+        try {
+            const token = localStorage.getItem('jt_pos_device_token');
+            if (!token) return false;
+            const deviceId = this.getDeviceId();
+            const expected = await sha256(`AUTHORIZED_POS_DEVICE:${deviceId}:${SECRET_SALT}`);
+            return token === expected;
+        } catch {
+            return false;
+        }
+    },
+
+    async authorizeDevice(): Promise<void> {
+        const deviceId = this.getDeviceId();
+        const token = await sha256(`AUTHORIZED_POS_DEVICE:${deviceId}:${SECRET_SALT}`);
+        localStorage.setItem('jt_pos_device_token', token);
+    },
+
+    revokeDevice(): void {
+        localStorage.removeItem('jt_pos_device_token');
+        secureAuth.clearSession('cashier');
+    }
+};
