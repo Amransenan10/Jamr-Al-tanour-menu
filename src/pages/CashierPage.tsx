@@ -22,6 +22,7 @@ import {
     STORAGE_RECOVERY_PROMO_KEY
 } from '../services/abandonedCartService';
 import { formatOrderNumber } from '../utils/orderUtils';
+import { secureAuth } from '../utils/securityGuard';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 type OrderStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'completed' | 'cancelled';
@@ -614,14 +615,15 @@ export const CashierPage: React.FC = () => {
 
     // ── Load saved branch and settings ─────────────────────────────────────────
     useEffect(() => {
-        const savedBranch = localStorage.getItem('jamr_cashier_branch') as Branch;
-        const savedAuth = localStorage.getItem('jamr_cashier_auth');
-        if (savedBranch && savedAuth === 'true') {
-            setBranch(savedBranch);
-            setIsAuthenticated(true);
-            // We intentionally leave isAudioUnlocked as false here so the overlay shows up 
-            // and forces the user to click at least once when reloading the page.
-        }
+        secureAuth.verifySession('cashier').then(({ isValid, identifier }) => {
+            if (isValid && identifier) {
+                setBranch(identifier as Branch);
+                setIsAuthenticated(true);
+            } else {
+                setIsAuthenticated(false);
+            }
+        });
+
         const savedSound = localStorage.getItem('jamr_cashier_sound') as SoundType;
         if (savedSound) setSoundPref(savedSound);
         const savedPersistent = localStorage.getItem('jamr_cashier_persistent_sound') === 'true';
@@ -663,6 +665,27 @@ export const CashierPage: React.FC = () => {
         setLoginError('');
 
         try {
+            // First attempt: call secure database function if available
+            const { data: rpcData, error: rpcError } = await supabase.rpc('verify_branch_login', {
+                p_branch_name: loginBranch,
+                p_password: password
+            });
+
+            if (!rpcError && rpcData && typeof rpcData === 'object') {
+                if (rpcData.success) {
+                    setBranch(loginBranch);
+                    setIsAuthenticated(true);
+                    setIsAudioUnlocked(true);
+                    await secureAuth.createSession('cashier', loginBranch);
+                    return;
+                } else {
+                    setLoginError('كلمة المرور غير صحيحة');
+                    setPassword('');
+                    return;
+                }
+            }
+
+            // Fallback for existing direct credentials table
             const { data, error } = await supabase
                 .from('branch_credentials')
                 .select('password')
@@ -675,9 +698,8 @@ export const CashierPage: React.FC = () => {
             } else {
                 setBranch(loginBranch);
                 setIsAuthenticated(true);
-                setIsAudioUnlocked(true); // User just clicked login, interact implicitly
-                localStorage.setItem('jamr_cashier_branch', loginBranch);
-                localStorage.setItem('jamr_cashier_auth', 'true');
+                setIsAudioUnlocked(true);
+                await secureAuth.createSession('cashier', loginBranch);
             }
         } catch (err) {
             setLoginError('حدث خطأ في الاتصال');
@@ -1337,7 +1359,7 @@ export const CashierPage: React.FC = () => {
                             <Settings size={16} className="text-gray-400" />
                         </button>
                         <button
-                            onClick={() => { setBranch(null); localStorage.removeItem('jamr_cashier_branch'); setIsAuthenticated(false); localStorage.removeItem('jamr_cashier_auth'); }}
+                            onClick={() => { setBranch(null); setIsAuthenticated(false); secureAuth.clearSession('cashier'); }}
                             className={cn("p-2.5 rounded-xl transition-colors hover:bg-red-500/20 hover:text-red-400", isDark ? 'bg-zinc-800' : 'bg-gray-100')}
                             title="تسجيل الخروج"
                         >

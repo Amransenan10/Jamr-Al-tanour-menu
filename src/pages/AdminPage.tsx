@@ -19,6 +19,7 @@ import { normalizeCouponCode } from '../utils/couponUtils';
 import { extractCoordinatesFromLocation } from '../utils/distanceUtils';
 import { saveAppSettings } from '../utils/appSettingsUtils';
 import { formatOrderNumber } from '../utils/orderUtils';
+import { secureAuth } from '../utils/securityGuard';
 
 export const AdminPage: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -27,33 +28,49 @@ export const AdminPage: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'analytics' | 'orders' | 'menu' | 'categories' | 'additions' | 'stories' | 'coupons' | 'loyalty' | 'marketing' | 'theme' | 'settings'>('analytics');
 
     useEffect(() => {
-        if (localStorage.getItem('jamr_admin_auth') === 'true') {
-            setIsAuthenticated(true);
-        }
+        secureAuth.verifySession('admin').then(({ isValid }) => {
+            if (isValid) {
+                setIsAuthenticated(true);
+            } else {
+                setIsAuthenticated(false);
+            }
+        });
     }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoggingIn(true);
         try {
+            // First check via secure RPC if available
+            const { data: rpcData, error: rpcError } = await supabase.rpc('verify_branch_login', {
+                p_branch_name: 'admin',
+                p_password: password
+            });
+
+            if (!rpcError && rpcData && typeof rpcData === 'object') {
+                if (rpcData.success) {
+                    setIsAuthenticated(true);
+                    await secureAuth.createSession('admin', 'admin');
+                    return;
+                } else {
+                    toast.error('كلمة المرور غير صحيحة');
+                    return;
+                }
+            }
+
             const { data, error } = await supabase
                 .from('branch_credentials')
                 .select('password')
                 .eq('branch_name', 'admin')
                 .single();
 
-            // If the admin user doesn't exist yet, we can fallback to the hardcoded env or test
             if (error || !data || data.password !== password) {
-                // Fallback check just in case the database isn't updated yet
-                if (password !== 'admin123') {
-                    toast.error('كلمة المرور غير صحيحة');
-                    setIsLoggingIn(false);
-                    return;
-                }
+                toast.error('كلمة المرور غير صحيحة');
+                return;
             }
             
             setIsAuthenticated(true);
-            localStorage.setItem('jamr_admin_auth', 'true');
+            await secureAuth.createSession('admin', 'admin');
         } catch (err) {
             toast.error('حدث خطأ في الاتصال');
         } finally {
@@ -103,7 +120,7 @@ export const AdminPage: React.FC = () => {
                             <p className="text-[10px] text-gray-400 hidden sm:block">مطعم جمر التنور</p>
                         </div>
                     </div>
-                    <button onClick={() => { localStorage.removeItem('jamr_admin_auth'); setIsAuthenticated(false); }} className="flex items-center gap-1.5 text-red-400 bg-red-500/10 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl hover:bg-red-500/20 font-bold text-xs sm:text-sm transition-colors cursor-pointer">
+                    <button onClick={() => { secureAuth.clearSession('admin'); setIsAuthenticated(false); }} className="flex items-center gap-1.5 text-red-400 bg-red-500/10 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl hover:bg-red-500/20 font-bold text-xs sm:text-sm transition-colors cursor-pointer">
                         <LogOut size={16} /> <span className="hidden sm:inline">تسجيل خروج</span>
                     </button>
                 </div>

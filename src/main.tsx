@@ -8,6 +8,10 @@ import { MyOrders } from './pages/MyOrders';
 import { AdminPage } from './pages/AdminPage';
 import './index.css';
 import { ErrorBoundary } from './ErrorBoundary';
+import { initSecurityGuard } from './utils/securityGuard';
+
+// تفعيل نظام الحماية ومنع لوحة الأوامر وفحص الأكواد
+initSecurityGuard();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
