@@ -6,7 +6,8 @@ import {
     LayoutDashboard, KeyRound, ShoppingBag, Settings as SettingsIcon,
     UtensilsCrossed, LogOut, Loader2, Plus, Edit2, Trash2, CheckCircle2,
     X, Store, Clock, RefreshCw, Upload, TicketPercent, Image as ImageIcon,
-    Camera, Sliders, Volume2, VolumeX, Copy, Search, User, BarChart3, Send, Layers, Gift, MapPin, Sparkles
+    Camera, Sliders, Volume2, VolumeX, Copy, Search, User, BarChart3, Send, Layers, Gift, MapPin, Sparkles,
+    Tablet
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -15,17 +16,29 @@ import { AdminMarketingView } from '../components/AdminMarketingView';
 import { AdminThemeView } from '../components/AdminThemeView';
 import { CategoryAdminManager } from '../components/CategoryAdminManager';
 import { AdminLoyaltyView } from '../components/AdminLoyaltyView';
+import { AdminPosDevicesView } from '../components/AdminPosDevicesView';
 import { normalizeCouponCode } from '../utils/couponUtils';
 import { extractCoordinatesFromLocation } from '../utils/distanceUtils';
-import { saveAppSettings } from '../utils/appSettingsUtils';
+import { saveAppSettings, parseAppSettings } from '../utils/appSettingsUtils';
 import { formatOrderNumber } from '../utils/orderUtils';
 import { secureAuth } from '../utils/securityGuard';
+import { posDeviceManager, PosDevice } from '../utils/posDeviceManager';
 
 export const AdminPage: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState('');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [activeTab, setActiveTab] = useState<'analytics' | 'orders' | 'menu' | 'categories' | 'additions' | 'stories' | 'coupons' | 'loyalty' | 'marketing' | 'theme' | 'settings'>('analytics');
+    const [posDevices, setPosDevices] = useState<PosDevice[]>([]);
+
+    const fetchPosDevices = async () => {
+        try {
+            const list = await posDeviceManager.getDevices();
+            setPosDevices(list);
+        } catch (e) {
+            console.error('[AdminPage] fetchPosDevices error:', e);
+        }
+    };
 
     useEffect(() => {
         secureAuth.verifySession('admin').then(({ isValid }) => {
@@ -36,6 +49,43 @@ export const AdminPage: React.FC = () => {
             }
         });
     }, []);
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        fetchPosDevices();
+
+        const channel = supabase
+            .channel('admin_pos_devices_watcher')
+            .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'app_settings', filter: 'id=eq.1' },
+                (payload) => {
+                    const parsed = parseAppSettings(payload.new);
+                    setPosDevices((parsed.authorized_pos_devices || []) as PosDevice[]);
+                }
+            )
+            .subscribe();
+
+        const interval = setInterval(fetchPosDevices, 4000);
+
+        return () => {
+            supabase.removeChannel(channel);
+            clearInterval(interval);
+        };
+    }, [isAuthenticated]);
+
+    const pendingDevices = posDevices.filter(d => d.status === 'pending');
+    const pendingDevicesCount = pendingDevices.length;
+
+    const handleQuickApprove = async (deviceId: string) => {
+        const success = await posDeviceManager.approveDevice(deviceId);
+        if (success) {
+            toast.success(`تمت الموافقة وتفعيل التابلت (${deviceId}) بنجاح! 🚀`);
+            fetchPosDevices();
+        } else {
+            toast.error('حدث خطأ أثناء الموافقة');
+        }
+    };
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -150,19 +200,72 @@ export const AdminPage: React.FC = () => {
                             key={tab.id} 
                             onClick={() => setActiveTab(tab.id as any)} 
                             className={cn(
-                                "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer snap-start shrink-0", 
+                                "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer snap-start shrink-0 relative", 
                                 activeTab === tab.id 
                                     ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]" 
                                     : "bg-zinc-800/80 text-gray-400 hover:bg-zinc-700 hover:text-white"
                             )}
                         >
                             {tab.icon} {tab.label}
+                            {tab.id === 'settings' && pendingDevicesCount > 0 && (
+                                <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-black animate-pulse shadow-sm shadow-red-500/50">
+                                    {pendingDevicesCount}
+                                </span>
+                            )}
                         </button>
                     ))}
                 </div>
             </div>
 
             <main className="max-w-7xl mx-auto px-4 py-8">
+                {/* Pending Device Approval Urgent Banner */}
+                {pendingDevicesCount > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-6 bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-amber-500/20 border border-amber-500/40 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-xl shadow-amber-500/10"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-2xl bg-amber-500/25 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30 animate-pulse">
+                                <Tablet size={24} />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+                                    <h3 className="font-black text-white text-sm sm:text-base">
+                                        طلب اعتماد تابلت كاشير جديد ({pendingDevices[0]?.device_id})
+                                    </h3>
+                                </div>
+                                <p className="text-xs text-amber-200/90 mt-0.5">
+                                    الفرع المطلوب: <strong className="text-white underline">{pendingDevices[0]?.branch_name || 'غير محدد'}</strong>
+                                    {pendingDevices[0]?.requested_at && (
+                                        <span className="mr-2 text-gray-400">
+                                            • {new Date(pendingDevices[0]?.requested_at).toLocaleTimeString('ar-SA')}
+                                        </span>
+                                    )}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <button
+                                type="button"
+                                onClick={() => handleQuickApprove(pendingDevices[0]?.device_id)}
+                                className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-500 text-white font-black px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-600/30 cursor-pointer active:scale-95"
+                            >
+                                <CheckCircle2 size={16} />
+                                <span>موافقة وتفعيل التابلت فوراً</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('settings')}
+                                className="bg-zinc-800 hover:bg-zinc-700 text-gray-200 font-bold px-3.5 py-2.5 rounded-xl text-xs transition-all border border-white/10 cursor-pointer"
+                            >
+                                إدارة الأجهزة ({pendingDevicesCount})
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
                 {activeTab === 'analytics' && <AdminAnalyticsView />}
                 {activeTab === 'orders' && <AdminOrdersView />}
                 {activeTab === 'menu' && <AdminMenuView />}
@@ -1677,6 +1780,9 @@ const AdminSettingsView = () => {
                         })}
                     </div>
                 </div>
+
+                {/* POS Devices Management Section */}
+                <AdminPosDevicesView />
                 </>
             )}
         </div>

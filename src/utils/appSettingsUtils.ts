@@ -52,6 +52,8 @@ export const parseAppSettings = (data: any) => {
   parsed.event_show_confetti = parsed.event_show_confetti === undefined ? true  : Boolean(parsed.event_show_confetti);
   parsed.event_show_modal    = parsed.event_show_modal === undefined    ? true  : Boolean(parsed.event_show_modal);
 
+  parsed.authorized_pos_devices = Array.isArray(parsed.authorized_pos_devices) ? parsed.authorized_pos_devices : [];
+
   return parsed;
 };
 
@@ -105,6 +107,7 @@ export const saveAppSettings = async (newPartial: Record<string, any>) => {
   if (merged.welcome_offer) extraConfig.welcome_offer = merged.welcome_offer;
   if (merged.whatsapp_recovery_template) extraConfig.whatsapp_recovery_template = merged.whatsapp_recovery_template;
   if (merged.whatsapp_recovery_promo !== undefined) extraConfig.whatsapp_recovery_promo = merged.whatsapp_recovery_promo;
+  if (merged.authorized_pos_devices !== undefined) extraConfig.authorized_pos_devices = merged.authorized_pos_devices;
 
   const hasExtra = Object.keys(extraConfig).length > 0;
   const packedAnnouncement = hasExtra
