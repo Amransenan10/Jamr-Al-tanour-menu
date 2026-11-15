@@ -353,24 +353,48 @@ const AdminOrdersView = () => {
 
     const fetchStats = async () => {
         try {
-            let query = supabaseAdmin.from('orders').select('total_price, branch, order_type, status, created_at, phone');
-            
-            if (timeframe === 'today') {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                query = query.gte('created_at', today.toISOString());
-            } else if (timeframe === '7days') {
-                const sevenDaysAgo = new Date();
-                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                query = query.gte('created_at', sevenDaysAgo.toISOString());
-            } else if (timeframe === '30days') {
-                const thirtyDaysAgo = new Date();
-                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-                query = query.gte('created_at', thirtyDaysAgo.toISOString());
-            }
+            const fetchAllOrders = async () => {
+                let all: any[] = [];
+                let from = 0;
+                const pageSize = 1000;
+                let hasMore = true;
 
-            const [ordersRes, productsRes, couponsRes] = await Promise.all([
-                query,
+                while (hasMore) {
+                    let query = supabaseAdmin
+                        .from('orders')
+                        .select('total_price, branch, order_type, status, created_at, phone')
+                        .range(from, from + pageSize - 1);
+                    
+                    if (timeframe === 'today') {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        query = query.gte('created_at', today.toISOString());
+                    } else if (timeframe === '7days') {
+                        const sevenDaysAgo = new Date();
+                        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                        query = query.gte('created_at', sevenDaysAgo.toISOString());
+                    } else if (timeframe === '30days') {
+                        const thirtyDaysAgo = new Date();
+                        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                        query = query.gte('created_at', thirtyDaysAgo.toISOString());
+                    }
+
+                    const { data, error } = await query;
+                    if (error || !data || data.length === 0) {
+                        break;
+                    }
+                    all.push(...data);
+                    if (data.length < pageSize) {
+                        hasMore = false;
+                    } else {
+                        from += pageSize;
+                    }
+                }
+                return all;
+            };
+
+            const [allOrdersData, productsRes, couponsRes] = await Promise.all([
+                fetchAllOrders(),
                 supabaseAdmin.from('products').select('id').eq('is_available', false),
                 supabaseAdmin.from('coupons').select('id').eq('is_active', true)
             ]);
@@ -385,8 +409,8 @@ const AdminOrdersView = () => {
             let twaiqOrders = 0;
             const uniquePhones = new Set<string>();
             
-            if (ordersRes.data) {
-                const periodOrders = ordersRes.data;
+            if (allOrdersData) {
+                const periodOrders = allOrdersData;
                 ordersCount = periodOrders.length;
                 
                 periodOrders.forEach(o => {

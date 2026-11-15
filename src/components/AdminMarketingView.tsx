@@ -198,16 +198,39 @@ export const AdminMarketingView: React.FC = () => {
         .select('*')
         .order('created_at', { ascending: false });
       if (bData) setBroadcasts(bData);
-      const [ordersRes, loyaltyCustRes] = await Promise.all([
-        supabaseAdmin.from('orders').select('*').order('created_at', { ascending: false }),
+      const fetchAllOrders = async () => {
+        let all: any[] = [];
+        let from = 0;
+        const pageSize = 1000;
+        let hasMore = true;
+        while (hasMore) {
+          let res = await supabaseAdmin
+            .from('orders')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .range(from, from + pageSize - 1);
+          
+          if (res.error) {
+            res = await supabase
+              .from('orders')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .range(from, from + pageSize - 1);
+          }
+          if (res.error || !res.data || res.data.length === 0) break;
+          all.push(...res.data);
+          if (res.data.length < pageSize) hasMore = false;
+          else from += pageSize;
+        }
+        return all;
+      };
+
+      const [allOrdersData, loyaltyCustRes] = await Promise.all([
+        fetchAllOrders(),
         supabaseAdmin.from('customers').select('*').order('points_balance', { ascending: false })
       ]);
 
-      let rawOrders = ordersRes.data || [];
-      if (ordersRes.error) {
-        const fallbackOrders = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-        rawOrders = fallbackOrders.data || [];
-      }
+      let rawOrders = allOrdersData || [];
 
       // Compute Traffic Attribution breakdown from orders
       const sourcesMap: Record<string, { count: number; totalSales: number }> = {};

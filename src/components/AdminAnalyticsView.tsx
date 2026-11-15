@@ -39,16 +39,35 @@ export const AdminAnalyticsView: React.FC = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [ordersRes, productsRes, branchesRes] = await Promise.all([
-                supabaseAdmin.from('orders').select('*').order('created_at', { ascending: false }),
+            const fetchAllOrders = async () => {
+                let all: any[] = [];
+                let from = 0;
+                const pageSize = 1000;
+                let hasMore = true;
+                while (hasMore) {
+                    const { data, error } = await supabaseAdmin
+                        .from('orders')
+                        .select('*')
+                        .order('created_at', { ascending: false })
+                        .range(from, from + pageSize - 1);
+                    if (error || !data || data.length === 0) break;
+                    all.push(...data);
+                    if (data.length < pageSize) hasMore = false;
+                    else from += pageSize;
+                }
+                return all;
+            };
+
+            const [allOrders, productsRes, branchesRes] = await Promise.all([
+                fetchAllOrders(),
                 supabaseAdmin.from('products').select('*'),
                 supabaseAdmin.from('store_settings').select('branch_name')
             ]);
 
-            if (ordersRes.data) {
-                setOrders(ordersRes.data);
+            if (allOrders) {
+                setOrders(allOrders);
                 // Extract dynamic list of branches if present in orders
-                const uniqueBranches = Array.from(new Set(ordersRes.data.map((o: any) => o.branch).filter(Boolean)));
+                const uniqueBranches = Array.from(new Set(allOrders.map((o: any) => o.branch).filter(Boolean)));
                 if (uniqueBranches.length > 0) {
                     setBranchesList(uniqueBranches as string[]);
                 }
