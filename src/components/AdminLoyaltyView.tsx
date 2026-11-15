@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import { supabase } from '../lib/supabaseClient';
 import { supabaseAdmin } from '../lib/supabaseAdmin';
 import { motion, AnimatePresence } from 'motion/react';
@@ -6,7 +7,8 @@ import {
     Gift, Users, Award, TrendingUp, Plus, Minus, Search, 
     Settings, Save, History, Sparkles, CheckCircle2, X, 
     Loader2, Phone, User, RefreshCw, ToggleLeft, ToggleRight,
-    Coins, DollarSign, ShieldAlert, AlertCircle, ArrowUpRight, ArrowDownRight
+    Coins, DollarSign, ShieldAlert, AlertCircle, ArrowUpRight, ArrowDownRight,
+    FileSpreadsheet, Download, Printer, Calendar, Filter
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -41,7 +43,17 @@ interface Transaction {
 }
 
 export const AdminLoyaltyView: React.FC = () => {
-    const [activeSubTab, setActiveSubTab] = useState<'config' | 'customers' | 'transactions'>('config');
+    const [activeSubTab, setActiveSubTab] = useState<'config' | 'customers' | 'transactions' | 'reports'>('config');
+
+    // Report & Export state
+    const [reportTimeframe, setReportTimeframe] = useState<'all' | 'today' | '7days' | '30days' | 'thisMonth' | 'custom'>('30days');
+    const [reportStartDate, setReportStartDate] = useState<string>('');
+    const [reportEndDate, setReportEndDate] = useState<string>('');
+    const [exportModalOpen, setExportModalOpen] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+    const [reportTransactions, setReportTransactions] = useState<Transaction[]>([]);
+    const [loadingReportData, setLoadingReportData] = useState(false);
+    const [reportSearchQuery, setReportSearchQuery] = useState('');
 
     // Config state
     const [config, setConfig] = useState<LoyaltyConfig>({
@@ -182,6 +194,358 @@ export const AdminLoyaltyView: React.FC = () => {
             supabase.removeChannel(channel);
         };
     }, []);
+
+    // Date range helper for reports
+    const getReportDateRange = () => {
+        const now = new Date();
+        let start: Date | null = null;
+        let end: Date | null = null;
+        let label = 'كل الأوقات';
+
+        if (reportTimeframe === 'today') {
+            start = new Date();
+            start.setHours(0, 0, 0, 0);
+            end = new Date();
+            end.setHours(23, 59, 59, 999);
+            label = 'اليوم';
+        } else if (reportTimeframe === '7days') {
+            start = new Date();
+            start.setDate(now.getDate() - 7);
+            start.setHours(0, 0, 0, 0);
+            end = now;
+            label = 'آخر 7 أيام';
+        } else if (reportTimeframe === '30days') {
+            start = new Date();
+            start.setDate(now.getDate() - 30);
+            start.setHours(0, 0, 0, 0);
+            end = now;
+            label = 'آخر 30 يوم';
+        } else if (reportTimeframe === 'thisMonth') {
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+            end = now;
+            label = 'هذا الشهر';
+        } else if (reportTimeframe === 'custom' && reportStartDate) {
+            start = new Date(reportStartDate);
+            start.setHours(0, 0, 0, 0);
+            if (reportEndDate) {
+                end = new Date(reportEndDate);
+                end.setHours(23, 59, 59, 999);
+            } else {
+                end = now;
+            }
+            label = `من ${reportStartDate} إلى ${reportEndDate || 'الآن'}`;
+        }
+
+        return { start, end, label };
+    };
+
+    // Fetch transactions with pagination for the report
+    const fetchAllTransactionsForReport = async () => {
+        setLoadingReportData(true);
+        try {
+            const { start, end } = getReportDateRange();
+            let all: Transaction[] = [];
+            let from = 0;
+            const pageSize = 1000;
+            let hasMore = true;
+
+            while (hasMore) {
+                let q = supabaseAdmin
+                    .from('transactions')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .range(from, from + pageSize - 1);
+
+                if (start) {
+                    q = q.gte('created_at', start.toISOString());
+                }
+                if (end) {
+                    q = q.lte('created_at', end.toISOString());
+                }
+
+                const { data, error } = await q;
+                if (error || !data || data.length === 0) break;
+                all.push(...data);
+                if (data.length < pageSize) {
+                    hasMore = false;
+                } else {
+                    from += pageSize;
+                }
+            }
+
+            setReportTransactions(all);
+        } catch (err) {
+            console.error('Error fetching report transactions:', err);
+            toast.error('حدث خطأ أثناء تحميل بيانات تقرير الولاء');
+        } finally {
+            setLoadingReportData(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeSubTab === 'reports') {
+            fetchAllTransactionsForReport();
+        }
+    }, [activeSubTab, reportTimeframe, reportStartDate, reportEndDate]);
+
+    // Computed report metrics
+    const reportMetrics = useMemo(() => {
+        const totalEarned = reportTransactions.reduce((sum, t) => sum + (t.points_earned || 0), 0);
+        const totalRedeemed = reportTransactions.reduce((sum, t) => sum + (t.points_redeemed || 0), 0);
+        const redemptionRate = Number(config.redemption_rate) || 10;
+        const discountSAR = redemptionRate > 0 ? (totalRedeemed / redemptionRate) : 0;
+        const redeemCount = reportTransactions.filter(t => (t.points_redeemed || 0) > 0).length;
+        const earnCount = reportTransactions.filter(t => (t.points_earned || 0) > 0).length;
+
+        // Top redeemers calculation
+        const customerMap: Record<string, { phone: string; name: string; totalRedeemed: number; txCount: number }> = {};
+        reportTransactions.forEach(t => {
+            if ((t.points_redeemed || 0) > 0) {
+                const phone = t.customer_phone?.trim() || 'غير معروف';
+                if (!customerMap[phone]) {
+                    const foundCust = customers.find(c => c.phone_number?.trim() === phone);
+                    customerMap[phone] = {
+                        phone,
+                        name: foundCust?.full_name || 'عميل',
+                        totalRedeemed: 0,
+                        txCount: 0
+                    };
+                }
+                customerMap[phone].totalRedeemed += t.points_redeemed || 0;
+                customerMap[phone].txCount += 1;
+            }
+        });
+
+        const topRedeemers = Object.values(customerMap)
+            .sort((a, b) => b.totalRedeemed - a.totalRedeemed)
+            .slice(0, 10);
+
+        return {
+            totalEarned,
+            totalRedeemed,
+            discountSAR,
+            redeemCount,
+            earnCount,
+            topRedeemers
+        };
+    }, [reportTransactions, config.redemption_rate, customers]);
+
+    const filteredReportTransactions = useMemo(() => {
+        if (!reportSearchQuery.trim()) return reportTransactions;
+        const q = reportSearchQuery.toLowerCase().trim();
+        return reportTransactions.filter(t => 
+            t.customer_phone?.toLowerCase().includes(q) ||
+            t.notes?.toLowerCase().includes(q) ||
+            t.staff_id?.toLowerCase().includes(q)
+        );
+    }, [reportTransactions, reportSearchQuery]);
+
+    // Full Excel Export Handler
+    const handleExportExcel = async () => {
+        setIsExporting(true);
+        try {
+            const { start, end, label } = getReportDateRange();
+            
+            // 1. Fetch all transactions for the timeframe using pagination
+            let txs: Transaction[] = [];
+            let from = 0;
+            const pageSize = 1000;
+            let hasMore = true;
+
+            while (hasMore) {
+                let q = supabaseAdmin
+                    .from('transactions')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .range(from, from + pageSize - 1);
+
+                if (start) q = q.gte('created_at', start.toISOString());
+                if (end) q = q.lte('created_at', end.toISOString());
+
+                const { data, error } = await q;
+                if (error || !data || data.length === 0) break;
+                txs.push(...data);
+                if (data.length < pageSize) hasMore = false;
+                else from += pageSize;
+            }
+
+            // 2. Fetch all customers
+            let allCust: Customer[] = [];
+            from = 0;
+            hasMore = true;
+            while (hasMore) {
+                let q = supabaseAdmin
+                    .from('customers')
+                    .select('*')
+                    .order('points_balance', { ascending: false })
+                    .range(from, from + pageSize - 1);
+                const { data, error } = await q;
+                if (error || !data || data.length === 0) break;
+                allCust.push(...data);
+                if (data.length < pageSize) hasMore = false;
+                else from += pageSize;
+            }
+
+            const custMap = new Map<string, string>();
+            allCust.forEach(c => {
+                if (c.phone_number) custMap.set(c.phone_number.trim(), c.full_name || 'عميل');
+            });
+
+            // 3. Compute Metrics
+            const totalEarnedPts = txs.reduce((sum, t) => sum + (t.points_earned || 0), 0);
+            const totalRedeemedPts = txs.reduce((sum, t) => sum + (t.points_redeemed || 0), 0);
+            const redemptionRate = Number(config.redemption_rate) || 10;
+            const monetaryDiscountValue = redemptionRate > 0 ? (totalRedeemedPts / redemptionRate) : 0;
+            const redeemTxCount = txs.filter(t => (t.points_redeemed || 0) > 0).length;
+            const earnTxCount = txs.filter(t => (t.points_earned || 0) > 0).length;
+            const totalActiveBalance = allCust.reduce((sum, c) => sum + (c.points_balance || 0), 0);
+            const totalActiveMonetaryLiability = redemptionRate > 0 ? (totalActiveBalance / redemptionRate) : 0;
+
+            // Sheet 1: ملخص التقرير
+            const overviewSheet = [
+                { 'المؤشر': 'فترة التقرير', 'القيمة': label },
+                { 'المؤشر': 'تاريخ استخراج التقرير', 'القيمة': new Date().toLocaleString('ar-SA') },
+                { 'المؤشر': 'إجمالي أعضاء الولاء المسجلين', 'القيمة': allCust.length },
+                { 'المؤشر': 'إجمالي النقاط النشطة لدى العملاء حالياً', 'القيمة': totalActiveBalance },
+                { 'المؤشر': 'القيمة المالية لأرصدة العملاء الحالية (ر.س)', 'القيمة': totalActiveMonetaryLiability.toFixed(2) },
+                { 'المؤشر': 'إجمالي النقاط المكتسبة خلال الفترة', 'القيمة': totalEarnedPts },
+                { 'المؤشر': 'إجمالي النقاط المستهلكة (المستبدلة) خلال الفترة', 'القيمة': totalRedeemedPts },
+                { 'المؤشر': 'القيمة المالية للخصومات المستهلكة بالنقاط (ر.س)', 'القيمة': monetaryDiscountValue.toFixed(2) },
+                { 'المؤشر': 'عدد عمليات الاستبدال الناجحة', 'القيمة': redeemTxCount },
+                { 'المؤشر': 'عدد عمليات اكتساب النقاط', 'القيمة': earnTxCount },
+                { 'المؤشر': 'معدل الاستبدال المعتمد في النظام', 'القيمة': `كل ${redemptionRate} نقطة = 1 ريال خصم` }
+            ];
+
+            // Sheet 2: سجل الاستهلاك والعمليات التفصيلي
+            const txSheet = txs.map((t, idx) => {
+                const customerName = custMap.get(t.customer_phone?.trim()) || 'عميل';
+                const isRedeem = (t.points_redeemed || 0) > 0;
+                const isEarn = (t.points_earned || 0) > 0;
+                let txTypeArabic = 'عملية ولاء';
+                if (t.type === 'admin_add') txTypeArabic = 'إضافة يدوية (أدمن)';
+                else if (t.type === 'admin_deduct') txTypeArabic = 'خصم يدوي (أدمن)';
+                else if (t.type === 'redeem' || isRedeem) txTypeArabic = 'استهلاك / استبدال خصم';
+                else if (t.type === 'earn' || isEarn) txTypeArabic = 'اكتساب نقاط طلب';
+
+                const discountAmount = isRedeem && redemptionRate > 0 ? ((t.points_redeemed || 0) / redemptionRate).toFixed(2) : '0.00';
+
+                return {
+                    'م': idx + 1,
+                    'رقم المعاملة': t.id,
+                    'التاريخ والوقت': new Date(t.created_at).toLocaleString('ar-SA'),
+                    'رقم جوال العميل': t.customer_phone,
+                    'اسم العميل': customerName,
+                    'نوع العملية': txTypeArabic,
+                    'النقاط المستهلكة': t.points_redeemed || 0,
+                    'قيمة الخصم المستهلك (ر.س)': discountAmount,
+                    'النقاط المكتسبة': t.points_earned || 0,
+                    'قيمة الفاتورة (ر.س)': t.amount > 0 ? Number(t.amount).toFixed(2) : '-',
+                    'الملاحظات': t.notes || '-',
+                    'الموظف / المسؤول': t.staff_id || 'النظام'
+                };
+            });
+
+            // Sheet 3: العملاء الأكثر استهلاكاً للنقاط
+            const customerRedeemMap: Record<string, { phone: string; name: string; totalRedeemed: number; txCount: number }> = {};
+            txs.forEach(t => {
+                if ((t.points_redeemed || 0) > 0) {
+                    const phone = t.customer_phone?.trim() || 'غير معروف';
+                    if (!customerRedeemMap[phone]) {
+                        customerRedeemMap[phone] = {
+                            phone,
+                            name: custMap.get(phone) || 'عميل',
+                            totalRedeemed: 0,
+                            txCount: 0
+                        };
+                    }
+                    customerRedeemMap[phone].totalRedeemed += t.points_redeemed || 0;
+                    customerRedeemMap[phone].txCount += 1;
+                }
+            });
+
+            const topRedeemersSheet = Object.values(customerRedeemMap)
+                .sort((a, b) => b.totalRedeemed - a.totalRedeemed)
+                .map((c, idx) => ({
+                    'الترتيب': idx + 1,
+                    'اسم العميل': c.name,
+                    'رقم الجوال': c.phone,
+                    'إجمالي النقاط المستهلكة': c.totalRedeemed,
+                    'قيمة الخصومات المستفادة (ر.س)': redemptionRate > 0 ? (c.totalRedeemed / redemptionRate).toFixed(2) : '0.00',
+                    'عدد مرات الاستبدال': c.txCount
+                }));
+
+            // Sheet 4: أرصدة جميع العملاء
+            const customersSheet = allCust.map((c, idx) => ({
+                'م': idx + 1,
+                'اسم العميل': c.full_name || 'عميل',
+                'رقم الجوال': c.phone_number,
+                'رصيد النقاط الحالي': c.points_balance || 0,
+                'قيمة الرصيد بالريال (ر.س)': redemptionRate > 0 ? ((c.points_balance || 0) / redemptionRate).toFixed(2) : '0.00',
+                'تاريخ التسجيل': c.created_at ? new Date(c.created_at).toLocaleDateString('ar-SA') : '-'
+            }));
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(overviewSheet), 'ملخص الاستهلاك العام');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(txSheet), 'سجل الاستهلاك والعمليات');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(topRedeemersSheet), 'الأكثر استهلاكاً للنقاط');
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(customersSheet), 'أرصدة العملاء');
+
+            const fileName = `تقرير_استهلاك_الولاء_جمر_التنور_${label.replace(/[\s\/\\:]+/g, '_')}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            toast.success('تم تصدير تقرير استهلاك الولاء إلى Excel بنجاح 📊');
+            setExportModalOpen(false);
+        } catch (err) {
+            console.error('Export Excel Error:', err);
+            toast.error('حدث خطأ أثناء تصدير ملف Excel');
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    // CSV Export Handler
+    const handleExportCSV = async () => {
+        try {
+            const { label } = getReportDateRange();
+            const redemptionRate = Number(config.redemption_rate) || 10;
+            
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+            csvContent += "رقم المعاملة,التاريخ,الهاتف,اسم العميل,نوع العملية,النقاط المستهلكة,قيمة الخصم (ر.س),النقاط المكتسبة,مبلغ الفاتورة,الملاحظات\n";
+            
+            reportTransactions.forEach(t => {
+                const foundCust = customers.find(c => c.phone_number?.trim() === t.customer_phone?.trim());
+                const customerName = foundCust?.full_name || 'عميل';
+                const isRedeem = (t.points_redeemed || 0) > 0;
+                let typeName = t.type === 'admin_add' ? 'إضافة أدمن' : t.type === 'admin_deduct' ? 'خصم أدمن' : isRedeem ? 'استهلاك نقاط' : 'كسب نقاط';
+                const discount = isRedeem && redemptionRate > 0 ? ((t.points_redeemed || 0) / redemptionRate).toFixed(2) : '0';
+                
+                const row = [
+                    t.id,
+                    new Date(t.created_at).toLocaleString('ar-SA').replace(/,/g, ' '),
+                    t.customer_phone,
+                    `"${customerName.replace(/"/g, '""')}"`,
+                    typeName,
+                    t.points_redeemed || 0,
+                    discount,
+                    t.points_earned || 0,
+                    t.amount || 0,
+                    `"${(t.notes || '').replace(/"/g, '""')}"`
+                ].join(',');
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `تقرير_استهلاك_الولاء_${label.replace(/[\s\/\\:]+/g, '_')}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toast.success('تم تصدير ملف CSV بنجاح');
+            setExportModalOpen(false);
+        } catch (err) {
+            toast.error('حدث خطأ أثناء تصدير CSV');
+        }
+    };
 
     // Save Loyalty Config
     const handleSaveConfig = async (e: React.FormEvent) => {
@@ -418,6 +782,13 @@ export const AdminLoyaltyView: React.FC = () => {
                     </button>
                     
                     <button
+                        onClick={() => setExportModalOpen(true)}
+                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-3 rounded-2xl text-xs sm:text-sm shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
+                    >
+                        <FileSpreadsheet size={18} /> تصدير تقرير الولاء (Excel)
+                    </button>
+
+                    <button
                         onClick={() => setNewCustomerModal(prev => ({ ...prev, isOpen: true }))}
                         className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white font-bold px-4 py-3 rounded-2xl text-xs sm:text-sm shadow-lg shadow-primary/20 transition-all cursor-pointer"
                     >
@@ -478,7 +849,8 @@ export const AdminLoyaltyView: React.FC = () => {
                 {[
                     { id: 'config', label: 'إعدادات وقواعد الولاء ⚙️', icon: <Settings size={16} /> },
                     { id: 'customers', label: 'دليل وأرصدة العملاء 👥', icon: <Users size={16} /> },
-                    { id: 'transactions', label: 'سجل حركات النقاط 📜', icon: <History size={16} /> }
+                    { id: 'transactions', label: 'سجل حركات النقاط 📜', icon: <History size={16} /> },
+                    { id: 'reports', label: 'تقرير الاستهلاك والتحليلات 📊', icon: <FileSpreadsheet size={16} /> }
                 ].map(t => (
                     <button
                         key={t.id}
@@ -755,6 +1127,351 @@ export const AdminLoyaltyView: React.FC = () => {
                     )}
                 </motion.div>
             )}
+
+            {/* TAB 4: REPORTS & ANALYTICS */}
+            {activeSubTab === 'reports' && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                    {/* Filter & Export Toolbar */}
+                    <div className="bg-zinc-900 border border-white/5 p-6 rounded-3xl space-y-4 shadow-xl">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 flex-wrap">
+                            <div>
+                                <h3 className="text-lg font-black text-white flex items-center gap-2">
+                                    <FileSpreadsheet className="text-emerald-400" size={20} /> تقرير استهلاك واستبدال النقاط
+                                </h3>
+                                <p className="text-xs text-gray-400">تحليل تفصيلي للنقاط المستهلكة والمكتسبة وحجم الخصومات الممنوحة</p>
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <button
+                                    onClick={handleExportExcel}
+                                    disabled={isExporting}
+                                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-600/20 transition-all cursor-pointer disabled:opacity-50"
+                                >
+                                    {isExporting ? <Loader2 size={16} className="animate-spin" /> : <FileSpreadsheet size={16} />}
+                                    تصدير Excel (.xlsx)
+                                </button>
+                                <button
+                                    onClick={handleExportCSV}
+                                    className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-gray-200 font-bold px-4 py-2.5 rounded-xl text-xs border border-white/5 transition-all cursor-pointer"
+                                >
+                                    <Download size={16} /> تصدير CSV
+                                </button>
+                                <button
+                                    onClick={() => window.print()}
+                                    className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-gray-200 font-bold px-4 py-2.5 rounded-xl text-xs border border-white/5 transition-all cursor-pointer"
+                                >
+                                    <Printer size={16} /> طباعة
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Timeframe Filters */}
+                        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/5">
+                            <div className="flex bg-zinc-800/80 p-1 rounded-2xl gap-1 flex-wrap">
+                                {[
+                                    { id: 'all', label: 'كل الأوقات' },
+                                    { id: 'thisMonth', label: 'هذا الشهر' },
+                                    { id: '30days', label: 'آخر 30 يوم' },
+                                    { id: '7days', label: 'آخر 7 أيام' },
+                                    { id: 'today', label: 'اليوم' },
+                                    { id: 'custom', label: 'تاريخ مخصص' }
+                                ].map(t => (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => setReportTimeframe(t.id as any)}
+                                        className={cn(
+                                            "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                                            reportTimeframe === t.id
+                                                ? "bg-primary text-white shadow-md shadow-primary/20"
+                                                : "text-gray-400 hover:text-white"
+                                        )}
+                                    >
+                                        {t.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {reportTimeframe === 'custom' && (
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <div className="flex items-center gap-1.5 bg-zinc-800 px-3 py-1.5 rounded-xl border border-white/5 text-xs">
+                                        <span className="text-gray-400">من:</span>
+                                        <input
+                                            type="date"
+                                            value={reportStartDate}
+                                            onChange={e => setReportStartDate(e.target.value)}
+                                            className="bg-transparent text-white outline-none"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-1.5 bg-zinc-800 px-3 py-1.5 rounded-xl border border-white/5 text-xs">
+                                        <span className="text-gray-400">إلى:</span>
+                                        <input
+                                            type="date"
+                                            value={reportEndDate}
+                                            onChange={e => setReportEndDate(e.target.value)}
+                                            className="bg-transparent text-white outline-none"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Report KPI Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-zinc-900 border border-white/5 p-5 rounded-2xl flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-bold text-gray-400">إجمالي النقاط المستهلكة</p>
+                                <h3 className="text-2xl font-black text-amber-400 mt-1">{reportMetrics.totalRedeemed.toLocaleString()} <span className="text-xs font-normal text-amber-400/70">نقطة</span></h3>
+                                <p className="text-[10px] text-gray-500 mt-1">تم خصمها واستبدالها بالفترة</p>
+                            </div>
+                            <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-400 border border-amber-500/20">
+                                <TrendingUp size={22} />
+                            </div>
+                        </div>
+
+                        <div className="bg-zinc-900 border border-white/5 p-5 rounded-2xl flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-bold text-gray-400">قيمة الخصومات المستهلكة</p>
+                                <h3 className="text-2xl font-black text-emerald-400 mt-1">{reportMetrics.discountSAR.toFixed(2)} <span className="text-xs font-normal text-emerald-400/70">ر.س</span></h3>
+                                <p className="text-[10px] text-gray-500 mt-1">وفرها العملاء عبر نقاطهم</p>
+                            </div>
+                            <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400 border border-emerald-500/20">
+                                <DollarSign size={22} />
+                            </div>
+                        </div>
+
+                        <div className="bg-zinc-900 border border-white/5 p-5 rounded-2xl flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-bold text-gray-400">عدد عمليات الاستبدال</p>
+                                <h3 className="text-2xl font-black text-purple-400 mt-1">{reportMetrics.redeemCount} <span className="text-xs font-normal text-purple-400/70">عملية</span></h3>
+                                <p className="text-[10px] text-gray-500 mt-1">استفاد منها عملاء الولاء</p>
+                            </div>
+                            <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-400 border border-purple-500/20">
+                                <Award size={22} />
+                            </div>
+                        </div>
+
+                        <div className="bg-zinc-900 border border-white/5 p-5 rounded-2xl flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-bold text-gray-400">إجمالي النقاط المكتسبة</p>
+                                <h3 className="text-2xl font-black text-blue-400 mt-1">{reportMetrics.totalEarned.toLocaleString()} <span className="text-xs font-normal text-blue-400/70">نقطة</span></h3>
+                                <p className="text-[10px] text-gray-500 mt-1">من طلبات الشراء الجديدة</p>
+                            </div>
+                            <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-400 border border-blue-500/20">
+                                <Coins size={22} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Top Redeemers List */}
+                    {reportMetrics.topRedeemers.length > 0 && (
+                        <div className="bg-zinc-900 border border-white/5 p-6 rounded-3xl space-y-4 shadow-xl">
+                            <h4 className="text-sm font-black text-white flex items-center gap-2">
+                                <Sparkles className="text-amber-400" size={18} /> قائمة أكثر العملاء استهلاكاً للنقاط بالفترة
+                            </h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {reportMetrics.topRedeemers.map((c, idx) => (
+                                    <div key={c.phone} className="bg-zinc-800/70 border border-white/5 p-4 rounded-2xl flex items-center justify-between">
+                                        <div className="space-y-0.5">
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-black flex items-center justify-center">
+                                                    #{idx + 1}
+                                                </span>
+                                                <p className="text-xs font-black text-white">{c.name}</p>
+                                            </div>
+                                            <p className="text-[11px] font-mono text-gray-400" dir="ltr">{c.phone}</p>
+                                            <p className="text-[10px] text-gray-500">{c.txCount} عمليات استبدال</p>
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="text-sm font-black text-amber-400">-{c.totalRedeemed.toLocaleString()}</p>
+                                            <p className="text-[10px] text-emerald-400 font-bold">
+                                                {config.redemption_rate > 0 ? (c.totalRedeemed / config.redemption_rate).toFixed(1) : 0} ر.س
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Detailed Consumption Table */}
+                    <div className="bg-zinc-900 border border-white/5 rounded-3xl overflow-hidden shadow-2xl space-y-4 p-6">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div>
+                                <h4 className="text-sm font-black text-white">جدول حركات الاستهلاك والاكتساب التفصيلي</h4>
+                                <p className="text-xs text-gray-400">إجمالي {filteredReportTransactions.length} حركة مسجلة</p>
+                            </div>
+                            <div className="relative w-full sm:w-64">
+                                <Search className="absolute right-3.5 top-3 text-gray-500" size={16} />
+                                <input
+                                    type="text"
+                                    placeholder="بحث برقم الجوال أو الملاحظات..."
+                                    value={reportSearchQuery}
+                                    onChange={e => setReportSearchQuery(e.target.value)}
+                                    className="w-full bg-zinc-800 text-white text-xs pr-10 pl-4 py-2.5 rounded-xl border border-white/5 focus:ring-2 focus:ring-primary outline-none"
+                                />
+                            </div>
+                        </div>
+
+                        {loadingReportData ? (
+                            <div className="p-12 text-center text-gray-400 flex flex-col items-center justify-center gap-3">
+                                <Loader2 className="animate-spin text-primary" size={32} />
+                                <p className="text-xs">جاري تحميل حركات الاستهلاك...</p>
+                            </div>
+                        ) : filteredReportTransactions.length === 0 ? (
+                            <div className="p-12 text-center text-gray-500">
+                                <History size={36} className="mx-auto mb-2 opacity-30" />
+                                <p className="text-sm font-bold">لا توجد حركات ولاء في هذه الفترة</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-right text-xs">
+                                    <thead>
+                                        <tr className="border-b border-white/10 text-gray-400">
+                                            <th className="p-3.5">العميل</th>
+                                            <th className="p-3.5">نوع الحركة</th>
+                                            <th className="p-3.5">النقاط المستهلكة</th>
+                                            <th className="p-3.5">قيمة الخصم</th>
+                                            <th className="p-3.5">النقاط المكتسبة</th>
+                                            <th className="p-3.5">الملاحظات</th>
+                                            <th className="p-3.5">التاريخ والوقت</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/5">
+                                        {filteredReportTransactions.map(tx => {
+                                            const isRedeem = (tx.points_redeemed || 0) > 0;
+                                            const isEarn = (tx.points_earned || 0) > 0;
+                                            const foundCust = customers.find(c => c.phone_number?.trim() === tx.customer_phone?.trim());
+                                            const discountVal = isRedeem && config.redemption_rate > 0 
+                                                ? ((tx.points_redeemed || 0) / config.redemption_rate).toFixed(2)
+                                                : '-';
+
+                                            return (
+                                                <tr key={tx.id} className="hover:bg-white/[0.02] transition-colors">
+                                                    <td className="p-3.5">
+                                                        <p className="font-bold text-white">{foundCust?.full_name || 'عميل'}</p>
+                                                        <p className="text-[11px] font-mono text-gray-400" dir="ltr">{tx.customer_phone}</p>
+                                                    </td>
+                                                    <td className="p-3.5">
+                                                        <span className={cn(
+                                                            "px-2.5 py-1 rounded-xl text-[10px] font-bold inline-flex items-center gap-1",
+                                                            tx.type === 'admin_add' && "bg-blue-500/10 text-blue-400 border border-blue-500/20",
+                                                            tx.type === 'admin_deduct' && "bg-red-500/10 text-red-400 border border-red-500/20",
+                                                            (tx.type === 'earn' || isEarn) && "bg-green-500/10 text-green-400 border border-green-500/20",
+                                                            (tx.type === 'redeem' || isRedeem) && "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                                                        )}>
+                                                            {tx.type === 'admin_add' ? 'تعديل أدمن (+)' : tx.type === 'admin_deduct' ? 'خصم أدمن (-)' : isRedeem ? 'استهلاك خصم' : 'كسب نقاط طلب'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-3.5 font-bold text-amber-400">
+                                                        {isRedeem ? `-${tx.points_redeemed} نقطة` : '-'}
+                                                    </td>
+                                                    <td className="p-3.5 font-bold text-emerald-400">
+                                                        {discountVal !== '-' ? `${discountVal} ر.س` : '-'}
+                                                    </td>
+                                                    <td className="p-3.5 font-bold text-green-400">
+                                                        {isEarn ? `+${tx.points_earned} نقطة` : '-'}
+                                                    </td>
+                                                    <td className="p-3.5 text-gray-400 max-w-xs truncate">
+                                                        {tx.notes || 'معاملة تلقائية'}
+                                                    </td>
+                                                    <td className="p-3.5 text-gray-500 font-mono text-[11px]">
+                                                        {new Date(tx.created_at).toLocaleString('ar-SA', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </motion.div>
+            )}
+
+            {/* MODAL 3: EXPORT MODAL */}
+            <AnimatePresence>
+                {exportModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setExportModalOpen(false)} className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+                        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative w-full max-w-md bg-zinc-900 rounded-3xl p-6 border border-white/10 shadow-2xl space-y-5 text-right" dir="rtl">
+                            <div className="flex justify-between items-center pb-3 border-b border-white/5">
+                                <h3 className="font-black text-lg text-white flex items-center gap-2">
+                                    <FileSpreadsheet className="text-emerald-400" /> تصدير تقرير نظام الولاء
+                                </h3>
+                                <button onClick={() => setExportModalOpen(false)} className="text-gray-400 hover:text-white p-1 cursor-pointer"><X size={20} /></button>
+                            </div>
+
+                            <p className="text-xs text-gray-400">حدد الفترة الزمنية المطلوبة لتصدير تقرير شامل بحركات الاستهلاك والاكتساب وأرصدة العملاء:</p>
+
+                            {/* Timeframe selector */}
+                            <div className="grid grid-cols-2 gap-2">
+                                {[
+                                    { id: 'all', label: 'كل الأوقات' },
+                                    { id: 'thisMonth', label: 'هذا الشهر' },
+                                    { id: '30days', label: 'آخر 30 يوم' },
+                                    { id: '7days', label: 'آخر 7 أيام' },
+                                    { id: 'today', label: 'اليوم' },
+                                    { id: 'custom', label: 'تاريخ مخصص' }
+                                ].map(t => (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => setReportTimeframe(t.id as any)}
+                                        className={cn(
+                                            "p-2.5 rounded-xl text-xs font-bold transition-all border text-center cursor-pointer",
+                                            reportTimeframe === t.id
+                                                ? "bg-primary text-white border-primary"
+                                                : "bg-zinc-800 text-gray-300 border-white/5 hover:border-white/20"
+                                        )}
+                                    >
+                                        {t.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {reportTimeframe === 'custom' && (
+                                <div className="space-y-2 bg-zinc-800/60 p-3 rounded-xl border border-white/5">
+                                    <div className="flex items-center justify-between text-xs">
+                                        <span className="text-gray-400">تاريخ البدء:</span>
+                                        <input
+                                            type="date"
+                                            value={reportStartDate}
+                                            onChange={e => setReportStartDate(e.target.value)}
+                                            className="bg-zinc-700 text-white px-2 py-1 rounded-lg outline-none"
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs">
+                                        <span className="text-gray-400">تاريخ الانتهاء:</span>
+                                        <input
+                                            type="date"
+                                            value={reportEndDate}
+                                            onChange={e => setReportEndDate(e.target.value)}
+                                            className="bg-zinc-700 text-white px-2 py-1 rounded-lg outline-none"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="space-y-2 pt-2">
+                                <button
+                                    onClick={handleExportExcel}
+                                    disabled={isExporting}
+                                    className="w-full py-3.5 rounded-xl font-black bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-600/20 cursor-pointer disabled:opacity-50"
+                                >
+                                    {isExporting ? <Loader2 size={18} className="animate-spin" /> : <FileSpreadsheet size={18} />}
+                                    تحميل ملف Excel مفصل (.xlsx)
+                                </button>
+                                <button
+                                    onClick={handleExportCSV}
+                                    className="w-full py-2.5 rounded-xl font-bold bg-zinc-800 hover:bg-zinc-700 text-gray-300 flex items-center justify-center gap-2 border border-white/5 cursor-pointer text-xs"
+                                >
+                                    <Download size={16} /> تحميل ملف CSV (.csv)
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* TAB 3: TRANSACTIONS HISTORY */}
             {activeSubTab === 'transactions' && (
