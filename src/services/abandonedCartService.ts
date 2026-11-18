@@ -39,7 +39,7 @@ export const syncActiveCartToRecovery = async (
 
   const cleanPhone = normalizeSaudiPhone(phone || localStorage.getItem('jamr_customer_phone') || '');
   const name = customerName || localStorage.getItem('jamr_customer_name') || 'عميل عزيز';
-  const currentBranch = branch || localStorage.getItem('jamr_customer_branch') || localStorage.getItem('jamr_al_tannour_branch') || undefined;
+  const currentBranch = branch || localStorage.getItem('jamr_customer_branch') || localStorage.getItem('jamr_al_tannour_branch') || 'السويدي الغربي';
 
   if (!items || items.length === 0) {
     // If cart was emptied, clear active session
@@ -62,11 +62,17 @@ export const syncActiveCartToRecovery = async (
   const now = new Date().toISOString();
   const itemsCount = items.reduce((acc, i) => acc + (i.quantity || 1), 0);
 
+  // Attach branch inside items metadata so it persists in JSONB even if branch DB column is missing
+  const itemsWithBranch = (items || []).map(i => ({
+    ...i,
+    _branch: currentBranch
+  }));
+
   const cartRecord: AbandonedCartRecord = {
     id: cartId,
     customer_name: name,
     phone: cleanPhone,
-    items,
+    items: itemsWithBranch,
     items_count: itemsCount,
     total_price: Number(totalPrice || 0),
     source: attribution.source,
@@ -172,19 +178,22 @@ export const fetchAbandonedCarts = async (): Promise<AbandonedCartRecord[]> => {
       .limit(50);
 
     if (!error && Array.isArray(data) && data.length > 0) {
-      return data.map((d: any) => ({
-        id: d.id,
-        customer_name: d.customer_name || 'عميل عزيز',
-        phone: d.phone,
-        items: d.items || [],
-        items_count: Array.isArray(d.items) ? d.items.reduce((acc: number, i: any) => acc + (i.quantity || 1), 0) : 1,
-        total_price: Number(d.total_price || 0),
-        source: d.source || 'مباشر',
-        branch: d.branch || undefined,
-        created_at: d.created_at || d.updated_at,
-        updated_at: d.updated_at,
-        recovered: Boolean(d.recovered)
-      }));
+      return data.map((d: any) => {
+        const itemBranch = Array.isArray(d.items) && d.items.length > 0 ? (d.items[0]?._branch || d.items[0]?.branch) : undefined;
+        return {
+          id: d.id,
+          customer_name: d.customer_name || 'عميل عزيز',
+          phone: d.phone,
+          items: d.items || [],
+          items_count: Array.isArray(d.items) ? d.items.reduce((acc: number, i: any) => acc + (i.quantity || 1), 0) : 1,
+          total_price: Number(d.total_price || 0),
+          source: d.source || 'مباشر',
+          branch: d.branch || itemBranch || undefined,
+          created_at: d.created_at || d.updated_at,
+          updated_at: d.updated_at,
+          recovered: Boolean(d.recovered)
+        };
+      });
     }
   } catch (e) {}
 
@@ -206,7 +215,8 @@ export const fetchAbandonedCarts = async (): Promise<AbandonedCartRecord[]> => {
 export const fetchAbandonedCartsByBranch = async (branch?: string): Promise<AbandonedCartRecord[]> => {
   const all = await fetchAbandonedCarts();
   if (!branch || branch === 'الكل') return all;
-  return all.filter(c => !c.branch || c.branch === branch || c.branch === 'الكل');
+  // Strict matching: only show carts that match this cashier's branch
+  return all.filter(c => c.branch === branch);
 };
 
 export const STORAGE_WHATSAPP_TEMPLATE_KEY = 'jamr_whatsapp_recovery_template';

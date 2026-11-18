@@ -1016,24 +1016,26 @@ export const CashierPage: React.FC = () => {
                     .maybeSingle();
 
                 if (data) {
-                    const subStr = data.popular_subtitle || data.announcement_text || '';
-                    if (typeof subStr === 'string' && subStr.includes('[CONFIG:')) {
-                        const startIdx = subStr.indexOf('[CONFIG:') + 8;
-                        const endIdx = subStr.lastIndexOf(']');
-                        if (startIdx > 8 && endIdx > startIdx) {
-                            try {
-                                const config = JSON.parse(subStr.substring(startIdx, endIdx));
-                                if (config.whatsapp_recovery_template) {
-                                    setWaTemplate(config.whatsapp_recovery_template);
-                                    // Also cache in localStorage for offline fallback
-                                    localStorage.setItem(STORAGE_WHATSAPP_TEMPLATE_KEY, config.whatsapp_recovery_template);
-                                }
-                                if (config.whatsapp_recovery_promo !== undefined) {
-                                    setWaPromoCode(config.whatsapp_recovery_promo || '');
-                                    localStorage.setItem(STORAGE_RECOVERY_PROMO_KEY, config.whatsapp_recovery_promo || '');
-                                }
-                                return;
-                            } catch (e) {}
+                    const candidateFields = [data.announcement_text, data.popular_subtitle];
+                    for (const field of candidateFields) {
+                        if (typeof field === 'string' && field.includes('[CONFIG:')) {
+                            const startIdx = field.indexOf('[CONFIG:') + 8;
+                            const endIdx = field.lastIndexOf(']');
+                            if (startIdx > 8 && endIdx > startIdx) {
+                                try {
+                                    const config = JSON.parse(field.substring(startIdx, endIdx));
+                                    if (config.whatsapp_recovery_template) {
+                                        setWaTemplate(config.whatsapp_recovery_template);
+                                        // Also cache in localStorage for offline fallback
+                                        localStorage.setItem(STORAGE_WHATSAPP_TEMPLATE_KEY, config.whatsapp_recovery_template);
+                                    }
+                                    if (config.whatsapp_recovery_promo !== undefined) {
+                                        setWaPromoCode(config.whatsapp_recovery_promo || '');
+                                        localStorage.setItem(STORAGE_RECOVERY_PROMO_KEY, config.whatsapp_recovery_promo || '');
+                                    }
+                                    if (config.whatsapp_recovery_template) return;
+                                } catch (e) {}
+                            }
                         }
                     }
                 }
@@ -1060,8 +1062,10 @@ export const CashierPage: React.FC = () => {
                 { event: '*', schema: 'public', table: 'abandoned_carts' },
                 (payload) => {
                     const row = (payload.new || payload.old) as any;
+                    const rowBranch = row?.branch || (Array.isArray(row?.items) && row?.items[0]?._branch);
                     if (payload.eventType === 'INSERT') {
-                        if (!row.recovered && (!row.branch || row.branch === branch || row.branch === 'الكل')) {
+                        // Strict branch filter: only alert and show if cart explicitly belongs to this branch
+                        if (!row.recovered && rowBranch === branch) {
                             setAbandonedCarts(prev => [row, ...prev.filter(c => c.id !== row.id)]);
                             setHasNewAbandonedAlert(true);
                             playAbandonedCartSound();
@@ -1069,7 +1073,7 @@ export const CashierPage: React.FC = () => {
                     } else if (payload.eventType === 'UPDATE') {
                         if (row.recovered) {
                             setAbandonedCarts(prev => prev.filter(c => c.id !== row.id));
-                        } else if (!row.branch || row.branch === branch || row.branch === 'الكل') {
+                        } else if (rowBranch === branch) {
                             setAbandonedCarts(prev => {
                                 const exists = prev.some(c => c.id === row.id);
                                 return exists ? prev.map(c => c.id === row.id ? row : c) : [row, ...prev];

@@ -14,17 +14,20 @@ export const parseAppSettings = (data: any) => {
   let parsed = { ...data };
   let extraConfig: any = null;
 
-  // Extract CONFIG tag from popular_subtitle (or announcement_text as legacy)
-  const subStr = data.popular_subtitle || data.announcement_text || '';
-  if (typeof subStr === 'string' && subStr.includes('[CONFIG:')) {
-    const startIdx = subStr.indexOf('[CONFIG:') + 8;
-    const endIdx   = subStr.lastIndexOf(']');
-    if (startIdx > 8 && endIdx > startIdx) {
-      try {
-        extraConfig = JSON.parse(subStr.substring(startIdx, endIdx));
-        parsed = { ...parsed, ...extraConfig };
-      } catch (e) {
-        console.error('[parseAppSettings] Failed to parse CONFIG tag:', e);
+  // Extract CONFIG tag from announcement_text OR popular_subtitle (whichever contains it)
+  const candidateFields = [data.announcement_text, data.popular_subtitle];
+  for (const field of candidateFields) {
+    if (typeof field === 'string' && field.includes('[CONFIG:')) {
+      const startIdx = field.indexOf('[CONFIG:') + 8;
+      const endIdx = field.lastIndexOf(']');
+      if (startIdx > 8 && endIdx > startIdx) {
+        try {
+          extraConfig = JSON.parse(field.substring(startIdx, endIdx));
+          parsed = { ...parsed, ...extraConfig };
+          break;
+        } catch (e) {
+          console.error('[parseAppSettings] Failed to parse CONFIG tag:', e);
+        }
       }
     }
   }

@@ -61,19 +61,25 @@ export const AdminAbandonedCartsView: React.FC<AdminAbandonedCartsViewProps> = (
           .maybeSingle();
         
         if (data) {
-          const subStr = data.popular_subtitle || data.announcement_text || '';
-          if (typeof subStr === 'string' && subStr.includes('[CONFIG:')) {
-            const startIdx = subStr.indexOf('[CONFIG:') + 8;
-            const endIdx = subStr.lastIndexOf(']');
-            if (startIdx > 8 && endIdx > startIdx) {
-              try {
-                const config = JSON.parse(subStr.substring(startIdx, endIdx));
-                if (config.whatsapp_recovery_template) {
-                  setTemplateText(config.whatsapp_recovery_template);
-                  setPromoCode(config.whatsapp_recovery_promo || '');
-                  return; // loaded from Supabase successfully
-                }
-              } catch (e) {}
+          const candidateFields = [data.announcement_text, data.popular_subtitle];
+          for (const field of candidateFields) {
+            if (typeof field === 'string' && field.includes('[CONFIG:')) {
+              const startIdx = field.indexOf('[CONFIG:') + 8;
+              const endIdx = field.lastIndexOf(']');
+              if (startIdx > 8 && endIdx > startIdx) {
+                try {
+                  const config = JSON.parse(field.substring(startIdx, endIdx));
+                  if (config.whatsapp_recovery_template) {
+                    setTemplateText(config.whatsapp_recovery_template);
+                    localStorage.setItem(STORAGE_WHATSAPP_TEMPLATE_KEY, config.whatsapp_recovery_template);
+                  }
+                  if (config.whatsapp_recovery_promo !== undefined) {
+                    setPromoCode(config.whatsapp_recovery_promo || '');
+                    localStorage.setItem(STORAGE_RECOVERY_PROMO_KEY, config.whatsapp_recovery_promo || '');
+                  }
+                  if (config.whatsapp_recovery_template) return; // loaded from Supabase successfully
+                } catch (e) {}
+              }
             }
           }
         }
