@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
+import { saveAppSettings } from '../utils/appSettingsUtils';
 
 interface LoyaltyConfig {
     is_enabled: boolean;
@@ -557,6 +558,18 @@ export const AdminLoyaltyView: React.FC = () => {
             localStorage.setItem('jamr_loyalty_max_percentage', String(maxPercentage));
             const welcomeBonus = Math.max(0, Number(config.welcome_bonus_points) || 0);
             localStorage.setItem('jamr_welcome_points_amount', String(welcomeBonus));
+
+            // Sync with app_settings welcome_offer so neither shows if turned off
+            try {
+                await saveAppSettings({
+                    welcome_offer: {
+                        enabled: Boolean(config.is_enabled && welcomeBonus > 0),
+                        points_amount: welcomeBonus
+                    }
+                });
+            } catch (err) {
+                console.warn('Sync welcome offer to app_settings error:', err);
+            }
 
             const corePayload: any = {
                 id: 1,

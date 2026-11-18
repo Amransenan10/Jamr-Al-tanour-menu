@@ -909,8 +909,8 @@ export default function App() {
           />
 
           <WelcomeOfferModal
-            welcomePointsAmount={appSettings?.welcome_offer?.points_amount || Number(localStorage.getItem('jamr_welcome_points_amount')) || 100}
-            isEnabled={appSettings?.welcome_offer?.enabled !== false}
+            welcomePointsAmount={appSettings?.welcome_offer?.points_amount}
+            isEnabled={appSettings?.welcome_offer?.enabled === false ? false : undefined}
             onSuccess={(phone, points) => {
               setLoyaltyPoints(points);
             }}

@@ -14,8 +14,8 @@ interface WelcomeOfferModalProps {
 
 export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
   onSuccess,
-  welcomePointsAmount = 100,
-  isEnabled = true
+  welcomePointsAmount,
+  isEnabled
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [phone, setPhone] = useState('');
@@ -24,15 +24,34 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
   const [claimed, setClaimed] = useState(false);
   const [existingGreeting, setExistingGreeting] = useState<{ name: string; balance: number } | null>(null);
 
-  // Dynamic Points Amount State (Default 100)
   const [effectivePoints, setEffectivePoints] = useState<number>(() => {
-    return welcomePointsAmount || 100;
+    return welcomePointsAmount || 0;
   });
+  const [shouldShow, setShouldShow] = useState<boolean>(false);
 
-  // Sync points dynamically on mount
+  // Sync points dynamically on mount and verify if feature is actually enabled
   useEffect(() => {
-    const fetchLatestConfig = async () => {
-      // 1. Fetch from app_settings where welcome_offer is stored
+    const verifyAndLoadConfig = async () => {
+      // 1. If prop is explicitly false or points amount <= 0, stop immediately
+      if (isEnabled === false || welcomePointsAmount === 0) {
+        setShouldShow(false);
+        return;
+      }
+
+      // 2. Check if user already claimed or dismissed or already registered
+      const hasClaimed = localStorage.getItem('jamr_welcome_offer_claimed');
+      const hasDismissed = sessionStorage.getItem('jamr_welcome_offer_dismissed');
+      const existingPhone = localStorage.getItem('jamr_customer_phone');
+
+      if (hasClaimed || hasDismissed || existingPhone) {
+        setShouldShow(false);
+        return;
+      }
+
+      let active = true;
+      let points = 0;
+
+      // 3. Fetch from app_settings where welcome_offer is stored
       try {
         const { data: rawApp } = await supabase
           .from('app_settings')
@@ -44,49 +63,58 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
           const match = rawApp.announcement_text.match(/\[CONFIG:([\s\S]*?)\]/);
           if (match && match[1]) {
             const extra = JSON.parse(match[1]);
-            if (extra.welcome_offer?.points_amount) {
-              const pts = Number(extra.welcome_offer.points_amount);
-              setEffectivePoints(pts);
-              localStorage.setItem('jamr_welcome_points_amount', String(pts));
-              return;
+            // If explicitly turned off in marketing:
+            if (extra.welcome_offer?.enabled === false) {
+              active = false;
+            }
+            if (extra.welcome_offer?.points_amount !== undefined) {
+              points = Number(extra.welcome_offer.points_amount);
+              if (points <= 0) active = false;
             }
           }
         }
       } catch (e) {}
 
-      // 2. Fallback to loyalty_config
+      if (!active) {
+        setShouldShow(false);
+        return;
+      }
+
+      // 4. Fallback / Cross-check with loyalty_config
       try {
         const { data: loyaltyCfg } = await supabase
           .from('loyalty_config')
-          .select('welcome_bonus_points')
+          .select('is_enabled, welcome_bonus_points')
           .eq('id', 1)
           .maybeSingle();
 
-        if (loyaltyCfg && Number(loyaltyCfg.welcome_bonus_points) > 0) {
-          const pts = Number(loyaltyCfg.welcome_bonus_points);
-          setEffectivePoints(pts);
-          localStorage.setItem('jamr_welcome_points_amount', String(pts));
-          return;
+        if (loyaltyCfg) {
+          // If loyalty system is turned off OR welcome bonus points set to 0:
+          if (loyaltyCfg.is_enabled === false || Number(loyaltyCfg.welcome_bonus_points) <= 0) {
+            active = false;
+          } else if (points === 0) {
+            points = Number(loyaltyCfg.welcome_bonus_points);
+          }
         }
       } catch (e) {}
 
-      if (welcomePointsAmount) {
-        setEffectivePoints(welcomePointsAmount);
+      // If disabled in either place, or points is 0, NEVER SHOW
+      if (!active || points <= 0) {
+        setShouldShow(false);
+        return;
       }
+
+      setEffectivePoints(points);
+      localStorage.setItem('jamr_welcome_points_amount', String(points));
+      setShouldShow(true);
     };
 
-    fetchLatestConfig();
-  }, [welcomePointsAmount]);
+    verifyAndLoadConfig();
+  }, [welcomePointsAmount, isEnabled]);
 
   useEffect(() => {
-    if (!isEnabled || typeof window === 'undefined') return;
-
-    // Check if user already claimed or dismissed
-    const hasClaimed = localStorage.getItem('jamr_welcome_offer_claimed');
-    const hasDismissed = sessionStorage.getItem('jamr_welcome_offer_dismissed');
-    const existingPhone = localStorage.getItem('jamr_customer_phone');
-
-    if (hasClaimed || hasDismissed || existingPhone) {
+    if (!shouldShow || typeof window === 'undefined') {
+      setIsOpen(false);
       return;
     }
 
@@ -96,7 +124,7 @@ export const WelcomeOfferModal: React.FC<WelcomeOfferModalProps> = ({
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, [isEnabled]);
+  }, [shouldShow]);
 
   const handleDismiss = () => {
     setIsOpen(false);

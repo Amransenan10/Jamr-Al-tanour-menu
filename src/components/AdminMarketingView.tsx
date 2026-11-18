@@ -535,12 +535,29 @@ export const AdminMarketingView: React.FC = () => {
     try {
       savePixelConfigLocal(pixelForm);
       initMarketingPixels(pixelForm);
-      localStorage.setItem('jamr_welcome_points_amount', String(welcomeOfferForm.points_amount));
+      const pointsToSave = welcomeOfferForm.enabled ? welcomeOfferForm.points_amount : 0;
+      localStorage.setItem('jamr_welcome_points_amount', String(pointsToSave));
 
       await saveAppSettings({
         marketing_pixels: pixelForm,
-        welcome_offer: welcomeOfferForm
+        welcome_offer: {
+          enabled: welcomeOfferForm.enabled && pointsToSave > 0,
+          points_amount: pointsToSave
+        }
       });
+
+      // Synchronize with loyalty_config
+      try {
+        await supabaseAdmin
+          .from('loyalty_config')
+          .update({
+            welcome_bonus_points: pointsToSave,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', 1);
+      } catch (lErr) {
+        console.warn('Could not sync welcome points to loyalty_config:', lErr);
+      }
 
       toast.success('تم حفظ وتفعيل إعدادات أدوات التتبع بنجاح! 📡');
     } catch (err: any) {
