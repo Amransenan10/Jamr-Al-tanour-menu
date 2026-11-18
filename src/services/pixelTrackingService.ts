@@ -34,6 +34,7 @@ export const getSavedPixelConfig = (): MarketingPixelsConfig => {
     tiktok_pixel_id: 'DBFM1UJC77UASCMGLRJ0',
     tiktok_enabled: true,
     snapchat_enabled: true,
+    ga4_measurement_id: 'G-DK0V9GMKGN',
     ga4_enabled: true
   };
 

@@ -4,7 +4,65 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>جمر التنور | المنيو الإلكتروني</title>
+  <title>جمر التنور | المنيو الإلكتروني والطلب أونلاين</title>
+  
+  <!-- Primary SEO Meta Tags -->
+  <meta name="title" content="جمر التنور | المنيو الإلكتروني والطلب أونلاين" />
+  <meta name="description" content="مطعم جمر التنور - المنيو الإلكتروني الرسمي. تصفح أشهى الفطائر، الشاورما، الفلافل، والمشروبات واطلب أونلاين بسهولة مع خدمة التوصيل والاستلام." />
+  <meta name="keywords" content="جمر التنور, منيو جمر التنور, مطعم جمر التنور, فطائر على الفحم, شاورما, فلافل, منيو الكتروني, مطاعم, طلب اونلاين" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="author" content="جمر التنور" />
+  <link rel="canonical" href="https://jamraltanour.com/" />
+
+  <!-- Open Graph / Facebook / WhatsApp -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://jamraltanour.com/" />
+  <meta property="og:title" content="جمر التنور | المنيو الإلكتروني والطلب أونلاين" />
+  <meta property="og:description" content="مطعم جمر التنور - المنيو الإلكتروني الرسمي. تصفح قائمتنا واطلب أشهى الوجبات والفطائر أونلاين بسهولة." />
+  <meta property="og:image" content="https://jamraltanour.com/assets/logo.png" />
+  <meta property="og:site_name" content="جمر التنور" />
+  <meta property="og:locale" content="ar_SA" />
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://jamraltanour.com/" />
+  <meta name="twitter:title" content="جمر التنور | المنيو الإلكتروني والطلب أونلاين" />
+  <meta name="twitter:description" content="مطعم جمر التنور - المنيو الإلكتروني الرسمي. اطلب وجبتك المفضلة أونلاين الآن." />
+  <meta name="twitter:image" content="https://jamraltanour.com/assets/logo.png" />
+
+  <!-- Structured Data (JSON-LD) for Local Restaurant SEO -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Restaurant",
+    "name": "جمر التنور",
+    "image": "https://jamraltanour.com/assets/logo.png",
+    "@id": "https://jamraltanour.com",
+    "url": "https://jamraltanour.com",
+    "priceRange": "$$",
+    "servesCuisine": ["Arabic", "Middle Eastern", "Fast Food"],
+    "menu": "https://jamraltanour.com",
+    "acceptsReservations": "False",
+    "potentialAction": {
+      "@type": "OrderAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://jamraltanour.com",
+        "inLanguage": "ar",
+        "actionPlatform": [
+          "http://schema.org/DesktopWebPlatform",
+          "http://schema.org/MobileWebPlatform"
+        ]
+      },
+      "result": {
+        "@type": "FoodEstablishmentReservation",
+        "name": "طلب طعام أونلاين"
+      }
+    }
+  }
+  </script>
+
+  <!-- PWA & Mobile App Settings -->
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#ff6b00" />
   <link rel="apple-touch-icon" href="/assets/icon-192.png" />
@@ -13,6 +71,17 @@
   <meta name="apple-mobile-web-app-title" content="جمر التنور" />
   <meta name="mobile-web-app-capable" content="yes" />
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+
+  <!-- Google tag (gtag.js) - Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-DK0V9GMKGN"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-DK0V9GMKGN');
+  </script>
+
   <!-- Meta Pixel Code -->
   <script>
     !function(f,b,e,v,n,t,s)
@@ -40,6 +109,7 @@
     }(window, document, 'ttq');
   </script>
   <!-- TikTok Pixel Code End -->
+
   <script>
     // Ensure light mode is always applied and clean up legacy dark mode preference
     try {
