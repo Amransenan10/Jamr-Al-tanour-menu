@@ -1,160 +1,277 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
-import { Loader2, ExternalLink, ArrowRight } from 'lucide-react';
+import { Loader2, ExternalLink, UtensilsCrossed } from 'lucide-react';
 
-interface PlatformInfo {
+interface PlatformConfig {
   name: string;
   field: string;
   icon: string;
-  color: string;
-  defaultPlaceholder?: string;
+  badgeBg: string;
+  buildUrl: (raw: string) => string;
 }
 
-const PLATFORM_MAP: Record<string, PlatformInfo> = {
-  // TikTok
-  t: { name: 'تيك توك', field: 'social_tiktok', icon: '🎵', color: 'bg-black text-white' },
-  tiktok: { name: 'تيك توك', field: 'social_tiktok', icon: '🎵', color: 'bg-black text-white' },
-  
+const PLATFORMS: Record<string, PlatformConfig> = {
   // Instagram
-  i: { name: 'انستغرام', field: 'social_instagram', icon: '📸', color: 'bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white' },
-  ig: { name: 'انستغرام', field: 'social_instagram', icon: '📸', color: 'bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white' },
-  instagram: { name: 'انستغرام', field: 'social_instagram', icon: '📸', color: 'bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white' },
-  insta: { name: 'انستغرام', field: 'social_instagram', icon: '📸', color: 'bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white' },
-  
+  i: {
+    name: 'إنستغرام',
+    field: 'social_instagram',
+    icon: '📸',
+    badgeBg: 'from-amber-500 via-rose-500 to-purple-600',
+    buildUrl: (raw) => {
+      const clean = raw.trim().replace(/^@/, '');
+      if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+      return `https://www.instagram.com/${clean}`;
+    }
+  },
+  ig: {
+    name: 'إنستغرام',
+    field: 'social_instagram',
+    icon: '📸',
+    badgeBg: 'from-amber-500 via-rose-500 to-purple-600',
+    buildUrl: (raw) => PLATFORMS.i.buildUrl(raw)
+  },
+  insta: {
+    name: 'إنستغرام',
+    field: 'social_instagram',
+    icon: '📸',
+    badgeBg: 'from-amber-500 via-rose-500 to-purple-600',
+    buildUrl: (raw) => PLATFORMS.i.buildUrl(raw)
+  },
+  instagram: {
+    name: 'إنستغرام',
+    field: 'social_instagram',
+    icon: '📸',
+    badgeBg: 'from-amber-500 via-rose-500 to-purple-600',
+    buildUrl: (raw) => PLATFORMS.i.buildUrl(raw)
+  },
+
+  // TikTok
+  t: {
+    name: 'تيك توك',
+    field: 'social_tiktok',
+    icon: '🎵',
+    badgeBg: 'from-zinc-900 to-black border border-white/20',
+    buildUrl: (raw) => {
+      const clean = raw.trim();
+      if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+      const handle = clean.startsWith('@') ? clean : `@${clean}`;
+      return `https://www.tiktok.com/${handle}`;
+    }
+  },
+  tt: {
+    name: 'تيك توك',
+    field: 'social_tiktok',
+    icon: '🎵',
+    badgeBg: 'from-zinc-900 to-black border border-white/20',
+    buildUrl: (raw) => PLATFORMS.t.buildUrl(raw)
+  },
+  tiktok: {
+    name: 'تيك توك',
+    field: 'social_tiktok',
+    icon: '🎵',
+    badgeBg: 'from-zinc-900 to-black border border-white/20',
+    buildUrl: (raw) => PLATFORMS.t.buildUrl(raw)
+  },
+
   // Snapchat
-  s: { name: 'سناب شات', field: 'social_snapchat', icon: '👻', color: 'bg-yellow-400 text-black' },
-  snap: { name: 'سناب شات', field: 'social_snapchat', icon: '👻', color: 'bg-yellow-400 text-black' },
-  snapchat: { name: 'سناب شات', field: 'social_snapchat', icon: '👻', color: 'bg-yellow-400 text-black' },
-  
+  s: {
+    name: 'سناب شات',
+    field: 'social_snapchat',
+    icon: '👻',
+    badgeBg: 'from-yellow-400 to-amber-500 text-black',
+    buildUrl: (raw) => {
+      const clean = raw.trim().replace(/^@/, '');
+      if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+      return `https://www.snapchat.com/add/${clean}`;
+    }
+  },
+  sc: {
+    name: 'سناب شات',
+    field: 'social_snapchat',
+    icon: '👻',
+    badgeBg: 'from-yellow-400 to-amber-500 text-black',
+    buildUrl: (raw) => PLATFORMS.s.buildUrl(raw)
+  },
+  snap: {
+    name: 'سناب شات',
+    field: 'social_snapchat',
+    icon: '👻',
+    badgeBg: 'from-yellow-400 to-amber-500 text-black',
+    buildUrl: (raw) => PLATFORMS.s.buildUrl(raw)
+  },
+  snapchat: {
+    name: 'سناب شات',
+    field: 'social_snapchat',
+    icon: '👻',
+    badgeBg: 'from-yellow-400 to-amber-500 text-black',
+    buildUrl: (raw) => PLATFORMS.s.buildUrl(raw)
+  },
+
   // WhatsApp
-  w: { name: 'واتساب', field: 'social_whatsapp', icon: '💬', color: 'bg-emerald-500 text-white' },
-  wa: { name: 'واتساب', field: 'social_whatsapp', icon: '💬', color: 'bg-emerald-500 text-white' },
-  whatsapp: { name: 'واتساب', field: 'social_whatsapp', icon: '💬', color: 'bg-emerald-500 text-white' },
-  
+  w: {
+    name: 'واتساب',
+    field: 'social_whatsapp',
+    icon: '💬',
+    badgeBg: 'from-emerald-500 to-green-600',
+    buildUrl: (raw) => {
+      let digits = raw.trim().replace(/\D/g, '');
+      if (digits.startsWith('05')) digits = '966' + digits.substring(1);
+      else if (digits.startsWith('5')) digits = '966' + digits;
+      return `https://wa.me/${digits}`;
+    }
+  },
+  wa: {
+    name: 'واتساب',
+    field: 'social_whatsapp',
+    icon: '💬',
+    badgeBg: 'from-emerald-500 to-green-600',
+    buildUrl: (raw) => PLATFORMS.w.buildUrl(raw)
+  },
+  whatsapp: {
+    name: 'واتساب',
+    field: 'social_whatsapp',
+    icon: '💬',
+    badgeBg: 'from-emerald-500 to-green-600',
+    buildUrl: (raw) => PLATFORMS.w.buildUrl(raw)
+  },
+
   // Twitter / X
-  x: { name: 'منصة X', field: 'social_twitter', icon: '𝕏', color: 'bg-zinc-900 text-white' },
-  tw: { name: 'منصة X', field: 'social_twitter', icon: '𝕏', color: 'bg-zinc-900 text-white' },
-  twitter: { name: 'منصة X', field: 'social_twitter', icon: '𝕏', color: 'bg-zinc-900 text-white' },
+  x: {
+    name: 'منصة X',
+    field: 'social_twitter',
+    icon: '𝕏',
+    badgeBg: 'from-zinc-900 to-black border border-white/20',
+    buildUrl: (raw) => {
+      const clean = raw.trim().replace(/^@/, '');
+      if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+      return `https://x.com/${clean}`;
+    }
+  },
+  tw: {
+    name: 'منصة X',
+    field: 'social_twitter',
+    icon: '𝕏',
+    badgeBg: 'from-zinc-900 to-black border border-white/20',
+    buildUrl: (raw) => PLATFORMS.x.buildUrl(raw)
+  },
+  twitter: {
+    name: 'منصة X',
+    field: 'social_twitter',
+    icon: '𝕏',
+    badgeBg: 'from-zinc-900 to-black border border-white/20',
+    buildUrl: (raw) => PLATFORMS.x.buildUrl(raw)
+  },
+
+  // Google Maps
+  g: {
+    name: 'موقع المطعم على الخريطة',
+    field: 'restaurant_location',
+    icon: '📍',
+    badgeBg: 'from-emerald-600 to-teal-700',
+    buildUrl: (raw) => {
+      if (raw && (raw.startsWith('http://') || raw.startsWith('https://'))) return raw;
+      return 'https://www.google.com/maps/search/?api=1&query=مطعم+جمر+التنور';
+    }
+  },
+  maps: {
+    name: 'موقع المطعم على الخريطة',
+    field: 'restaurant_location',
+    icon: '📍',
+    badgeBg: 'from-emerald-600 to-teal-700',
+    buildUrl: (raw) => PLATFORMS.g.buildUrl(raw)
+  }
 };
 
 export const SocialRedirect: React.FC<{ platformKey?: string }> = ({ platformKey }) => {
-  const { shortcut } = useParams<{ shortcut?: string }>();
   const location = useLocation();
-  const [status, setStatus] = useState<'loading' | 'redirecting' | 'not_found'>('loading');
-  const [targetUrl, setTargetUrl] = useState<string | null>(null);
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(true);
 
-  // Determine platform key from prop, param, or pathname
-  const rawKey = (
+  // Extract path segment (e.g. "t", "i", "s", "tiktok", "instagram")
+  const key = (
     platformKey ||
-    shortcut ||
     location.pathname.replace(/^\/+/, '').split('/')[0] ||
     ''
   ).toLowerCase().trim();
 
-  const platform = PLATFORM_MAP[rawKey];
+  const platform = PLATFORMS[key] || {
+    name: 'حساب التواصل',
+    field: 'social_' + key,
+    icon: '🔗',
+    badgeBg: 'from-primary to-amber-600',
+    buildUrl: (r: string) => r
+  };
 
   useEffect(() => {
-    if (!platform) {
-      setStatus('not_found');
-      return;
-    }
+    let isCancelled = false;
 
-    const resolveUrl = async () => {
-      let finalUrl: string | null = null;
+    const findTarget = async () => {
+      let rawValue: string | null = null;
 
-      // 1. Try local cache first for instant speed
+      // 1. Check local storage cache
       try {
         const cached = localStorage.getItem('jamr_app_settings');
         if (cached) {
           const parsed = JSON.parse(cached);
           if (parsed && parsed[platform.field]) {
-            finalUrl = parsed[platform.field];
+            rawValue = parsed[platform.field];
           }
         }
       } catch (e) {}
 
-      // 2. Fetch from Supabase if not found in cache
-      if (!finalUrl) {
+      // 2. Fetch from Supabase
+      if (!rawValue) {
         try {
           const { data } = await supabase
             .from('app_settings')
             .select('*')
+            .eq('id', 1)
             .maybeSingle();
 
           if (data && data[platform.field]) {
-            finalUrl = data[platform.field];
+            rawValue = data[platform.field];
           }
         } catch (err) {
-          console.error('Error resolving social redirect:', err);
+          console.error('Error fetching social setting:', err);
         }
       }
 
-      // Format WhatsApp number if needed
-      if (finalUrl && platform.field === 'social_whatsapp') {
-        const cleanPhone = finalUrl.replace(/\D/g, '');
-        if (cleanPhone) {
-          finalUrl = `https://wa.me/${cleanPhone}`;
-        }
-      }
+      if (isCancelled) return;
 
-      if (finalUrl && (finalUrl.startsWith('http://') || finalUrl.startsWith('https://'))) {
-        setTargetUrl(finalUrl);
-        setStatus('redirecting');
-        // Small delay so user sees smooth transition, then redirect
-        setTimeout(() => {
-          window.location.replace(finalUrl as string);
-        }, 300);
+      if (rawValue && rawValue.trim()) {
+        const finalUrl = platform.buildUrl(rawValue);
+        setResolvedUrl(finalUrl);
+        setIsSearching(false);
+        // Instant redirect
+        window.location.replace(finalUrl);
+      } else if (key === 'g' || key === 'maps') {
+        const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=مطعم+جمر+التنور';
+        setResolvedUrl(mapsUrl);
+        setIsSearching(false);
+        window.location.replace(mapsUrl);
       } else {
-        setStatus('not_found');
+        setIsSearching(false);
       }
     };
 
-    resolveUrl();
-  }, [rawKey, platform]);
+    findTarget();
 
-  if (!platform || status === 'not_found') {
-    return (
-      <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-6 text-center" dir="rtl">
-        <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-3xl mb-4">
-          {platform ? platform.icon : '🔗'}
-        </div>
-        <h1 className="text-xl font-black mb-2 text-white">
-          {platform ? `رابط ${platform.name} غير متوفر حالياً` : 'الرابط غير صحيح'}
-        </h1>
-        <p className="text-sm text-gray-400 max-w-sm mb-6 leading-relaxed">
-          {platform
-            ? `لم يتم إضافة رابط حساب ${platform.name} في إعدادات المتجر بعد. يمكنك تعديله من لوحة الإدارة.`
-            : 'الرابط المختصر المطلوب غير مسجل في النظام.'}
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs">
-          <a
-            href="/"
-            className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold py-3 px-6 rounded-2xl text-center text-sm transition-all shadow-lg shadow-primary/20"
-          >
-            الذهاب لقائمة الطعام 🍔
-          </a>
-          <a
-            href="/admin"
-            className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-gray-200 font-bold py-3 px-6 rounded-2xl text-center text-sm border border-white/5 transition-all"
-          >
-            لوحة الإدارة ⚙️
-          </a>
-        </div>
-      </div>
-    );
-  }
+    return () => {
+      isCancelled = true;
+    };
+  }, [key, platform]);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-6 text-center select-none" dir="rtl">
-      <div className={`w-20 h-20 rounded-3xl ${platform.color} shadow-2xl flex items-center justify-center text-4xl mb-6 animate-bounce`}>
+      <div className={`w-20 h-20 rounded-3xl bg-gradient-to-tr ${platform.badgeBg} shadow-2xl flex items-center justify-center text-4xl mb-6 shadow-amber-500/20`}>
         {platform.icon}
       </div>
 
       <div className="flex items-center gap-2 mb-2">
-        <Loader2 size={20} className="animate-spin text-primary" />
+        {isSearching && <Loader2 size={20} className="animate-spin text-primary" />}
         <h1 className="text-xl font-black text-white">
-          جاري تحويلك إلى {platform.name}...
+          {resolvedUrl ? `جاري نقلك إلى ${platform.name}...` : isSearching ? `جاري الاتصال بـ ${platform.name}...` : `رابط ${platform.name}`}
         </h1>
       </div>
 
@@ -162,15 +279,36 @@ export const SocialRedirect: React.FC<{ platformKey?: string }> = ({ platformKey
         مطعم جمر التنور يرحب بك 🌟
       </p>
 
-      {targetUrl && (
+      {resolvedUrl ? (
         <a
-          href={targetUrl}
-          className="inline-flex items-center gap-2 text-xs font-bold text-primary hover:underline bg-primary/10 px-4 py-2.5 rounded-xl border border-primary/20"
+          href={resolvedUrl}
+          className="inline-flex items-center gap-2 text-xs font-bold text-white bg-primary hover:bg-primary/90 px-6 py-3 rounded-2xl shadow-lg shadow-primary/20 transition-all"
         >
-          <ExternalLink size={14} />
-          اضغط هنا إذا لم يتم نقلك تلقائياً
+          <ExternalLink size={16} />
+          <span>انقر هنا إذا لم يتم نقلك تلقائياً</span>
         </a>
-      )}
+      ) : !isSearching ? (
+        <div className="bg-zinc-900 border border-white/10 p-5 rounded-2xl max-w-sm w-full space-y-4">
+          <p className="text-xs text-gray-400 leading-relaxed">
+            لم يتم ضبط رابط حساب {platform.name} بعد في إعدادات المتجر. يمكنك تعيينه من لوحة الإدارة.
+          </p>
+          <div className="flex gap-2">
+            <a
+              href="/"
+              className="flex-1 py-2.5 px-4 bg-primary text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5"
+            >
+              <UtensilsCrossed size={14} />
+              <span>قائمة الطعام</span>
+            </a>
+            <a
+              href="/admin"
+              className="flex-1 py-2.5 px-4 bg-zinc-800 text-gray-300 rounded-xl text-xs font-bold flex items-center justify-center"
+            >
+              <span>لوحة الإدارة</span>
+            </a>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

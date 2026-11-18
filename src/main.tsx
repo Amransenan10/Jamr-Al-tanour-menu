@@ -25,23 +25,23 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/track/:id" element={<OrderTrackingPage />} />
           <Route path="/my-orders" element={<MyOrders />} />
           <Route path="/admin" element={<AdminPage />} />
-          {/* روابط التتبع الإعلاني المختصرة للمنيو */}
-          <Route path="/t" element={<AdTrackingRedirect channelKey="t" />} />
-          <Route path="/s" element={<AdTrackingRedirect channelKey="s" />} />
-          <Route path="/i" element={<AdTrackingRedirect channelKey="i" />} />
-          <Route path="/g" element={<AdTrackingRedirect channelKey="g" />} />
-          <Route path="/w" element={<AdTrackingRedirect channelKey="w" />} />
-
-          {/* روابط التحويل المباشر لصفحات التواصل الاجتماعي للمطعم */}
+          {/* روابط الحسابات المختصرة الرسمية لمواقع التواصل الاجتماعي */}
+          <Route path="/t" element={<SocialRedirect platformKey="t" />} />
           <Route path="/tiktok" element={<SocialRedirect platformKey="tiktok" />} />
+          <Route path="/s" element={<SocialRedirect platformKey="s" />} />
           <Route path="/snap" element={<SocialRedirect platformKey="snap" />} />
           <Route path="/snapchat" element={<SocialRedirect platformKey="snapchat" />} />
+          <Route path="/i" element={<SocialRedirect platformKey="i" />} />
+          <Route path="/ig" element={<SocialRedirect platformKey="ig" />} />
           <Route path="/insta" element={<SocialRedirect platformKey="insta" />} />
           <Route path="/instagram" element={<SocialRedirect platformKey="instagram" />} />
+          <Route path="/w" element={<SocialRedirect platformKey="w" />} />
           <Route path="/wa" element={<SocialRedirect platformKey="wa" />} />
           <Route path="/whatsapp" element={<SocialRedirect platformKey="whatsapp" />} />
           <Route path="/x" element={<SocialRedirect platformKey="x" />} />
           <Route path="/twitter" element={<SocialRedirect platformKey="twitter" />} />
+          <Route path="/g" element={<SocialRedirect platformKey="g" />} />
+          <Route path="/maps" element={<SocialRedirect platformKey="maps" />} />
         </Routes>
       </BrowserRouter>
     </ErrorBoundary>
