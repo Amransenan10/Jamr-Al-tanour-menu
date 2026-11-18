@@ -235,6 +235,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                   <img
                     src={product.image_url}
                     alt={product.name_ar}
+                    loading="eager"
+                    decoding="async"
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
                   />

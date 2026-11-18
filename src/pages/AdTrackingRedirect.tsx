@@ -53,8 +53,8 @@ export const AdTrackingRedirect: React.FC<{ channelKey?: string }> = ({ channelK
       console.warn('Could not store traffic attribution:', e);
     }
 
-    // 2. Redirect seamlessly to the menu with UTM parameters
-    navigate(`/?source=${encodeURIComponent(config.source)}&utm_campaign=${encodeURIComponent(config.campaign)}`, { replace: true });
+    // 2. Redirect cleanly to the menu without long query strings that trigger antivirus false-positives
+    navigate('/', { replace: true });
   }, [config, navigate, location.pathname]);
 
   return (

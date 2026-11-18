@@ -87,6 +87,8 @@ export const CollapsibleHeroSection: React.FC<CollapsibleHeroSectionProps> = ({
                 <img
                   src={currentStory.image_url}
                   alt={currentStory.title || currentStory.offer_name || 'عرض جمر التنور'}
+                  loading="eager"
+                  decoding="async"
                   className="w-full h-full object-cover object-center"
                 />
                 

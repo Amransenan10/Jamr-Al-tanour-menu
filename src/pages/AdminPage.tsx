@@ -23,6 +23,7 @@ import { saveAppSettings, parseAppSettings } from '../utils/appSettingsUtils';
 import { formatOrderNumber } from '../utils/orderUtils';
 import { secureAuth } from '../utils/securityGuard';
 import { posDeviceManager, PosDevice } from '../utils/posDeviceManager';
+import { compressImageFile, compressRemoteImageUrl } from '../lib/imageOptimization';
 
 export const AdminPage: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -889,6 +890,69 @@ const AdminMenuView = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [quickUploadingId, setQuickUploadingId] = useState<string | null>(null);
+    const [isOptimizingImages, setIsOptimizingImages] = useState(false);
+    const [optimizeProgress, setOptimizeProgress] = useState<{ current: number; total: number } | null>(null);
+
+    const handleBatchOptimizeImages = async () => {
+        if (!window.confirm('هل تريد فحص وضغط جميع صور الأصناف الآن؟\n\nستقوم هذه العملية بضغط كل صورة إلى حجم خفيف جداً (~80-120KB) دون التأثير على جودتها، مما يجعل قائمة الطعام تفتح للعملاء بسرعة فائقة ويقلل استهلاك باقة الإنترنت.')) {
+            return;
+        }
+
+        const itemsWithImages = products.filter(p => p.image_url && p.image_url.trim().startsWith('http'));
+        if (itemsWithImages.length === 0) {
+            toast('لا توجد أصناف تحتوي على صور حالياً');
+            return;
+        }
+
+        setIsOptimizingImages(true);
+        setOptimizeProgress({ current: 0, total: itemsWithImages.length });
+        toast.loading(`جاري بدء فحص وضغط صور الأصناف (0 / ${itemsWithImages.length})...`, { id: 'batch-opt' });
+
+        let successCount = 0;
+        let skipCount = 0;
+
+        for (let i = 0; i < itemsWithImages.length; i++) {
+            const prod = itemsWithImages[i];
+            setOptimizeProgress({ current: i + 1, total: itemsWithImages.length });
+            toast.loading(`جاري ضغط صور الأصناف (${i + 1} / ${itemsWithImages.length}): ${prod.name_ar}...`, { id: 'batch-opt' });
+
+            try {
+                const blob = await compressRemoteImageUrl(prod.image_url, 1000, 1000, 0.82);
+                if (blob) {
+                    const fileName = `opt_${prod.id}_${Date.now()}.jpg`;
+                    const { error: uploadErr } = await supabase.storage
+                        .from('product-images')
+                        .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true });
+
+                    if (!uploadErr) {
+                        const { data: { publicUrl } } = supabase.storage
+                            .from('product-images')
+                            .getPublicUrl(fileName);
+
+                        await supabaseAdmin
+                            .from('products')
+                            .update({ image_url: publicUrl })
+                            .eq('id', prod.id);
+
+                        successCount++;
+                    } else {
+                        skipCount++;
+                    }
+                } else {
+                    skipCount++;
+                }
+            } catch (err) {
+                console.error(`Failed to optimize image for ${prod.name_ar}:`, err);
+                skipCount++;
+            }
+        }
+
+        toast.dismiss('batch-opt');
+        toast.success(`اكتمل التحسين بنجاح! تم ضغط وتسريع ${successCount} صنف. المنيو الآن خفيفة وسريعة جداً.`, { duration: 6000 });
+        fetchData();
+        setIsOptimizingImages(false);
+        setOptimizeProgress(null);
+    };
 
     const [formData, setFormData] = useState({
         name_ar: '',
@@ -1043,18 +1107,19 @@ const AdminMenuView = () => {
     };
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const rawFile = e.target.files?.[0];
+        if (!rawFile) return;
 
         setIsUploading(true);
         try {
-            const fileExt = file.name.split('.').pop();
+            const file = await compressImageFile(rawFile);
+            const fileExt = file.name.split('.').pop() || 'jpg';
             const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
             const filePath = `${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('product-images')
-                .upload(filePath, file);
+                .upload(filePath, file, { contentType: file.type, upsert: true });
 
             if (uploadError) throw uploadError;
 
@@ -1063,7 +1128,7 @@ const AdminMenuView = () => {
                 .getPublicUrl(filePath);
 
             setFormData(prev => ({ ...prev, image_url: publicUrl }));
-            toast.success('تم رفع الصورة بنجاح');
+            toast.success('تم ضغط ورفع الصورة بنجاح');
         } catch (error) {
             toast.error('حدث خطأ أثناء رفع الصورة');
         } finally {
@@ -1072,17 +1137,18 @@ const AdminMenuView = () => {
     };
 
     const handleQuickImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, productId: string) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const rawFile = e.target.files?.[0];
+        if (!rawFile) return;
 
         setQuickUploadingId(productId);
         try {
-            const fileExt = file.name.split('.').pop();
+            const file = await compressImageFile(rawFile);
+            const fileExt = file.name.split('.').pop() || 'jpg';
             const fileName = `quick_${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('product-images')
-                .upload(fileName, file);
+                .upload(fileName, file, { contentType: file.type, upsert: true });
 
             if (uploadError) throw uploadError;
 
@@ -1097,7 +1163,7 @@ const AdminMenuView = () => {
 
             if (updateError) throw updateError;
 
-            toast.success('تم تحديث الصورة فوراً');
+            toast.success('تم ضغط وتحديث الصورة فوراً');
             fetchData();
         } catch (error) {
             console.error('Quick Upload Error:', error);
@@ -1221,7 +1287,25 @@ const AdminMenuView = () => {
                         إجمالي الأصناف: {products.length} ({products.filter(p => p.is_available ?? true).length} متوفر • {products.filter(p => !(p.is_available ?? true)).length} غير متوفر)
                     </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <button 
+                        onClick={handleBatchOptimizeImages} 
+                        disabled={isOptimizingImages}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold hover:bg-emerald-600/30 transition-all disabled:opacity-50"
+                        title="ضغط وتسريع جميع صور الأصناف لتفتح المنيو بسرعة فائقة للعملاء"
+                    >
+                        {isOptimizingImages ? (
+                            <>
+                                <Loader2 size={15} className="animate-spin" />
+                                <span>{optimizeProgress ? `${optimizeProgress.current}/${optimizeProgress.total}` : 'جاري الضغط...'}</span>
+                            </>
+                        ) : (
+                            <>
+                                <Sparkles size={15} />
+                                <span>⚡ ضغط وتسريع الصور</span>
+                            </>
+                        )}
+                    </button>
                     <button onClick={fetchData} className="p-2 bg-zinc-800 rounded-lg hover:bg-zinc-700 text-gray-400" title="تحديث القائمة"><RefreshCw size={18} /></button>
                     <button onClick={() => handleOpenModal()} className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg font-bold hover:bg-primary/90 transition-colors">
                         <Plus size={18} /> إضافة صنف
@@ -2103,17 +2187,18 @@ const AdminStoriesView = () => {
     };
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const rawFile = e.target.files?.[0];
+        if (!rawFile) return;
 
         setIsUploading(true);
         try {
-            const fileExt = file.name.split('.').pop();
+            const file = await compressImageFile(rawFile, 1200, 1600, 0.82);
+            const fileExt = file.name.split('.').pop() || 'jpg';
             const fileName = `story_${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('product-images')
-                .upload(fileName, file);
+                .upload(fileName, file, { contentType: file.type, upsert: true });
 
             if (uploadError) throw uploadError;
 
@@ -2122,7 +2207,7 @@ const AdminStoriesView = () => {
                 .getPublicUrl(fileName);
 
             setFormData(prev => ({ ...prev, image_url: publicUrl }));
-            toast.success('تم رفع الصورة بنجاح');
+            toast.success('تم ضغط ورفع الصورة بنجاح');
         } catch (error) {
             console.error('Upload Error:', error);
             toast.error('حدث خطأ أثناء رفع الصورة');

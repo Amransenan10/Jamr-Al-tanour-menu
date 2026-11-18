@@ -32,6 +32,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect, isP
           <img
             src={product.image_url}
             alt={product.name_ar}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
             referrerPolicy="no-referrer"
           />

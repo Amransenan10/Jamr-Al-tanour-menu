@@ -30,7 +30,7 @@ export const StoriesStrip: React.FC<StoriesStripProps> = ({ stories, onStoryClic
                         >
                             <div className="relative w-16 h-16 rounded-full p-[2.5px] bg-gradient-to-tr from-amber-500 via-orange-500 to-red-500 shadow-md group-hover:scale-105 group-active:scale-95 transition-all">
                                 <div className="w-full h-full rounded-full border-2 border-white dark:border-zinc-950 overflow-hidden bg-zinc-100 dark:bg-zinc-800 relative">
-                                    <img src={story.image_url} alt={titleText} className="w-full h-full object-cover" />
+                                    <img src={story.image_url} alt={titleText} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                                 </div>
 
                                 {/* Story Type Badge */}

@@ -116,9 +116,8 @@ export const AdminTrafficAttributionView: React.FC<AdminTrafficAttributionViewPr
     }
   };
 
-  const openUrl = (param: string) => {
-    const fullUrl = `${siteUrl}/?${param}`;
-    window.open(fullUrl, '_blank', 'noopener,noreferrer');
+  const openUrl = (targetUrl: string) => {
+    window.open(targetUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -270,7 +269,7 @@ export const AdminTrafficAttributionView: React.FC<AdminTrafficAttributionViewPr
 
                     <button
                       type="button"
-                      onClick={() => openUrl(ch.param)}
+                      onClick={() => openUrl(shortUrl || fullUrl)}
                       className="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-xl text-xs border border-zinc-700 transition-colors cursor-pointer"
                       title="فتح الرابط في صفحة جديدة للتجربة"
                     >
