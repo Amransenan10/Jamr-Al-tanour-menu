@@ -12,6 +12,7 @@ interface QuickChannel {
   IconComponent: React.ElementType;
   badgeColor: string;
   param: string;
+  shortSlug?: string;
   description: string;
 }
 
@@ -22,7 +23,8 @@ const PRESET_CHANNELS: QuickChannel[] = [
     IconComponent: Smartphone,
     badgeColor: 'text-zinc-300 border-zinc-700 bg-zinc-800/80',
     param: 'source=tiktok&utm_campaign=ad1',
-    description: 'ضعه كـ (Website URL) في حملتك الإعلانية على TikTok Ads'
+    shortSlug: 't',
+    description: 'ضعه كـ (Website URL) في حملتك الإعلانية على TikTok Ads أو البايو'
   },
   {
     id: 'snapchat',
@@ -30,7 +32,8 @@ const PRESET_CHANNELS: QuickChannel[] = [
     IconComponent: Ghost,
     badgeColor: 'text-amber-400 border-amber-500/30 bg-amber-500/10',
     param: 'source=snapchat&utm_campaign=ad1',
-    description: 'ضعه كرابط السحب لأعلى (Swipe Up) في Snapchat Ads'
+    shortSlug: 's',
+    description: 'ضعه كرابط السحب لأعلى (Swipe Up) في Snapchat Ads أو حسابك'
   },
   {
     id: 'instagram',
@@ -38,7 +41,8 @@ const PRESET_CHANNELS: QuickChannel[] = [
     IconComponent: Camera,
     badgeColor: 'text-rose-400 border-rose-500/30 bg-rose-500/10',
     param: 'source=instagram&utm_campaign=bio',
-    description: 'ضعه في بايو إنستغرام أو القصص (Stories)'
+    shortSlug: 'i',
+    description: 'ضعه في بايو إنستغرام أو القصص (Stories) لتتبع الطلبات'
   },
   {
     id: 'google',
@@ -46,7 +50,17 @@ const PRESET_CHANNELS: QuickChannel[] = [
     IconComponent: MapPin,
     badgeColor: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
     param: 'source=google_maps',
-    description: 'ضعه كرابط الموقع في ملف المطعم على Google Maps'
+    shortSlug: 'g',
+    description: 'ضعه كرابط الموقع الإلكتروني في ملف المطعم على Google Maps'
+  },
+  {
+    id: 'whatsapp',
+    name: 'حملات ورسائل واتساب',
+    IconComponent: Smartphone,
+    badgeColor: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+    param: 'source=whatsapp',
+    shortSlug: 'w',
+    description: 'ضعه في رسائل العروض والواتساب ليتم احتسابه كطلب من واتساب'
   },
   {
     id: 'table_1',
@@ -71,7 +85,9 @@ export const AdminTrafficAttributionView: React.FC<AdminTrafficAttributionViewPr
   const totalOrders = statsList.reduce((acc, d) => acc + d.count, 0) || 1;
   const totalRevenue = statsList.reduce((acc, d) => acc + d.totalSales, 0);
 
-  const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://jamr-al-tanour-menu.vercel.app';
+  const siteUrl = typeof window !== 'undefined' && window.location.hostname.includes('localhost') 
+    ? window.location.origin 
+    : 'https://jamraltanour.com';
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [customTableNum, setCustomTableNum] = useState('3');
@@ -174,25 +190,33 @@ export const AdminTrafficAttributionView: React.FC<AdminTrafficAttributionViewPr
 
         {/* Interactive Campaign Link Generator Box */}
         <div className="bg-zinc-950/70 border border-zinc-800 p-6 rounded-3xl space-y-5">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Link2 size={20} className="text-amber-400" />
-              <h4 className="font-black text-white text-base">صانع روابط التتبع السريع للإعلانات</h4>
+              <h4 className="font-black text-white text-base">صانع وروابط التتبع السريع للإعلانات</h4>
             </div>
             <span className="text-xs bg-amber-500/10 text-amber-300 font-bold px-3 py-1 rounded-full border border-amber-500/20">
-              جاهزة للنسخ والاستخدام
+              جاهزة للاستخدام عبر دومين jamraltanour.com
             </span>
           </div>
 
-          <p className="text-xs text-gray-400 leading-relaxed">
-            اضغط على <b>«نسخ الرابط»</b> لوضعه في إعلانك أو طباعة رمز الـ QR، أو زر التجربة للتأكد من عمله:
-          </p>
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-xs text-amber-200 leading-relaxed space-y-1">
+            <p className="font-bold text-white flex items-center gap-1.5">
+              💡 كيف تعمل هذه الروابط؟
+            </p>
+            <p>
+              هذه الروابط المختصرة (مثل <code className="bg-black/50 px-1.5 py-0.5 rounded text-amber-300 font-bold font-mono">jamraltanour.com/t</code>) مخصصة لوضعها في إعلاناتك وبايو حساباتك.
+              عندما يضغط العميل عليها، <strong>تفتح له قائمة الطعام (المنيو) مباشرة</strong>، ويسجل النظام آلياً في جدول الإحصائيات أعلاه أن هذا العميل وطلباته جاءت عبر هذه القناة الإعلانية!
+            </p>
+          </div>
 
           {/* Preset Channels Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {PRESET_CHANNELS.map(ch => {
               const fullUrl = `${siteUrl}/?${ch.param}`;
-              const isCopied = copiedId === ch.id;
+              const shortUrl = ch.shortSlug ? `${siteUrl}/${ch.shortSlug}` : fullUrl;
+              const isCopiedShort = copiedId === `${ch.id}_short`;
+              const isCopiedFull = copiedId === `${ch.id}_full`;
               const IconComp = ch.IconComponent;
 
               return (
@@ -203,15 +227,29 @@ export const AdminTrafficAttributionView: React.FC<AdminTrafficAttributionViewPr
                         <IconComp size={16} className="text-amber-400" />
                         <span>{ch.name}</span>
                       </span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${ch.badgeColor}`}>
-                        جاهز
-                      </span>
+                      {ch.shortSlug ? (
+                        <span className="text-[11px] font-black font-mono px-2 py-0.5 rounded-lg bg-primary/20 text-primary border border-primary/30">
+                          /{ch.shortSlug}
+                        </span>
+                      ) : (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${ch.badgeColor}`}>
+                          جاهز
+                        </span>
+                      )}
                     </div>
                     <p className="text-[11px] text-gray-400 mt-1 leading-normal">{ch.description}</p>
                     
-                    {/* URL Display */}
-                    <div className="mt-2 bg-zinc-950 border border-zinc-800 rounded-xl px-2.5 py-1.5 flex items-center justify-between" dir="ltr">
-                      <span className="text-[11px] font-mono text-zinc-300 truncate select-all">{fullUrl}</span>
+                    {/* Short URL Display */}
+                    {ch.shortSlug && (
+                      <div className="mt-2.5 bg-primary/10 border border-primary/30 rounded-xl px-2.5 py-1.5 flex items-center justify-between" dir="ltr">
+                        <span className="text-[11px] font-mono font-bold text-amber-300 truncate select-all">{shortUrl}</span>
+                        <span className="text-[10px] font-bold text-primary/80 mr-1 shrink-0">مختصر</span>
+                      </div>
+                    )}
+
+                    {/* Full UTM URL Display */}
+                    <div className="mt-1.5 bg-zinc-950 border border-zinc-800 rounded-xl px-2.5 py-1 flex items-center justify-between text-gray-500" dir="ltr">
+                      <span className="text-[10px] font-mono text-zinc-400 truncate select-all">{fullUrl}</span>
                     </div>
                   </div>
 
@@ -219,15 +257,15 @@ export const AdminTrafficAttributionView: React.FC<AdminTrafficAttributionViewPr
                   <div className="flex items-center gap-2 pt-1">
                     <button
                       type="button"
-                      onClick={() => copyToClipboard(fullUrl, ch.name, ch.id)}
+                      onClick={() => copyToClipboard(shortUrl, `${ch.name} - المختصر`, `${ch.id}_short`)}
                       className={`flex-1 py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                        isCopied 
+                        isCopiedShort 
                           ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/20' 
-                          : 'bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700'
+                          : 'bg-primary hover:bg-primary/90 text-white shadow-md shadow-primary/20'
                       }`}
                     >
-                      {isCopied ? <Check size={14} /> : <Copy size={14} />}
-                      <span>{isCopied ? 'تم النسخ بنجاح' : 'نسخ الرابط'}</span>
+                      {isCopiedShort ? <Check size={14} /> : <Copy size={14} />}
+                      <span>{isCopiedShort ? 'تم النسخ!' : 'نسخ الرابط'}</span>
                     </button>
 
                     <button

@@ -157,9 +157,9 @@ export const AdminPage: React.FC = () => {
     );
 
     return (
-        <div className="min-h-screen bg-charcoal text-white text-right select-none" dir="rtl">
+        <div className="min-h-screen bg-charcoal text-white text-right select-none w-full max-w-[100vw] overflow-x-hidden print:bg-white print:text-black print:min-h-0 print:overflow-visible" dir="rtl">
             {/* Admin Header */}
-            <div className="sticky top-0 z-40 bg-zinc-900/95 backdrop-blur-md border-b border-white/5 shadow-xl">
+            <div className="sticky top-0 z-40 bg-zinc-900/95 backdrop-blur-md border-b border-white/5 shadow-xl print:hidden">
                 <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                         <div className="w-9 h-9 sm:w-10 sm:h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary shrink-0">
@@ -217,13 +217,13 @@ export const AdminPage: React.FC = () => {
                 </div>
             </div>
 
-            <main className="max-w-7xl mx-auto px-4 py-8">
+            <main className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 w-full max-w-full overflow-hidden print:p-0 print:m-0 print:max-w-none print:overflow-visible">
                 {/* Pending Device Approval Urgent Banner */}
                 {pendingDevicesCount > 0 && (
                     <motion.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="mb-6 bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-amber-500/20 border border-amber-500/40 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-xl shadow-amber-500/10"
+                        className="mb-6 bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-amber-500/20 border border-amber-500/40 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-xl shadow-amber-500/10 print:hidden"
                     >
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 rounded-2xl bg-amber-500/25 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30 animate-pulse">
@@ -1703,28 +1703,70 @@ const AdminSettingsView = () => {
 
 
                         <div className="space-y-4 p-4 border border-white/10 rounded-xl bg-zinc-800/30">
-                            <h4 className="font-bold">حسابات التواصل الاجتماعي (تظهر أسفل المنيو)</h4>
-                            <p className="text-xs text-gray-500">اترك الحقل فارغاً إذا كنت لا ترغب بعرضه</p>
+                            <div>
+                                <h4 className="font-bold text-white flex items-center gap-2">
+                                    🔗 حسابات وروابط التواصل الاجتماعي المختصرة
+                                </h4>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    تظهر أسفل المنيو، وتُستخدم أيضاً في توجيه الروابط المختصرة لدومين <span className="text-primary font-mono font-bold">jamraltanour.com</span>
+                                </p>
+                            </div>
+
+                            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-300 space-y-1.5">
+                                <p className="font-bold">✨ روابطك المختصرة المباشرة للاستخدام في البايو والإعلانات المطبوعة:</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1 font-mono text-[11px]">
+                                    <span className="bg-black/40 px-2.5 py-1.5 rounded-lg text-gray-200 flex items-center justify-between border border-white/5">
+                                        <span>🎵 تيك توك:</span> <strong className="text-white">/t</strong>
+                                    </span>
+                                    <span className="bg-black/40 px-2.5 py-1.5 rounded-lg text-gray-200 flex items-center justify-between border border-white/5">
+                                        <span>📸 انستجرام:</span> <strong className="text-white">/i</strong>
+                                    </span>
+                                    <span className="bg-black/40 px-2.5 py-1.5 rounded-lg text-gray-200 flex items-center justify-between border border-white/5">
+                                        <span>👻 سناب شات:</span> <strong className="text-white">/s</strong>
+                                    </span>
+                                    <span className="bg-black/40 px-2.5 py-1.5 rounded-lg text-gray-200 flex items-center justify-between border border-white/5">
+                                        <span>💬 واتساب:</span> <strong className="text-white">/w</strong>
+                                    </span>
+                                    <span className="bg-black/40 px-2.5 py-1.5 rounded-lg text-gray-200 flex items-center justify-between border border-white/5">
+                                        <span>𝕏 إكس:</span> <strong className="text-white">/x</strong>
+                                    </span>
+                                </div>
+                            </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-bold text-gray-400">واتساب الدعم (بدون فواصل، مثال: 966500000000)</label>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <label className="font-bold text-gray-400">واتساب الدعم (بدون فواصل، مثال: 966500000000)</label>
+                                        <span className="text-[10px] text-emerald-400 font-mono">jamraltanour.com/w</span>
+                                    </div>
                                     <input type="text" placeholder="9665..." value={appSettings.social_whatsapp} onChange={e => setAppSettings({...appSettings, social_whatsapp: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm focus:border-primary/50 outline-none border border-transparent" dir="ltr" />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-bold text-gray-400">رابط انستجرام</label>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <label className="font-bold text-gray-400">رابط انستجرام</label>
+                                        <span className="text-[10px] text-pink-400 font-mono">jamraltanour.com/i</span>
+                                    </div>
                                     <input type="text" placeholder="https://instagram.com/..." value={appSettings.social_instagram} onChange={e => setAppSettings({...appSettings, social_instagram: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm focus:border-primary/50 outline-none border border-transparent" dir="ltr" />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-bold text-gray-400">رابط تيك توك</label>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <label className="font-bold text-gray-400">رابط تيك توك</label>
+                                        <span className="text-[10px] text-cyan-400 font-mono">jamraltanour.com/t</span>
+                                    </div>
                                     <input type="text" placeholder="https://tiktok.com/@..." value={appSettings.social_tiktok} onChange={e => setAppSettings({...appSettings, social_tiktok: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm focus:border-primary/50 outline-none border border-transparent" dir="ltr" />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-bold text-gray-400">رابط سناب شات</label>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <label className="font-bold text-gray-400">رابط سناب شات</label>
+                                        <span className="text-[10px] text-yellow-400 font-mono">jamraltanour.com/s</span>
+                                    </div>
                                     <input type="text" placeholder="https://snapchat.com/add/..." value={appSettings.social_snapchat} onChange={e => setAppSettings({...appSettings, social_snapchat: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm focus:border-primary/50 outline-none border border-transparent" dir="ltr" />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-xs font-bold text-gray-400">رابط إكس (تويتر)</label>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <label className="font-bold text-gray-400">رابط إكس (تويتر)</label>
+                                        <span className="text-[10px] text-gray-300 font-mono">jamraltanour.com/x</span>
+                                    </div>
                                     <input type="text" placeholder="https://twitter.com/..." value={appSettings.social_twitter} onChange={e => setAppSettings({...appSettings, social_twitter: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm focus:border-primary/50 outline-none border border-transparent" dir="ltr" />
                                 </div>
                             </div>

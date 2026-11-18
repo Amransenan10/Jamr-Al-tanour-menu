@@ -10,10 +10,17 @@
 }
 
 @layer base {
+  html {
+    direction: rtl;
+    overflow-x: hidden;
+  }
   body {
     @apply bg-white text-charcoal;
     font-family: var(--font-sans);
     direction: rtl;
+    overflow-x: hidden;
+    width: 100%;
+    min-width: 100%;
   }
 }
 
@@ -24,4 +31,72 @@
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* ============================================================ */
+/* Print Formatting for Clean Reports (Loyalty, Invoices, etc.) */
+/* ============================================================ */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    font-size: 10pt !important;
+    overflow: visible !important;
+    width: 100% !important;
+    min-height: auto !important;
+  }
+
+  /* Hide entire admin chrome, tabs, navigations, sidebars, buttons */
+  header,
+  nav,
+  aside,
+  button,
+  input,
+  select,
+  .no-print,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Force print target visible */
+  .print\:block {
+    display: block !important;
+  }
+
+  .print\:table {
+    display: table !important;
+  }
+
+  /* Clean up borders, shadows, backgrounds for sharp printing */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
 }

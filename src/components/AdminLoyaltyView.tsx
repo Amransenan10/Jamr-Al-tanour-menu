@@ -747,19 +747,19 @@ export const AdminLoyaltyView: React.FC = () => {
     const totalRedeemedPoints = transactions.reduce((sum, t) => sum + (t.points_redeemed || 0), 0);
 
     return (
-        <div className="space-y-8 select-none text-right" dir="rtl">
+        <div className="space-y-8 select-none text-right max-w-full overflow-hidden" dir="rtl">
             {/* Header Title & Status Bar */}
-            <div className="bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 border border-white/10 p-6 rounded-3xl shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 border border-white/10 p-4 sm:p-6 rounded-3xl shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
                 <div className="space-y-1">
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-400 border border-amber-500/30">
-                            <Gift size={24} />
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-400 border border-amber-500/30 shrink-0">
+                            <Gift size={22} />
                         </div>
                         <div>
-                            <h2 className="text-xl font-black text-white flex items-center gap-2">
+                            <h2 className="text-base sm:text-xl font-black text-white flex items-center gap-2 flex-wrap">
                                 إدارة نظام الولاء والنقاط
                                 <span className={cn(
-                                    "text-xs px-3 py-1 rounded-full font-bold border",
+                                    "text-[10px] sm:text-xs px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full font-bold border",
                                     config.is_enabled 
                                         ? "bg-green-500/10 text-green-400 border-green-500/30" 
                                         : "bg-red-500/10 text-red-400 border-red-500/30"
@@ -767,15 +767,15 @@ export const AdminLoyaltyView: React.FC = () => {
                                     {config.is_enabled ? '● نَشِط ومُفَعَّل' : '○ مُعَطَّل حالياً'}
                                 </span>
                             </h2>
-                            <p className="text-xs text-gray-400">تحكم كامل بالإعدادات، نسب الاكتساب والاستبدال، ورصيد نقاط العملاء</p>
+                            <p className="text-[11px] sm:text-xs text-gray-400">تحكم كامل بالإعدادات، نسب الاكتساب والاستبدال، ورصيد نقاط العملاء</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-start sm:justify-end">
                     <button
                         onClick={() => { fetchConfig(); fetchCustomers(); fetchTransactions(); }}
-                        className="p-3 bg-zinc-800/80 hover:bg-zinc-700 text-gray-300 rounded-2xl transition-all cursor-pointer border border-white/5"
+                        className="p-2.5 sm:p-3 bg-zinc-800/80 hover:bg-zinc-700 text-gray-300 rounded-2xl transition-all cursor-pointer border border-white/5 shrink-0"
                         title="تحديث البيانات"
                     >
                         <RefreshCw size={18} />
@@ -783,69 +783,69 @@ export const AdminLoyaltyView: React.FC = () => {
                     
                     <button
                         onClick={() => setExportModalOpen(true)}
-                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-3 rounded-2xl text-xs sm:text-sm shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
+                        className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm shadow-lg shadow-emerald-600/20 transition-all cursor-pointer whitespace-nowrap"
                     >
-                        <FileSpreadsheet size={18} /> تصدير تقرير الولاء (Excel)
+                        <FileSpreadsheet size={16} /> <span className="hidden xs:inline">تصدير تقرير الولاء (Excel)</span><span className="xs:hidden">تصدير Excel</span>
                     </button>
 
                     <button
                         onClick={() => setNewCustomerModal(prev => ({ ...prev, isOpen: true }))}
-                        className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white font-bold px-4 py-3 rounded-2xl text-xs sm:text-sm shadow-lg shadow-primary/20 transition-all cursor-pointer"
+                        className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-primary hover:bg-primary/90 text-white font-bold px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm shadow-lg shadow-primary/20 transition-all cursor-pointer whitespace-nowrap"
                     >
-                        <Plus size={18} /> إضافة عميل بالولاء
+                        <Plus size={16} /> إضافة عميل بالولاء
                     </button>
                 </div>
             </div>
 
             {/* Top KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-zinc-900 border border-white/5 p-5 rounded-2xl flex items-center justify-between">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 print:hidden">
+                <div className="bg-zinc-900 border border-white/5 p-4 sm:p-5 rounded-2xl flex items-center justify-between">
                     <div>
                         <p className="text-xs font-bold text-gray-500">إجمالي أعضاء الولاء</p>
-                        <h3 className="text-2xl font-black text-white mt-1">{totalCustomersCount} <span className="text-xs font-normal text-gray-400">عميل</span></h3>
+                        <h3 className="text-xl sm:text-2xl font-black text-white mt-1">{totalCustomersCount} <span className="text-xs font-normal text-gray-400">عميل</span></h3>
                         <p className="text-[10px] text-gray-400 mt-1">مسجلين برقم الجوال في القاعدة</p>
                     </div>
-                    <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-400 border border-blue-500/20">
+                    <div className="w-11 h-11 sm:w-12 sm:h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-400 border border-blue-500/20 shrink-0">
                         <Users size={22} />
                     </div>
                 </div>
 
-                <div className="bg-zinc-900 border border-white/5 p-5 rounded-2xl flex items-center justify-between">
+                <div className="bg-zinc-900 border border-white/5 p-4 sm:p-5 rounded-2xl flex items-center justify-between">
                     <div>
                         <p className="text-xs font-bold text-gray-500">إجمالي النقاط النشطة</p>
-                        <h3 className="text-2xl font-black text-amber-400 mt-1">{totalActivePoints.toLocaleString()} <span className="text-xs font-normal text-amber-400/70">نقطة</span></h3>
+                        <h3 className="text-xl sm:text-2xl font-black text-amber-400 mt-1">{totalActivePoints.toLocaleString()} <span className="text-xs font-normal text-amber-400/70">نقطة</span></h3>
                         <p className="text-[10px] text-gray-400 mt-1">في أرصدة جميع العملاء الحالية</p>
                     </div>
-                    <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-400 border border-amber-500/20">
+                    <div className="w-11 h-11 sm:w-12 sm:h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-400 border border-amber-500/20 shrink-0">
                         <Coins size={22} />
                     </div>
                 </div>
 
-                <div className="bg-zinc-900 border border-white/5 p-5 rounded-2xl flex items-center justify-between">
+                <div className="bg-zinc-900 border border-white/5 p-4 sm:p-5 rounded-2xl flex items-center justify-between">
                     <div>
                         <p className="text-xs font-bold text-gray-500">قيمة خصم الأرصدة الحالية</p>
-                        <h3 className="text-2xl font-black text-emerald-400 mt-1">{totalMonetaryValue.toFixed(2)} <span className="text-xs font-normal text-emerald-400/70">ر.س</span></h3>
+                        <h3 className="text-xl sm:text-2xl font-black text-emerald-400 mt-1">{totalMonetaryValue.toFixed(2)} <span className="text-xs font-normal text-emerald-400/70">ر.س</span></h3>
                         <p className="text-[10px] text-gray-400 mt-1">استناداً لنسبة الاستبدال الحالية</p>
                     </div>
-                    <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400 border border-emerald-500/20">
+                    <div className="w-11 h-11 sm:w-12 sm:h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400 border border-emerald-500/20 shrink-0">
                         <Award size={22} />
                     </div>
                 </div>
 
-                <div className="bg-zinc-900 border border-white/5 p-5 rounded-2xl flex items-center justify-between">
+                <div className="bg-zinc-900 border border-white/5 p-4 sm:p-5 rounded-2xl flex items-center justify-between">
                     <div>
                         <p className="text-xs font-bold text-gray-500">إجمالي النقاط المستبدلة</p>
-                        <h3 className="text-2xl font-black text-purple-400 mt-1">{totalRedeemedPoints.toLocaleString()} <span className="text-xs font-normal text-purple-400/70">نقطة</span></h3>
+                        <h3 className="text-xl sm:text-2xl font-black text-purple-400 mt-1">{totalRedeemedPoints.toLocaleString()} <span className="text-xs font-normal text-purple-400/70">نقطة</span></h3>
                         <p className="text-[10px] text-gray-400 mt-1">تم استهلاكها في خصومات سابقة</p>
                     </div>
-                    <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-400 border border-purple-500/20">
+                    <div className="w-11 h-11 sm:w-12 sm:h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-400 border border-purple-500/20 shrink-0">
                         <TrendingUp size={22} />
                     </div>
                 </div>
             </div>
 
             {/* Inner Tabs Navigation */}
-            <div className="flex border-b border-white/10 gap-2">
+            <div className="flex border-b border-white/10 gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar scroll-smooth flex-nowrap pb-1 print:hidden">
                 {[
                     { id: 'config', label: 'إعدادات وقواعد الولاء ⚙️', icon: <Settings size={16} /> },
                     { id: 'customers', label: 'دليل وأرصدة العملاء 👥', icon: <Users size={16} /> },
@@ -856,9 +856,9 @@ export const AdminLoyaltyView: React.FC = () => {
                         key={t.id}
                         onClick={() => setActiveSubTab(t.id as any)}
                         className={cn(
-                            "flex items-center gap-2 px-5 py-3 rounded-t-2xl font-bold text-xs sm:text-sm transition-all cursor-pointer border-b-2",
+                            "flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-t-2xl font-bold text-xs sm:text-sm transition-all cursor-pointer border-b-2 shrink-0 whitespace-nowrap",
                             activeSubTab === t.id
-                                ? "bg-zinc-900 text-primary border-primary"
+                                ? "bg-zinc-900 text-primary border-primary shadow-sm"
                                 : "text-gray-400 hover:text-white border-transparent hover:bg-zinc-900/50"
                         )}
                     >
@@ -869,7 +869,7 @@ export const AdminLoyaltyView: React.FC = () => {
 
             {/* TAB 1: CONFIGURATION */}
             {activeSubTab === 'config' && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 print:hidden">
                     <form onSubmit={handleSaveConfig} className="bg-zinc-900 border border-white/5 p-6 sm:p-8 rounded-3xl space-y-6 shadow-2xl">
                         <div className="flex justify-between items-center pb-4 border-b border-white/5 flex-wrap gap-3">
                             <div>
@@ -1024,7 +1024,7 @@ export const AdminLoyaltyView: React.FC = () => {
 
             {/* TAB 2: CUSTOMERS MANAGEMENT */}
             {activeSubTab === 'customers' && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 print:hidden">
                     <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 bg-zinc-900 border border-white/5 p-5 rounded-3xl">
                         <div className="relative flex-1">
                             <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -1045,7 +1045,7 @@ export const AdminLoyaltyView: React.FC = () => {
                         <div className="flex justify-center p-16"><Loader2 className="animate-spin text-primary" size={32} /></div>
                     ) : (
                         <div className="bg-zinc-900 rounded-3xl overflow-hidden border border-white/5 overflow-x-auto shadow-2xl">
-                            <table className="w-full text-xs text-right">
+                            <table className="w-full min-w-[650px] text-xs text-right">
                                 <thead className="bg-zinc-800/60 text-gray-400 border-b border-white/5">
                                     <tr>
                                         <th className="p-4 font-bold">اسم العميل</th>
@@ -1130,7 +1130,7 @@ export const AdminLoyaltyView: React.FC = () => {
 
             {/* TAB 4: REPORTS & ANALYTICS */}
             {activeSubTab === 'reports' && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 print:hidden">
                     {/* Filter & Export Toolbar */}
                     <div className="bg-zinc-900 border border-white/5 p-6 rounded-3xl space-y-4 shadow-xl">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 flex-wrap">
@@ -1392,7 +1392,7 @@ export const AdminLoyaltyView: React.FC = () => {
             {/* MODAL 3: EXPORT MODAL */}
             <AnimatePresence>
                 {exportModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setExportModalOpen(false)} className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
                         <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative w-full max-w-md bg-zinc-900 rounded-3xl p-6 border border-white/10 shadow-2xl space-y-5 text-right" dir="rtl">
                             <div className="flex justify-between items-center pb-3 border-b border-white/5">
@@ -1475,7 +1475,7 @@ export const AdminLoyaltyView: React.FC = () => {
 
             {/* TAB 3: TRANSACTIONS HISTORY */}
             {activeSubTab === 'transactions' && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 print:hidden">
                     <div className="flex justify-between items-center bg-zinc-900 border border-white/5 p-5 rounded-3xl">
                         <div className="relative flex-1 max-w-md">
                             <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -1494,7 +1494,7 @@ export const AdminLoyaltyView: React.FC = () => {
                         <div className="flex justify-center p-16"><Loader2 className="animate-spin text-primary" size={32} /></div>
                     ) : (
                         <div className="bg-zinc-900 rounded-3xl overflow-hidden border border-white/5 overflow-x-auto shadow-2xl">
-                            <table className="w-full text-xs text-right">
+                            <table className="w-full min-w-[650px] text-xs text-right">
                                 <thead className="bg-zinc-800/60 text-gray-400 border-b border-white/5">
                                     <tr>
                                         <th className="p-4 font-bold">جوال العميل</th>
@@ -1562,7 +1562,7 @@ export const AdminLoyaltyView: React.FC = () => {
             {/* MODAL 1: ADJUST POINTS (Add / Deduct) */}
             <AnimatePresence>
                 {adjustModal.isOpen && adjustModal.customer && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setAdjustModal(prev => ({ ...prev, isOpen: false }))} className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
                         <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative w-full max-w-md bg-zinc-900 rounded-3xl p-6 border border-white/10 shadow-2xl space-y-5 text-right" dir="rtl">
                             <div className="flex justify-between items-center pb-3 border-b border-white/5">
@@ -1624,7 +1624,7 @@ export const AdminLoyaltyView: React.FC = () => {
             {/* MODAL 2: ADD NEW CUSTOMER */}
             <AnimatePresence>
                 {newCustomerModal.isOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setNewCustomerModal(prev => ({ ...prev, isOpen: false }))} className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
                         <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative w-full max-w-md bg-zinc-900 rounded-3xl p-6 border border-white/10 shadow-2xl space-y-5 text-right" dir="rtl">
                             <div className="flex justify-between items-center pb-3 border-b border-white/5">
@@ -1683,6 +1683,164 @@ export const AdminLoyaltyView: React.FC = () => {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* PRINT ONLY: Professional Loyalty & Points Accounting Report */}
+            <div id="loyalty-print-area" className="hidden print:block w-full bg-white text-gray-900 p-8 font-sans text-right" dir="rtl">
+                {/* Printable Header */}
+                <div className="border-b-2 border-gray-900 pb-4 mb-6 flex justify-between items-start">
+                    <div>
+                        <h1 className="text-2xl font-black text-gray-900 tracking-tight">مطعم جمر التنور</h1>
+                        <h2 className="text-base font-bold text-gray-700 mt-1">تقرير استهلاك وإحصائيات نظام الولاء والنقاط</h2>
+                        <p className="text-xs text-gray-500 mt-1">نظام إدارة ومتابعة نقاط العملاء والخصومات المستردة</p>
+                    </div>
+                    <div className="text-left text-xs text-gray-600 space-y-1">
+                        <p><span className="font-bold text-gray-800">تاريخ الطباعة:</span> {new Date().toLocaleDateString('ar-SA')} - {new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</p>
+                        <p><span className="font-bold text-gray-800">الفترة المحددة:</span> {getReportDateRange().label}</p>
+                        <p><span className="font-bold text-gray-800">الحالة:</span> تقرير معتمد رسمي</p>
+                    </div>
+                </div>
+
+                {/* KPI Summary Grid */}
+                <div className="mb-6">
+                    <h3 className="text-sm font-bold text-gray-800 mb-2 border-r-4 border-amber-500 pr-2">ملخص المؤشرات المالية للولاء بالفترة</h3>
+                    <div className="grid grid-cols-4 gap-3">
+                        <div className="border border-gray-300 rounded-lg p-3 bg-gray-50">
+                            <p className="text-xs text-gray-600 font-semibold">إجمالي النقاط المستهلكة</p>
+                            <p className="text-lg font-black text-gray-900 mt-1">
+                                {reportMetrics.totalRedeemed.toLocaleString()} <span className="text-xs font-normal text-gray-500">نقطة</span>
+                            </p>
+                        </div>
+                        <div className="border border-gray-300 rounded-lg p-3 bg-gray-50">
+                            <p className="text-xs text-gray-600 font-semibold">إجمالي قيمة الخصومات الممنوحة</p>
+                            <p className="text-lg font-black text-gray-900 mt-1">
+                                {reportMetrics.discountSAR.toFixed(2)} <span className="text-xs font-normal text-gray-500">ر.س</span>
+                            </p>
+                        </div>
+                        <div className="border border-gray-300 rounded-lg p-3 bg-gray-50">
+                            <p className="text-xs text-gray-600 font-semibold">إجمالي النقاط المكتسبة</p>
+                            <p className="text-lg font-black text-gray-900 mt-1">
+                                {reportMetrics.totalEarned.toLocaleString()} <span className="text-xs font-normal text-gray-500">نقطة</span>
+                            </p>
+                        </div>
+                        <div className="border border-gray-300 rounded-lg p-3 bg-gray-50">
+                            <p className="text-xs text-gray-600 font-semibold">عدد عمليات الاستبدال</p>
+                            <p className="text-lg font-black text-gray-900 mt-1">
+                                {reportMetrics.redeemCount} <span className="text-xs font-normal text-gray-500">عملية</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Top Redeemers Table */}
+                {reportMetrics.topRedeemers.length > 0 && (
+                    <div className="mb-6">
+                        <h3 className="text-sm font-bold text-gray-800 mb-2 border-r-4 border-amber-500 pr-2">
+                            أكثر العملاء استهلاكاً للنقاط خلال الفترة
+                        </h3>
+                        <table className="w-full text-xs text-right border border-gray-300">
+                            <thead className="bg-gray-100 border-b border-gray-300 text-gray-700">
+                                <tr>
+                                    <th className="p-2 border-l border-gray-300 w-10 text-center">#</th>
+                                    <th className="p-2 border-l border-gray-300">اسم العميل</th>
+                                    <th className="p-2 border-l border-gray-300">رقم الجوال</th>
+                                    <th className="p-2 border-l border-gray-300 text-center">عدد العمليات</th>
+                                    <th className="p-2 border-l border-gray-300 text-center">النقاط المستهلكة</th>
+                                    <th className="p-2 text-center">قيمة الخصم المستفادة</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                                {reportMetrics.topRedeemers.map((c, idx) => (
+                                    <tr key={c.phone} className="even:bg-gray-50">
+                                        <td className="p-2 border-l border-gray-200 text-center font-bold">{idx + 1}</td>
+                                        <td className="p-2 border-l border-gray-200 font-bold">{c.name}</td>
+                                        <td className="p-2 border-l border-gray-200 font-mono" dir="ltr">{c.phone}</td>
+                                        <td className="p-2 border-l border-gray-200 text-center">{c.txCount}</td>
+                                        <td className="p-2 border-l border-gray-200 text-center font-bold">-{c.totalRedeemed.toLocaleString()}</td>
+                                        <td className="p-2 text-center font-bold">
+                                            {config.redemption_rate > 0 ? (c.totalRedeemed / config.redemption_rate).toFixed(2) : 0} ر.س
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
+                {/* Detailed Transactions List */}
+                <div className="mb-8">
+                    <h3 className="text-sm font-bold text-gray-800 mb-2 border-r-4 border-amber-500 pr-2">
+                        سجل العمليات التفصيلي ({filteredReportTransactions.length} حركة)
+                    </h3>
+                    <table className="w-full text-xs text-right border border-gray-300">
+                        <thead className="bg-gray-100 border-b border-gray-300 text-gray-700">
+                            <tr>
+                                <th className="p-2 border-l border-gray-300 w-8 text-center">#</th>
+                                <th className="p-2 border-l border-gray-300">التاريخ والوقت</th>
+                                <th className="p-2 border-l border-gray-300">اسم العميل</th>
+                                <th className="p-2 border-l border-gray-300">رقم الجوال</th>
+                                <th className="p-2 border-l border-gray-300 text-center">نوع الحركة</th>
+                                <th className="p-2 border-l border-gray-300 text-center">النقاط المستهلكة</th>
+                                <th className="p-2 border-l border-gray-300 text-center">قيمة الخصم</th>
+                                <th className="p-2 border-l border-gray-300 text-center">النقاط المكتسبة</th>
+                                <th className="p-2">الملاحظات</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {filteredReportTransactions.slice(0, 100).map((tx, idx) => {
+                                const isRedeem = (tx.points_redeemed || 0) > 0;
+                                const isEarn = (tx.points_earned || 0) > 0;
+                                const foundCust = customers.find(c => c.phone_number?.trim() === tx.customer_phone?.trim());
+                                const discountVal = isRedeem && config.redemption_rate > 0 
+                                    ? ((tx.points_redeemed || 0) / config.redemption_rate).toFixed(2)
+                                    : '-';
+
+                                const typeLabel = tx.type === 'admin_add' ? 'إضافة يدوية (+)' :
+                                    tx.type === 'admin_deduct' ? 'خصم يدوي (-)' :
+                                    isRedeem ? 'استبدال خصم' : 'كسب نقاط';
+
+                                return (
+                                    <tr key={tx.id} className="even:bg-gray-50">
+                                        <td className="p-2 border-l border-gray-200 text-center text-gray-500">{idx + 1}</td>
+                                        <td className="p-2 border-l border-gray-200 font-mono text-[11px] whitespace-nowrap">
+                                            {new Date(tx.created_at).toLocaleString('ar-SA', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'numeric', year: 'numeric' })}
+                                        </td>
+                                        <td className="p-2 border-l border-gray-200 font-bold">{foundCust?.full_name || 'عميل'}</td>
+                                        <td className="p-2 border-l border-gray-200 font-mono text-[11px]" dir="ltr">{tx.customer_phone}</td>
+                                        <td className="p-2 border-l border-gray-200 text-center font-semibold">{typeLabel}</td>
+                                        <td className="p-2 border-l border-gray-200 text-center font-bold">
+                                            {isRedeem ? `-${tx.points_redeemed}` : '-'}
+                                        </td>
+                                        <td className="p-2 border-l border-gray-200 text-center font-bold">
+                                            {discountVal !== '-' ? `${discountVal} ر.س` : '-'}
+                                        </td>
+                                        <td className="p-2 border-l border-gray-200 text-center font-bold text-gray-700">
+                                            {isEarn ? `+${tx.points_earned}` : '-'}
+                                        </td>
+                                        <td className="p-2 text-gray-600 text-[11px] truncate max-w-xs">{tx.notes || '-'}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                    {filteredReportTransactions.length > 100 && (
+                        <p className="text-[11px] text-gray-500 mt-2 text-center">
+                            * تم عرض أول 100 حركة في النسخة المطبوعة. للحصول على كافة البيانات بالكامل يرجى استخدام زر تصدير Excel.
+                        </p>
+                    )}
+                </div>
+
+                {/* Printable Footer & Signature */}
+                <div className="border-t-2 border-gray-900 pt-4 flex justify-between items-end text-xs text-gray-700">
+                    <div>
+                        <p className="font-bold">مطعم جمر التنور - الإدارة العامة</p>
+                        <p className="text-[11px] text-gray-500">تم استخراج التقرير آلياً بواسطة نظام الكاشير والولاء المعتمد</p>
+                    </div>
+                    <div className="text-center">
+                        <p className="font-bold mb-8">التوقيع والاعتماد</p>
+                        <p className="border-t border-gray-400 pt-1 px-8">ختم وتوقيع المشرف</p>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
