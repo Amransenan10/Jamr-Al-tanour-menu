@@ -88,10 +88,20 @@ export const captureTrafficAttribution = (): TrafficData => {
   const urlParams = new URLSearchParams(window.location.search);
   const now = new Date().toISOString();
 
-  // Check URL parameters
-  const utmSource = urlParams.get('utm_source') || urlParams.get('source') || urlParams.get('src') || urlParams.get('ref') || '';
-  const utmMedium = urlParams.get('utm_medium') || urlParams.get('medium') || '';
-  const utmCampaign = urlParams.get('utm_campaign') || urlParams.get('campaign') || '';
+  // Detect short pathnames directly from URL (e.g. /t, /i, /s, /g, /w)
+  const rawPath = (window.location.pathname || '').replace(/^\/+/, '').split('/')[0].toLowerCase().trim();
+  let shortcutSource = '';
+  if (rawPath === 't' || rawPath === 'tiktok') shortcutSource = 'tiktok';
+  else if (rawPath === 'i' || rawPath === 'ig' || rawPath === 'insta' || rawPath === 'instagram') shortcutSource = 'instagram';
+  else if (rawPath === 's' || rawPath === 'sc' || rawPath === 'snap' || rawPath === 'snapchat') shortcutSource = 'snapchat';
+  else if (rawPath === 'w' || rawPath === 'wa' || rawPath === 'whatsapp') shortcutSource = 'whatsapp';
+  else if (rawPath === 'g' || rawPath === 'maps') shortcutSource = 'google_maps';
+  else if (rawPath === 'x' || rawPath === 'tw' || rawPath === 'twitter') shortcutSource = 'twitter';
+
+  // Check URL parameters or short route
+  const utmSource = urlParams.get('utm_source') || urlParams.get('source') || urlParams.get('src') || urlParams.get('ref') || shortcutSource || '';
+  const utmMedium = urlParams.get('utm_medium') || urlParams.get('medium') || (shortcutSource ? 'social_bio' : '');
+  const utmCampaign = urlParams.get('utm_campaign') || urlParams.get('campaign') || (shortcutSource ? 'bio_link' : '');
   const utmContent = urlParams.get('utm_content') || '';
   const utmTerm = urlParams.get('utm_term') || '';
   const table = urlParams.get('table') || urlParams.get('t') || '';
