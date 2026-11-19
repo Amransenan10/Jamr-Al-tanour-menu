@@ -308,6 +308,9 @@ export const encodeCartPayload = (cart: AbandonedCartRecord): string => {
   }
 };
 
+/** Official production domain for customer recovery and direct links */
+export const OFFICIAL_SITE_DOMAIN = 'https://jamraltanour.com';
+
 /** Generate personalized WhatsApp Recovery URL */
 export const generateWhatsAppRecoveryUrl = (
   cart: AbandonedCartRecord,
@@ -339,11 +342,12 @@ export const generateWhatsAppRecoveryUrl = (
     ? `\nاستخدم كود الخصم: *${cleanPromo}* عند الطلب!` 
     : '';
 
-  const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://jamr-al-tanour-menu.vercel.app';
+  // Always use the official restaurant domain for all customer links
+  const siteUrl = OFFICIAL_SITE_DOMAIN;
   // Use short clean recovery URL by cart ID
   const recoveryLink = `${siteUrl}/?cart=${cart.id}`;
 
-  const template = customTemplate || (
+  const template = (customTemplate && customTemplate.trim()) || (
     typeof window !== 'undefined' 
       ? localStorage.getItem(STORAGE_WHATSAPP_TEMPLATE_KEY) || DEFAULT_WHATSAPP_TEMPLATE 
       : DEFAULT_WHATSAPP_TEMPLATE

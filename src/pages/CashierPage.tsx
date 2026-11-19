@@ -467,6 +467,75 @@ export const CashierPage: React.FC = () => {
     const [waTemplate, setWaTemplate] = useState<string>(DEFAULT_WHATSAPP_TEMPLATE);
     const [waPromoCode, setWaPromoCode] = useState<string>('');
 
+    const loadWaTemplate = useCallback(async () => {
+        try {
+            const client = supabaseAdmin || supabase;
+            const { data } = await client
+                .from('app_settings')
+                .select('announcement_text, popular_subtitle')
+                .eq('id', 1)
+                .maybeSingle();
+
+            if (data) {
+                const parsed = parseAppSettings(data);
+                if (parsed.whatsapp_recovery_template) {
+                    setWaTemplate(parsed.whatsapp_recovery_template);
+                    localStorage.setItem(STORAGE_WHATSAPP_TEMPLATE_KEY, parsed.whatsapp_recovery_template);
+                }
+                if (parsed.whatsapp_recovery_promo !== undefined) {
+                    setWaPromoCode(parsed.whatsapp_recovery_promo || '');
+                    localStorage.setItem(STORAGE_RECOVERY_PROMO_KEY, parsed.whatsapp_recovery_promo || '');
+                }
+                if (parsed.whatsapp_recovery_template) return;
+            }
+        } catch (e) {
+            console.error('[Cashier] Error loading WA template:', e);
+        }
+
+        // Fallback: read from localStorage
+        try {
+            const saved = localStorage.getItem(STORAGE_WHATSAPP_TEMPLATE_KEY);
+            if (saved) setWaTemplate(saved);
+            const savedPromo = localStorage.getItem(STORAGE_RECOVERY_PROMO_KEY);
+            if (savedPromo) setWaPromoCode(savedPromo);
+        } catch (e) {}
+    }, []);
+
+    // Realtime listener to sync WhatsApp recovery template instantaneously across all cashiers
+    useEffect(() => {
+        loadWaTemplate();
+
+        const channel = supabase
+            .channel('cashier_wa_template_sync')
+            .on(
+                'postgres_changes',
+                { event: 'UPDATE', schema: 'public', table: 'app_settings', filter: 'id=eq.1' },
+                () => {
+                    loadWaTemplate();
+                }
+            )
+            .subscribe();
+
+        const bc = supabase
+            .channel('cashier_wa_broadcast_sync')
+            .on('broadcast', { event: 'settings_changed' }, (msg) => {
+                if (msg.payload?.whatsapp_recovery_template) {
+                    setWaTemplate(msg.payload.whatsapp_recovery_template);
+                    localStorage.setItem(STORAGE_WHATSAPP_TEMPLATE_KEY, msg.payload.whatsapp_recovery_template);
+                }
+                if (msg.payload?.whatsapp_recovery_promo !== undefined) {
+                    setWaPromoCode(msg.payload.whatsapp_recovery_promo || '');
+                    localStorage.setItem(STORAGE_RECOVERY_PROMO_KEY, msg.payload.whatsapp_recovery_promo || '');
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+            supabase.removeChannel(bc);
+        };
+    }, [loadWaTemplate]);
+
     const toggleDarkMode = () => {
         setIsDark(prev => {
             const next = !prev;
@@ -1003,51 +1072,6 @@ export const CashierPage: React.FC = () => {
             } catch (e) {
                 console.error('Failed to fetch abandoned carts', e);
             }
-        };
-
-        // Load WhatsApp template from Supabase (same source as Admin panel)
-        const loadWaTemplate = async () => {
-            try {
-                const client = supabaseAdmin || supabase;
-                const { data } = await client
-                    .from('app_settings')
-                    .select('announcement_text, popular_subtitle')
-                    .eq('id', 1)
-                    .maybeSingle();
-
-                if (data) {
-                    const candidateFields = [data.announcement_text, data.popular_subtitle];
-                    for (const field of candidateFields) {
-                        if (typeof field === 'string' && field.includes('[CONFIG:')) {
-                            const startIdx = field.indexOf('[CONFIG:') + 8;
-                            const endIdx = field.lastIndexOf(']');
-                            if (startIdx > 8 && endIdx > startIdx) {
-                                try {
-                                    const config = JSON.parse(field.substring(startIdx, endIdx));
-                                    if (config.whatsapp_recovery_template) {
-                                        setWaTemplate(config.whatsapp_recovery_template);
-                                        // Also cache in localStorage for offline fallback
-                                        localStorage.setItem(STORAGE_WHATSAPP_TEMPLATE_KEY, config.whatsapp_recovery_template);
-                                    }
-                                    if (config.whatsapp_recovery_promo !== undefined) {
-                                        setWaPromoCode(config.whatsapp_recovery_promo || '');
-                                        localStorage.setItem(STORAGE_RECOVERY_PROMO_KEY, config.whatsapp_recovery_promo || '');
-                                    }
-                                    if (config.whatsapp_recovery_template) return;
-                                } catch (e) {}
-                            }
-                        }
-                    }
-                }
-            } catch (e) {}
-
-            // Fallback: read from localStorage
-            try {
-                const saved = localStorage.getItem(STORAGE_WHATSAPP_TEMPLATE_KEY);
-                if (saved) setWaTemplate(saved);
-                const savedPromo = localStorage.getItem(STORAGE_RECOVERY_PROMO_KEY);
-                if (savedPromo) setWaPromoCode(savedPromo);
-            } catch (e) {}
         };
 
         loadAbandoned();
@@ -1629,6 +1653,7 @@ export const CashierPage: React.FC = () => {
                             onClick={() => {
                                 setShowAbandonedDrawer(true);
                                 setHasNewAbandonedAlert(false);
+                                loadWaTemplate();
                             }}
                             className={cn(
                                 "flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all border shadow-sm relative cursor-pointer shrink-0",

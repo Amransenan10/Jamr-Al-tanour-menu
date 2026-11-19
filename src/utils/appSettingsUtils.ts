@@ -2,10 +2,25 @@ import { supabase } from '../lib/supabaseClient';
 import { supabaseAdmin } from '../lib/supabaseAdmin';
 
 /**
+ * Strip [CONFIG: ...] tag cleanly without leaving any orphan brackets
+ */
+export const stripConfigTag = (text: string): string => {
+  if (!text || typeof text !== 'string') return '';
+  const startIdx = text.indexOf('[CONFIG:');
+  const endIdx = text.lastIndexOf(']');
+  if (startIdx !== -1 && endIdx > startIdx) {
+    const before = text.substring(0, startIdx).trim();
+    const after = text.substring(endIdx + 1).trim();
+    return `${before} ${after}`.replace(/(?:\s*\}\])+/g, '').replace(/\s+/g, ' ').trim();
+  }
+  return text.replace(/\[CONFIG:[\s\S]*?\]/g, '').replace(/(?:\s*\}\])+/g, '').replace(/\s+/g, ' ').trim();
+};
+
+/**
  * Parse app_settings row from Supabase.
  * PRIORITY (highest to lowest):
- *   1. CONFIG tag embedded in popular_subtitle  ← most reliably written by admin
- *   2. Native DB columns                         ← used as fallback / for non-event settings
+ *   1. CONFIG tag embedded in popular_subtitle or announcement_text
+ *   2. Native DB columns
  */
 export const parseAppSettings = (data: any) => {
   if (!data) return {};
@@ -34,10 +49,10 @@ export const parseAppSettings = (data: any) => {
 
   // Clean the display value of popular_subtitle and announcement_text
   if (typeof parsed.popular_subtitle === 'string') {
-    parsed.popular_subtitle = parsed.popular_subtitle.replace(/\[CONFIG:[\s\S]*?\]/, '').trim();
+    parsed.popular_subtitle = stripConfigTag(parsed.popular_subtitle);
   }
   if (typeof parsed.announcement_text === 'string') {
-    parsed.announcement_text = parsed.announcement_text.replace(/\[CONFIG:[\s\S]*?\]/, '').trim();
+    parsed.announcement_text = stripConfigTag(parsed.announcement_text);
   }
 
   // Force correct boolean types with safe defaults
@@ -103,8 +118,8 @@ export const saveAppSettings = async (newPartial: Record<string, any>) => {
   console.log(`[saveAppSettings] Writing → event_active=${merged.event_active}`);
 
   // ── 3. Full DB payload using ONLY columns that exist in the schema ────────────
-  // Clean announcement text from any previous CONFIG tags
-  const cleanAnnouncement = (merged.announcement_text || '').replace(/\[CONFIG:[\s\S]*?\]/, '').trim();
+  // Clean announcement text from any previous CONFIG tags using robust stripConfigTag
+  const cleanAnnouncement = stripConfigTag(merged.announcement_text || '');
   const extraConfig: any = {};
   if (merged.marketing_pixels) extraConfig.marketing_pixels = merged.marketing_pixels;
   if (merged.welcome_offer) extraConfig.welcome_offer = merged.welcome_offer;
@@ -135,16 +150,36 @@ export const saveAppSettings = async (newPartial: Record<string, any>) => {
     updated_at:          new Date().toISOString()
   };
 
-  // ── 4. Upsert (admin → anon fallback) ────────────────────────────────────────
-  let res = await supabaseAdmin.from('app_settings').upsert(fullPayload);
+  // ── 4. Save to DB (update existing id=1 or upsert fallback) ───────────────────
+  let res = await supabaseAdmin.from('app_settings').update(fullPayload).eq('id', 1);
 
   if (res.error) {
-    console.warn('[saveAppSettings] Admin upsert failed, trying anon:', res.error.message);
-    res = await supabase.from('app_settings').upsert(fullPayload);
+    console.warn('[saveAppSettings] Admin update failed, trying anon update:', res.error.message);
+    res = await supabase.from('app_settings').update(fullPayload).eq('id', 1);
   }
 
   if (res.error) {
-    throw new Error(`[saveAppSettings] All upsert attempts failed: ${res.error.message}`);
+    console.warn('[saveAppSettings] Update failed, trying upsert:', res.error.message);
+    res = await supabaseAdmin.from('app_settings').upsert(fullPayload);
+    if (res.error) {
+      res = await supabase.from('app_settings').upsert(fullPayload);
+    }
+  }
+
+  // Guaranteed minimal fallback: update announcement_text specifically
+  if (res.error) {
+    console.warn('[saveAppSettings] Full upsert failed, attempting safe minimal update:', res.error.message);
+    const minPayload = { announcement_text: packedAnnouncement, updated_at: new Date().toISOString() };
+    const minRes = await supabaseAdmin.from('app_settings').update(minPayload).eq('id', 1);
+    if (!minRes.error) {
+      res = minRes;
+    } else {
+      res = await supabase.from('app_settings').update(minPayload).eq('id', 1);
+    }
+  }
+
+  if (res.error) {
+    throw new Error(`[saveAppSettings] All update attempts failed: ${res.error.message}`);
   }
 
   console.log(`[saveAppSettings] Success → event_active=${merged.event_active}`);

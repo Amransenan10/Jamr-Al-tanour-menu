@@ -102,16 +102,16 @@ export const AdminAbandonedCartsView: React.FC<AdminAbandonedCartsViewProps> = (
       localStorage.setItem(STORAGE_WHATSAPP_TEMPLATE_KEY, templateText);
       localStorage.setItem(STORAGE_RECOVERY_PROMO_KEY, promoCode.trim());
       
-      // Save to Supabase so it's persistent across devices
+      // Save to Supabase so it's persistent across devices and branches
       await saveAppSettings({
         whatsapp_recovery_template: templateText,
         whatsapp_recovery_promo: promoCode.trim()
       });
       
-      toast.success('تم حفظ قالب ورسالة الواتساب بنجاح! 💾');
-    } catch (e) {
-      // Even if Supabase fails, localStorage is saved
-      toast.success('تم حفظ القالب محلياً 💾');
+      toast.success('تم حفظ قالب ورسالة الواتساب وتعميمها بنجاح على جميع الفروع وأجهزة الكاشير! 💾🎉');
+    } catch (e: any) {
+      console.error('[AdminAbandonedCartsView] Save error:', e);
+      toast.error('تعذر حفظ القالب في السيرفر الرئيسي، يرجى المحاولة ثانية');
     }
   };
 
@@ -276,7 +276,7 @@ export const AdminAbandonedCartsView: React.FC<AdminAbandonedCartsViewProps> = (
                       .replace(/{total_price}/g, '35')
                       .replace(/{promo_code}/g, promoCode.trim())
                       .replace(/{promo_section}/g, promoCode.trim() ? `\n🎁 استخدم كود الخصم الحصري: *${promoCode.trim()}* عند الطلب!` : '')
-                      .replace(/{recovery_link}/g, 'https://jamr-al-tanour-menu.vercel.app/?recover_cart=demo')}
+                      .replace(/{recovery_link}/g, 'https://jamraltanour.com/?cart=demo')}
                   </div>
                 </div>
 
