@@ -23,7 +23,7 @@ import {
   STORAGE_WHATSAPP_TEMPLATE_KEY,
   STORAGE_RECOVERY_PROMO_KEY
 } from '../services/abandonedCartService';
-import { saveAppSettings } from '../utils/appSettingsUtils';
+import { saveAppSettings, parseAppSettings } from '../utils/appSettingsUtils';
 import { supabase } from '../lib/supabaseClient';
 import { supabaseAdmin } from '../lib/supabaseAdmin';
 
@@ -48,6 +48,7 @@ export const AdminAbandonedCartsView: React.FC<AdminAbandonedCartsViewProps> = (
   const [templateText, setTemplateText] = useState(DEFAULT_WHATSAPP_TEMPLATE);
   const [promoCode, setPromoCode] = useState('');
   const [copiedCartId, setCopiedCartId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const loadTemplate = async () => {
@@ -56,34 +57,25 @@ export const AdminAbandonedCartsView: React.FC<AdminAbandonedCartsViewProps> = (
         const client = supabaseAdmin || supabase;
         const { data } = await client
           .from('app_settings')
-          .select('announcement_text, popular_subtitle')
+          .select('announcement_text')
           .eq('id', 1)
           .maybeSingle();
         
         if (data) {
-          const candidateFields = [data.announcement_text, data.popular_subtitle];
-          for (const field of candidateFields) {
-            if (typeof field === 'string' && field.includes('[CONFIG:')) {
-              const startIdx = field.indexOf('[CONFIG:') + 8;
-              const endIdx = field.lastIndexOf(']');
-              if (startIdx > 8 && endIdx > startIdx) {
-                try {
-                  const config = JSON.parse(field.substring(startIdx, endIdx));
-                  if (config.whatsapp_recovery_template) {
-                    setTemplateText(config.whatsapp_recovery_template);
-                    localStorage.setItem(STORAGE_WHATSAPP_TEMPLATE_KEY, config.whatsapp_recovery_template);
-                  }
-                  if (config.whatsapp_recovery_promo !== undefined) {
-                    setPromoCode(config.whatsapp_recovery_promo || '');
-                    localStorage.setItem(STORAGE_RECOVERY_PROMO_KEY, config.whatsapp_recovery_promo || '');
-                  }
-                  if (config.whatsapp_recovery_template) return; // loaded from Supabase successfully
-                } catch (e) {}
-              }
-            }
+          const parsed = parseAppSettings(data);
+          if (parsed.whatsapp_recovery_template) {
+            setTemplateText(parsed.whatsapp_recovery_template);
+            localStorage.setItem(STORAGE_WHATSAPP_TEMPLATE_KEY, parsed.whatsapp_recovery_template);
           }
+          if (parsed.whatsapp_recovery_promo !== undefined) {
+            setPromoCode(parsed.whatsapp_recovery_promo || '');
+            localStorage.setItem(STORAGE_RECOVERY_PROMO_KEY, parsed.whatsapp_recovery_promo || '');
+          }
+          if (parsed.whatsapp_recovery_template) return; // loaded from Supabase successfully
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('[AdminAbandonedCartsView] Load template error:', e);
+      }
       
       // Fallback to localStorage
       try {
@@ -98,6 +90,7 @@ export const AdminAbandonedCartsView: React.FC<AdminAbandonedCartsViewProps> = (
 
   const handleSaveSettings = async () => {
     try {
+      setSaving(true);
       // Save to localStorage first (instant)
       localStorage.setItem(STORAGE_WHATSAPP_TEMPLATE_KEY, templateText);
       localStorage.setItem(STORAGE_RECOVERY_PROMO_KEY, promoCode.trim());
@@ -108,10 +101,12 @@ export const AdminAbandonedCartsView: React.FC<AdminAbandonedCartsViewProps> = (
         whatsapp_recovery_promo: promoCode.trim()
       });
       
-      toast.success('تم حفظ قالب ورسالة الواتساب وتعميمها بنجاح على جميع الفروع وأجهزة الكاشير! 💾🎉');
+      toast.success('تم حفظ وتعميم رسالة الواتساب بنجاح على جميع الفروع وأجهزة الكاشير! 💾🎉');
     } catch (e: any) {
       console.error('[AdminAbandonedCartsView] Save error:', e);
       toast.error('تعذر حفظ القالب في السيرفر الرئيسي، يرجى المحاولة ثانية');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -284,10 +279,11 @@ export const AdminAbandonedCartsView: React.FC<AdminAbandonedCartsViewProps> = (
                   <button
                     type="button"
                     onClick={handleSaveSettings}
-                    className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-black font-black text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+                    disabled={saving}
+                    className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-black font-black text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
                   >
-                    <Save size={14} />
-                    <span>حفظ هذا النموذج لجميع الرسائل</span>
+                    {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                    <span>{saving ? 'جارٍ الحفظ وتعميم الرسالة...' : 'حفظ هذا النموذج لجميع الرسائل والكاشير'}</span>
                   </button>
 
                   <button

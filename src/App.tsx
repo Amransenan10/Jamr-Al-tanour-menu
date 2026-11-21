@@ -39,6 +39,7 @@ import { parseAppSettings } from './utils/appSettingsUtils';
 import { fetchThemeSettings } from './utils/themeSettingsUtils';
 import { captureTrafficAttribution } from './services/trafficAttribution';
 import { initMarketingPixels, trackPageView } from './services/pixelTrackingService';
+import { applySeoSettings } from './utils/seoUtils';
 import { WelcomeOfferModal } from './components/WelcomeOfferModal';
 import { normalizeSaudiPhone, buildPhoneOrFilter } from './utils/phoneUtils';
 
@@ -96,6 +97,9 @@ export default function App() {
   useEffect(() => {
     if (appSettings?.marketing_pixels) {
       initMarketingPixels(appSettings.marketing_pixels);
+    }
+    if (appSettings?.seo_settings) {
+      applySeoSettings(appSettings.seo_settings);
     }
   }, [appSettings]);
 

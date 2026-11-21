@@ -13,6 +13,7 @@ import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
 import { AdminAnalyticsView } from '../components/AdminAnalyticsView';
 import { AdminMarketingView } from '../components/AdminMarketingView';
+import { AdminSeoView } from '../components/AdminSeoView';
 import { AdminThemeView } from '../components/AdminThemeView';
 import { CategoryAdminManager } from '../components/CategoryAdminManager';
 import { AdminLoyaltyView } from '../components/AdminLoyaltyView';
@@ -29,7 +30,7 @@ export const AdminPage: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState('');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
-    const [activeTab, setActiveTab] = useState<'analytics' | 'orders' | 'menu' | 'categories' | 'additions' | 'stories' | 'coupons' | 'loyalty' | 'marketing' | 'theme' | 'settings'>('analytics');
+    const [activeTab, setActiveTab] = useState<'analytics' | 'orders' | 'menu' | 'categories' | 'additions' | 'stories' | 'coupons' | 'loyalty' | 'marketing' | 'theme' | 'seo' | 'settings'>('analytics');
     const [posDevices, setPosDevices] = useState<PosDevice[]>([]);
 
     const fetchPosDevices = async () => {
@@ -194,6 +195,7 @@ export const AdminPage: React.FC = () => {
                         { id: 'coupons', label: 'كوبونات الخصم', icon: <TicketPercent size={16} /> },
                         { id: 'loyalty', label: 'نظام الولاء والنقاط 🌟', icon: <Gift size={16} /> },
                         { id: 'marketing', label: 'التسويق والإشعارات 📢', icon: <Send size={16} /> },
+                        { id: 'seo', label: 'إعدادات SEO والمحتوى 🔍', icon: <Search size={16} /> },
                         { id: 'theme', label: '🎨 ثيم المتجر والمواسم', icon: <Sparkles size={16} /> },
                         { id: 'settings', label: 'الفروع والإعدادات', icon: <SettingsIcon size={16} /> }
                     ].map(tab => (
@@ -277,6 +279,7 @@ export const AdminPage: React.FC = () => {
                 {activeTab === 'loyalty' && <AdminLoyaltyView />}
                 {activeTab === 'marketing' && <AdminMarketingView />}
                 {activeTab === 'theme' && <AdminThemeView />}
+                {activeTab === 'seo' && <AdminSeoView />}
                 {activeTab === 'settings' && <AdminSettingsView />}
             </main>
         </div>

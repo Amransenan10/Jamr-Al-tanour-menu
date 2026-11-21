@@ -472,7 +472,7 @@ export const CashierPage: React.FC = () => {
             const client = supabaseAdmin || supabase;
             const { data } = await client
                 .from('app_settings')
-                .select('announcement_text, popular_subtitle')
+                .select('announcement_text')
                 .eq('id', 1)
                 .maybeSingle();
 
@@ -517,7 +517,7 @@ export const CashierPage: React.FC = () => {
             .subscribe();
 
         const bc = supabase
-            .channel('cashier_wa_broadcast_sync')
+            .channel('jamr_realtime_channel')
             .on('broadcast', { event: 'settings_changed' }, (msg) => {
                 if (msg.payload?.whatsapp_recovery_template) {
                     setWaTemplate(msg.payload.whatsapp_recovery_template);

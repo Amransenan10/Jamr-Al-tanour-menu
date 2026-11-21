@@ -223,7 +223,9 @@ export const STORAGE_WHATSAPP_TEMPLATE_KEY = 'jamr_whatsapp_recovery_template';
 export const STORAGE_RECOVERY_PROMO_KEY = 'jamr_whatsapp_recovery_promo';
 
 export const DEFAULT_WHATSAPP_TEMPLATE = `مرحبا {customer_name}
-نحيطك علما بأن طلبك لا يزال محفوظا في سلة مطعم جمر التنور.
+باقي خطوة وتوصلك السعادة!
+طلبك ينتظرك في السلة ❤️
+كمّل طلبك وخلّنا نهتم بالباقي.
 
 أصنافك المحفوظة:
 {items}

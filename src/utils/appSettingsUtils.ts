@@ -126,6 +126,8 @@ export const saveAppSettings = async (newPartial: Record<string, any>) => {
   if (merged.whatsapp_recovery_template) extraConfig.whatsapp_recovery_template = merged.whatsapp_recovery_template;
   if (merged.whatsapp_recovery_promo !== undefined) extraConfig.whatsapp_recovery_promo = merged.whatsapp_recovery_promo;
   if (merged.authorized_pos_devices !== undefined) extraConfig.authorized_pos_devices = merged.authorized_pos_devices;
+  if (merged.seo_settings !== undefined) extraConfig.seo_settings = merged.seo_settings;
+  if (merged.seo_articles !== undefined) extraConfig.seo_articles = merged.seo_articles;
 
   const hasExtra = Object.keys(extraConfig).length > 0;
   const packedAnnouncement = hasExtra
