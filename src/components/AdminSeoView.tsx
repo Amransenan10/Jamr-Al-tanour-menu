@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Search, Globe, FileText, Sparkles, CheckCircle2, AlertCircle, 
-  ExternalLink, Save, Loader2, Plus, Trash2, Edit3, Eye, Copy, 
-  Share2, ArrowRight, Check, RefreshCw, Smartphone, Monitor, Info
+  Search, Globe, FileText, CheckCircle2, AlertCircle, 
+  Save, Loader2, Plus, Trash2, Edit3, Eye, 
+  Share2, Check, RefreshCw, Smartphone, Monitor
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '../lib/utils';
@@ -28,7 +28,7 @@ export const AdminSeoView: React.FC = () => {
   const [articleForm, setArticleForm] = useState<Partial<SeoArticle>>({
     title: '',
     slug: '',
-    category: 'أخبار وعروض',
+    category: 'أخبار',
     summary: '',
     content: '',
     image_url: 'https://jamraltanour.com/assets/logo.png',
@@ -56,7 +56,7 @@ export const AdminSeoView: React.FC = () => {
         if (parsed.seo_settings) {
           setSeoForm({ ...DEFAULT_SEO_SETTINGS, ...parsed.seo_settings });
         }
-        if (Array.isArray(parsed.seo_articles) && parsed.seo_articles.length > 0) {
+        if (Array.isArray(parsed.seo_articles)) {
           setArticles(parsed.seo_articles);
         }
       }
@@ -83,26 +83,25 @@ export const AdminSeoView: React.FC = () => {
       // Apply dynamically to DOM
       applySeoSettings(seoForm);
 
-      toast.success('تم حفظ وتفعيل إعدادات الـ SEO والمحتوى بنجاح! 🚀');
+      toast.success('تم حفظ وتفعيل إعدادات الـ SEO بنجاح');
     } catch (error: any) {
       console.error('Error saving SEO settings:', error);
-      toast.error(error?.message || 'فشل حفظ الإعدادات، يرجى المحاولة ثانية');
+      toast.error(error?.message || 'فشل حفظ الإعدادات');
     } finally {
       setSaving(false);
     }
   };
 
-  // Quick Suggestion Keywords
+  // Suggested Keywords from real menu
   const addSuggestedKeywords = () => {
     const suggestions = [
-      'مطعم جمر التنور', 'أفضل مشاوي بالرياض', 'فطائر على الفحم',
-      'شاورما دجاج على الجمر', 'فلافل طازجة', 'منيو جمر التنور السويدي',
-      'توصيل مطاعم الرياض', 'بوكسات شاورما'
+      'جمر التنور', 'فطائر', 'بيتزا', 'شاورما', 'برجر',
+      'فلافل', 'فطور', 'مقبلات', 'عصائر', 'منيو جمر التنور'
     ];
-    const current = (seoForm.meta_keywords || '').split(',').map(s => s.trim()).filter(Boolean);
+    const current = (seoForm.meta_keywords || '').split(/[،,]/).map(s => s.trim()).filter(Boolean);
     const combined = Array.from(new Set([...current, ...suggestions]));
-    setSeoForm(prev => ({ ...prev, meta_keywords: combined.join(', ') }));
-    toast.success('تمت إضافة الكلمات المفتاحية المقترحة بنجاح! 🎯');
+    setSeoForm(prev => ({ ...prev, meta_keywords: combined.join('، ') }));
+    toast.success('تمت إضافة الكلمات المفتاحية المقترحة من المنيو');
   };
 
   // Article Actions
@@ -111,7 +110,7 @@ export const AdminSeoView: React.FC = () => {
     setArticleForm({
       title: '',
       slug: '',
-      category: 'أخبار وعروض',
+      category: 'أخبار',
       summary: '',
       content: '',
       image_url: seoForm.og_image || 'https://jamraltanour.com/assets/logo.png',
@@ -128,9 +127,9 @@ export const AdminSeoView: React.FC = () => {
   };
 
   const handleDeleteArticle = (id: string) => {
-    if (!window.confirm('هل أنت متأكد من رغبتك في حذف هذا المقال؟')) return;
+    if (!window.confirm('هل ترغب في حذف هذا المقال؟')) return;
     setArticles(prev => prev.filter(a => a.id !== id));
-    toast.success('تم حذف المقال من القائمة، اضغط حفظ لتأكيد التغيير.');
+    toast.success('تم حذف المقال من القائمة، اضغط حفظ لتأكيد التغيير');
   };
 
   const handleSaveArticleModal = (e: React.FormEvent) => {
@@ -153,13 +152,13 @@ export const AdminSeoView: React.FC = () => {
         slug: slug || a.slug,
         updated_at: new Date().toISOString()
       } as SeoArticle : a));
-      toast.success('تم تحديث المقال بنجاح!');
+      toast.success('تم تحديث المقال بنجاح');
     } else {
       const newArticle: SeoArticle = {
         id: `art_${Date.now()}`,
         title: articleForm.title || '',
         slug: slug || `article-${Date.now()}`,
-        category: articleForm.category || 'أخبار وعروض',
+        category: articleForm.category || 'أخبار',
         summary: articleForm.summary || '',
         content: articleForm.content || '',
         image_url: articleForm.image_url || 'https://jamraltanour.com/assets/logo.png',
@@ -170,7 +169,7 @@ export const AdminSeoView: React.FC = () => {
         updated_at: new Date().toISOString()
       };
       setArticles(prev => [newArticle, ...prev]);
-      toast.success('تمت إضافة المقال بنجاح!');
+      toast.success('تمت إضافة المقال بنجاح');
     }
 
     setIsArticleModalOpen(false);
@@ -183,7 +182,7 @@ export const AdminSeoView: React.FC = () => {
       {/* Top Header Card */}
       <div className="bg-gradient-to-r from-amber-950/60 via-zinc-900 to-amber-950/40 p-6 rounded-3xl border border-amber-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30 shadow-inner">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
             <Search size={24} />
           </div>
           <div>
@@ -194,19 +193,19 @@ export const AdminSeoView: React.FC = () => {
               </span>
             </div>
             <p className="text-xs text-gray-400 mt-1">
-              تحكم بالعناوين، الكلمات المفتاحية، المقالات، وبيانات المتجر في قوقل والسوشيال ميديا بضغطة زر وبدون كتابة كود.
+              إدارة العناوين، الكلمات المفتاحية، المقالات، وبيانات المتجر في نتائج البحث.
             </p>
           </div>
         </div>
 
-        {/* Global Action Buttons */}
+        {/* Action Buttons */}
         <div className="flex items-center gap-2.5 w-full md:w-auto">
           <button
             type="button"
             onClick={fetchSeoData}
             disabled={loading}
             className="px-3.5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-gray-300 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors border border-white/10 cursor-pointer disabled:opacity-50"
-            title="إعادة جلب أحدث بيانات من السيرفر"
+            title="تحديث البيانات"
           >
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
             <span className="hidden sm:inline">تحديث</span>
@@ -216,15 +215,15 @@ export const AdminSeoView: React.FC = () => {
             type="button"
             onClick={() => handleSaveAll()}
             disabled={saving}
-            className="flex-1 md:flex-none px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-sm rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+            className="flex-1 md:flex-none px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-black text-sm rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-            <span>حفظ وتفعيل التعديلات فوراً 🚀</span>
+            <span>حفظ وتفعيل التعديلات</span>
           </button>
         </div>
       </div>
 
-      {/* Quick SEO Score Bar */}
+      {/* SEO Score Bar */}
       <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className={cn(
@@ -237,17 +236,17 @@ export const AdminSeoView: React.FC = () => {
           </div>
           <div>
             <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
-              <span>جاهزية الموقع لقوقل:</span>
+              <span>جاهزية الموقع لمحركات البحث:</span>
               <span className={cn(
                 "text-xs font-black",
                 seoScoreData.score >= 80 ? "text-emerald-400" :
                 seoScoreData.score >= 50 ? "text-amber-400" : "text-red-400"
               )}>
-                {seoScoreData.score >= 80 ? "ممتازة جداً 🌟" : seoScoreData.score >= 50 ? "جيدة وتحتاج تحسينات" : "تحتاج ضبط"}
+                {seoScoreData.score >= 80 ? "ممتازة" : seoScoreData.score >= 50 ? "جيدة" : "تحتاج ضبط"}
               </span>
             </h4>
             <p className="text-[11px] text-gray-400 mt-0.5">
-              كلما زادت النسبة، كلما كانت فرص تصدر موقعك في نتائج بحث قوقل أعلى.
+              مؤشر اكتمال الحقول الأساسية للظهور في محركات البحث.
             </p>
           </div>
         </div>
@@ -275,8 +274,8 @@ export const AdminSeoView: React.FC = () => {
         {[
           { id: 'meta', label: 'العناوين والأوصاف (Meta Tags)', icon: <Search size={16} /> },
           { id: 'articles', label: `المقالات والمدونة (${articles.length})`, icon: <FileText size={16} /> },
-          { id: 'schema', label: 'بيانات المطعم في قوقل (Local Schema)', icon: <Globe size={16} /> },
-          { id: 'preview', label: 'المعاينة في قوقل والسوشيال', icon: <Eye size={16} /> }
+          { id: 'schema', label: 'بيانات المطعم (Local Schema)', icon: <Globe size={16} /> },
+          { id: 'preview', label: 'معاينة الظهور في البحث', icon: <Eye size={16} /> }
         ].map(tab => (
           <button
             key={tab.id}
@@ -303,12 +302,12 @@ export const AdminSeoView: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-sm font-bold text-white flex items-center gap-2">
-                  <span>عنوان الصفحة في قوقل (Meta Title)</span>
-                  <span className="text-[11px] font-normal text-gray-400">(السطر الأزرق الرئيسي في البحث)</span>
+                  <span>عنوان الصفحة (Meta Title)</span>
+                  <span className="text-[11px] font-normal text-gray-400">(العنوان الرئيسي في نتائج البحث)</span>
                 </label>
                 <span className={cn(
                   "text-xs font-mono font-bold",
-                  seoForm.meta_title.length >= 35 && seoForm.meta_title.length <= 70 ? "text-emerald-400" : "text-amber-400"
+                  seoForm.meta_title.length >= 25 && seoForm.meta_title.length <= 70 ? "text-emerald-400" : "text-amber-400"
                 )}>
                   {seoForm.meta_title.length} / 70 حرفاً
                 </span>
@@ -317,24 +316,21 @@ export const AdminSeoView: React.FC = () => {
                 type="text"
                 value={seoForm.meta_title}
                 onChange={e => setSeoForm(prev => ({ ...prev, meta_title: e.target.value }))}
-                placeholder="مثال: مطعم جمر التنور | المنيو الرسمي والطلب أونلاين - الرياض"
+                placeholder="جمر التنور | المنيو الإلكتروني والطلب أونلاين"
                 className="w-full bg-black/40 border border-white/10 focus:border-amber-400 rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 outline-none transition-colors"
               />
-              <p className="text-[11px] text-gray-400 mt-1.5">
-                💡 الأفضل أن يبدأ باسم المطعم ويليه التصنيف والمدينة (مثال: جمر التنور | أفضل منيو فطائر ومشاوي بالرياض).
-              </p>
             </div>
 
             {/* Meta Description */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-sm font-bold text-white flex items-center gap-2">
-                  <span>وصف الموقع في قوقل (Meta Description)</span>
-                  <span className="text-[11px] font-normal text-gray-400">(السطران التوضيحيان أسفل العنوان)</span>
+                  <span>وصف الموقع (Meta Description)</span>
+                  <span className="text-[11px] font-normal text-gray-400">(الوصف أسفل العنوان)</span>
                 </label>
                 <span className={cn(
                   "text-xs font-mono font-bold",
-                  seoForm.meta_description.length >= 100 && seoForm.meta_description.length <= 170 ? "text-emerald-400" : "text-amber-400"
+                  seoForm.meta_description.length >= 70 && seoForm.meta_description.length <= 170 ? "text-emerald-400" : "text-amber-400"
                 )}>
                   {seoForm.meta_description.length} / 165 حرفاً
                 </span>
@@ -343,48 +339,44 @@ export const AdminSeoView: React.FC = () => {
                 rows={3}
                 value={seoForm.meta_description}
                 onChange={e => setSeoForm(prev => ({ ...prev, meta_description: e.target.value }))}
-                placeholder="اكتب وصفاً جذاباً يشجع الزبائن على الضغط على الرابط وطلب الطعام..."
+                placeholder="اكتب وصف الموقع الذي يظهر في نتائج البحث..."
                 className="w-full bg-black/40 border border-white/10 focus:border-amber-400 rounded-xl p-4 text-sm text-white placeholder:text-gray-600 outline-none transition-colors resize-none"
               />
-              <p className="text-[11px] text-gray-400 mt-1.5">
-                💡 اذكر أشهر الوجبات وميزات الخدمة مثل "توصيل سريع" و "استلام من الفرع".
-              </p>
             </div>
 
             {/* Keywords */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-bold text-white">الكلمات المفتاحية المستهدفة (Keywords)</label>
+                <label className="text-sm font-bold text-white">الكلمات المفتاحية (Keywords)</label>
                 <button
                   type="button"
                   onClick={addSuggestedKeywords}
                   className="text-xs text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 cursor-pointer"
                 >
-                  <Sparkles size={13} />
-                  <span>إضافة كلمات مقترحة تلقائياً</span>
+                  <span>إضافة كلمات المنيو تلقائياً</span>
                 </button>
               </div>
               <input
                 type="text"
                 value={seoForm.meta_keywords}
                 onChange={e => setSeoForm(prev => ({ ...prev, meta_keywords: e.target.value }))}
-                placeholder="افصل بين الكلمات بفاصلة (مثال: جمر التنور, منيو جمر التنور, مطاعم الرياض, مشاوي)"
+                placeholder="افصل بين الكلمات بفواصل"
                 className="w-full bg-black/40 border border-white/10 focus:border-amber-400 rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-600 outline-none transition-colors"
               />
               <div className="flex flex-wrap gap-1.5 mt-2.5">
-                {seoForm.meta_keywords.split(',').map(s => s.trim()).filter(Boolean).map((kw, i) => (
+                {seoForm.meta_keywords.split(/[،,]/).map(s => s.trim()).filter(Boolean).map((kw, i) => (
                   <span key={i} className="bg-zinc-800 text-amber-300 border border-amber-400/20 text-xs px-2.5 py-0.5 rounded-lg">
-                    #{kw}
+                    {kw}
                   </span>
                 ))}
               </div>
             </div>
 
-            {/* Social Share Image & Robots */}
+            {/* Social Share Image & Canonical */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-white/5">
               <div>
                 <label className="block text-sm font-bold text-white mb-2">
-                  رابط صورة المشاركة (OG Social Image)
+                  رابط صورة المشاركة (OG Image)
                 </label>
                 <input
                   type="text"
@@ -393,12 +385,11 @@ export const AdminSeoView: React.FC = () => {
                   placeholder="https://..."
                   className="w-full bg-black/40 border border-white/10 focus:border-amber-400 rounded-xl px-4 py-2.5 text-xs font-mono text-white placeholder:text-gray-600 outline-none transition-colors dir-ltr text-right"
                 />
-                <p className="text-[11px] text-gray-400 mt-1">تظهر هذه الصورة عند إرسال رابط الموقع في واتساب أو تويتر.</p>
               </div>
 
               <div>
                 <label className="block text-sm font-bold text-white mb-2">
-                  الرابط الأساسي للموقع (Canonical URL)
+                  الرابط الأساسي (Canonical URL)
                 </label>
                 <input
                   type="text"
@@ -407,7 +398,6 @@ export const AdminSeoView: React.FC = () => {
                   placeholder="https://jamraltanour.com/"
                   className="w-full bg-black/40 border border-white/10 focus:border-amber-400 rounded-xl px-4 py-2.5 text-xs font-mono text-white placeholder:text-gray-600 outline-none transition-colors dir-ltr text-right"
                 />
-                <p className="text-[11px] text-gray-400 mt-1">يمنع ازدواجية الروابط عند محركات البحث.</p>
               </div>
             </div>
 
@@ -415,7 +405,7 @@ export const AdminSeoView: React.FC = () => {
             <div className="flex items-center justify-between p-4 bg-black/30 rounded-2xl border border-white/5">
               <div>
                 <h4 className="font-bold text-sm text-white flex items-center gap-2">
-                  <span>السماح لقوقل بأرشفة وفهرسة الموقع (Google Indexing)</span>
+                  <span>السماح بمحركات البحث وفهرسة الموقع (Indexing)</span>
                   {seoForm.robots_index ? (
                     <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">مفعل</span>
                   ) : (
@@ -423,7 +413,7 @@ export const AdminSeoView: React.FC = () => {
                   )}
                 </h4>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  اتركه مفعّلاً دائماً ليظهر الموقع في نتائج البحث وخرائط قوقل.
+                  تفعيل ظهور الموقع في نتائج البحث.
                 </p>
               </div>
               <button
@@ -449,9 +439,9 @@ export const AdminSeoView: React.FC = () => {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base font-black text-white">إدارة المقالات والمحتوى الحصري</h3>
+              <h3 className="text-base font-black text-white">إدارة المقالات والمحتوى</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                كتابة مقالات تزيد من ظهور المطعم في قوقل عند بحث الناس عن أفضل أكلات أو وصفات أو عروض.
+                إضافة مقالات وتدوينات تظهر في الموقع ومحركات البحث.
               </p>
             </div>
             <button
@@ -464,51 +454,57 @@ export const AdminSeoView: React.FC = () => {
             </button>
           </div>
 
-          {/* Articles Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {articles.map(art => (
-              <div key={art.id} className="bg-zinc-900 border border-white/5 hover:border-amber-500/30 p-5 rounded-3xl space-y-4 transition-all flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2.5 py-0.5 rounded-full font-bold border border-amber-500/20">
-                      {art.category}
-                    </span>
-                    <span className={cn(
-                      "text-[10px] px-2 py-0.5 rounded-full font-bold",
-                      art.published ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-zinc-800 text-gray-400"
-                    )}>
-                      {art.published ? 'منشور للعامة' : 'مسودة'}
-                    </span>
+          {/* Articles Grid or Empty state */}
+          {articles.length === 0 ? (
+            <div className="bg-zinc-900 border border-white/5 rounded-3xl p-12 text-center text-gray-400 text-sm">
+              لا توجد مقالات مضافة حالياً. اضغط على "إضافة مقال جديد" لكتابة مقال.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {articles.map(art => (
+                <div key={art.id} className="bg-zinc-900 border border-white/5 hover:border-amber-500/30 p-5 rounded-3xl space-y-4 transition-all flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2.5 py-0.5 rounded-full font-bold border border-amber-500/20">
+                        {art.category}
+                      </span>
+                      <span className={cn(
+                        "text-[10px] px-2 py-0.5 rounded-full font-bold",
+                        art.published ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-zinc-800 text-gray-400"
+                      )}>
+                        {art.published ? 'منشور' : 'مسودة'}
+                      </span>
+                    </div>
+
+                    <h4 className="text-base font-black text-white line-clamp-1">{art.title}</h4>
+                    <p className="text-xs text-gray-400 mt-2 line-clamp-2 leading-relaxed">{art.summary || art.content}</p>
                   </div>
 
-                  <h4 className="text-base font-black text-white line-clamp-1">{art.title}</h4>
-                  <p className="text-xs text-gray-400 mt-2 line-clamp-2 leading-relaxed">{art.summary || art.content}</p>
-                </div>
-
-                <div className="pt-3 border-t border-white/5 flex items-center justify-between text-xs text-gray-500">
-                  <span className="font-mono text-[11px]">/{art.slug}</span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleEditArticle(art)}
-                      className="p-2 bg-zinc-800 hover:bg-zinc-700 text-amber-300 rounded-lg transition-colors cursor-pointer"
-                      title="تعديل المقال"
-                    >
-                      <Edit3 size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteArticle(art.id)}
-                      className="p-2 bg-zinc-800 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors cursor-pointer"
-                      title="حذف المقال"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                  <div className="pt-3 border-t border-white/5 flex items-center justify-between text-xs text-gray-500">
+                    <span className="font-mono text-[11px]">/{art.slug}</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleEditArticle(art)}
+                        className="p-2 bg-zinc-800 hover:bg-zinc-700 text-amber-300 rounded-lg transition-colors cursor-pointer"
+                        title="تعديل المقال"
+                      >
+                        <Edit3 size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteArticle(art.id)}
+                        className="p-2 bg-zinc-800 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors cursor-pointer"
+                        title="حذف المقال"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -523,7 +519,7 @@ export const AdminSeoView: React.FC = () => {
               <div>
                 <h3 className="text-base font-black text-white">بيانات المطعم المنظمة (Local Business Schema)</h3>
                 <p className="text-xs text-gray-400">
-                  كود تقني مخفي يقرأه قوقل ليعرف موقع المطعم، رقم الهاتف، وساعات العمل لعرضها في نتائج البحث.
+                  كود تقني يقرأه محرك البحث لربط موقع المطعم وتصنيفه وساعات العمل في نتائج البحث.
                 </p>
               </div>
             </div>
@@ -545,13 +541,13 @@ export const AdminSeoView: React.FC = () => {
                   type="text"
                   value={seoForm.restaurant_cuisine}
                   onChange={e => setSeoForm(prev => ({ ...prev, restaurant_cuisine: e.target.value }))}
-                  placeholder="مشاوي، فطائر، مأكولات شرقية"
+                  placeholder="فطائر، بيتزا، شاورما، برجر، فطور، فلافل"
                   className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-amber-400"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-300 mb-1.5">رقم الهاتف للتواصل / الحجز</label>
+                <label className="block text-xs font-bold text-gray-300 mb-1.5">رقم الهاتف للتواصل</label>
                 <input
                   type="text"
                   value={seoForm.restaurant_phone}
@@ -567,7 +563,7 @@ export const AdminSeoView: React.FC = () => {
                   type="text"
                   value={seoForm.restaurant_address}
                   onChange={e => setSeoForm(prev => ({ ...prev, restaurant_address: e.target.value }))}
-                  placeholder="الرياض - السويدي الغربي"
+                  placeholder="الرياض"
                   className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-amber-400"
                 />
               </div>
@@ -579,7 +575,7 @@ export const AdminSeoView: React.FC = () => {
                 type="text"
                 value={seoForm.business_hours}
                 onChange={e => setSeoForm(prev => ({ ...prev, business_hours: e.target.value }))}
-                placeholder="يومياً من 12:00 ظهراً إلى 02:00 صباحاً"
+                placeholder="أدخل ساعات العمل"
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-amber-400"
               />
             </div>
@@ -587,11 +583,11 @@ export const AdminSeoView: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 4: PREVIEW (Google & Social) */}
+      {/* TAB 4: PREVIEW */}
       {activeTab === 'preview' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-black text-white">المعاينة الحية لنتائج البحث والمشاركة</h3>
+            <h3 className="text-base font-black text-white">معاينة نتائج البحث</h3>
             <div className="flex items-center gap-1.5 bg-zinc-900 border border-white/10 p-1 rounded-xl">
               <button
                 type="button"
@@ -616,11 +612,11 @@ export const AdminSeoView: React.FC = () => {
             </div>
           </div>
 
-          {/* Google Result Mockup */}
+          {/* Search Result Mockup */}
           <div className="bg-zinc-900 border border-white/10 rounded-3xl p-6 space-y-3">
             <div className="flex items-center gap-2 text-xs text-gray-400 font-bold mb-1">
               <Search size={14} className="text-amber-400" />
-              <span>مظهر الموقع في نتائج بحث قوقل (Google Search)</span>
+              <span>مظهر الموقع في نتائج البحث</span>
             </div>
 
             <div className={cn(
@@ -628,8 +624,8 @@ export const AdminSeoView: React.FC = () => {
               previewDevice === 'mobile' ? "max-w-md mx-auto" : "max-w-2xl"
             )} dir="ltr">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-7 h-7 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-600 font-bold text-xs border border-amber-500/20">
-                  🔥
+                <div className="w-7 h-7 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-700 font-bold text-xs border border-zinc-200">
+                  JT
                 </div>
                 <div>
                   <div className="text-xs font-bold text-gray-900">جمر التنور</div>
@@ -642,16 +638,16 @@ export const AdminSeoView: React.FC = () => {
               </h4>
 
               <p className="text-xs text-gray-600 mt-1 line-clamp-2 leading-relaxed">
-                {seoForm.meta_description || 'مطعم جمر التنور - المنيو الرسمي. تصفح قائمتنا واطلب أشهى الفطائر والمشويات أونلاين بسهولة.'}
+                {seoForm.meta_description || 'مطعم جمر التنور - المنيو الرسمي.'}
               </p>
             </div>
           </div>
 
-          {/* WhatsApp / Social Mockup */}
+          {/* Social Share Mockup */}
           <div className="bg-zinc-900 border border-white/10 rounded-3xl p-6 space-y-3">
             <div className="flex items-center gap-2 text-xs text-gray-400 font-bold mb-1">
               <Share2 size={14} className="text-emerald-400" />
-              <span>مظهر الرابط عند المشاركة في واتساب (WhatsApp Preview)</span>
+              <span>معاينة الرابط عند المشاركة</span>
             </div>
 
             <div className="max-w-sm mx-auto bg-[#0b141a] rounded-2xl p-4 border border-[#202c33]" dir="rtl">
@@ -665,7 +661,7 @@ export const AdminSeoView: React.FC = () => {
                       onError={(e) => { (e.target as any).style.display = 'none'; }}
                     />
                   ) : (
-                    <span className="text-3xl">🔥</span>
+                    <span className="text-xs text-gray-400 font-mono">jamraltanour.com</span>
                   )}
                 </div>
                 <div className="p-3 text-right">
@@ -682,17 +678,17 @@ export const AdminSeoView: React.FC = () => {
       {/* MODAL: ADD / EDIT ARTICLE */}
       {isArticleModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-white/10 rounded-3xl max-w-xl w-full p-6 space-y-5 text-right shadow-2xl animate-in fade-in zoom-in-95" dir="rtl">
+          <div className="bg-zinc-900 border border-white/10 rounded-3xl max-w-xl w-full p-6 space-y-5 text-right shadow-2xl" dir="rtl">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <h3 className="text-lg font-black text-white">
-                {editingArticleId ? 'تعديل المقال' : 'إضافة مقال جديد للمدونة'}
+                {editingArticleId ? 'تعديل المقال' : 'إضافة مقال جديد'}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsArticleModalOpen(false)}
                 className="text-gray-400 hover:text-white text-xs px-2 py-1 rounded-lg bg-zinc-800 cursor-pointer"
               >
-                ✕ إغلاق
+                إغلاق
               </button>
             </div>
 
@@ -704,7 +700,7 @@ export const AdminSeoView: React.FC = () => {
                   required
                   value={articleForm.title || ''}
                   onChange={e => setArticleForm(p => ({ ...p, title: e.target.value }))}
-                  placeholder="مثال: سر نكهة الفطائر على الجمر في جمر التنور"
+                  placeholder="عنوان المقال"
                   className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-amber-400"
                 />
               </div>
@@ -716,7 +712,7 @@ export const AdminSeoView: React.FC = () => {
                     type="text"
                     value={articleForm.slug || ''}
                     onChange={e => setArticleForm(p => ({ ...p, slug: e.target.value }))}
-                    placeholder="secret-of-falafel"
+                    placeholder="article-slug"
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white outline-none focus:border-amber-400 font-mono dir-ltr text-right"
                   />
                 </div>
@@ -726,30 +722,30 @@ export const AdminSeoView: React.FC = () => {
                     type="text"
                     value={articleForm.category || ''}
                     onChange={e => setArticleForm(p => ({ ...p, category: e.target.value }))}
-                    placeholder="قصتنا، نصائح، عروض"
+                    placeholder="أخبار"
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white outline-none focus:border-amber-400"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-300 mb-1">ملخص المقال (يظهر في قوقل)</label>
+                <label className="block text-xs font-bold text-gray-300 mb-1">ملخص المقال</label>
                 <textarea
                   rows={2}
                   value={articleForm.summary || ''}
                   onChange={e => setArticleForm(p => ({ ...p, summary: e.target.value }))}
-                  placeholder="سطران يوضحان فكرة المقال..."
+                  placeholder="ملخص قصير للمقال..."
                   className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-amber-400 resize-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-300 mb-1">محتوى المقال بالكامل</label>
+                <label className="block text-xs font-bold text-gray-300 mb-1">المحتوى</label>
                 <textarea
                   rows={5}
                   value={articleForm.content || ''}
                   onChange={e => setArticleForm(p => ({ ...p, content: e.target.value }))}
-                  placeholder="اكتب تفاصيل المقال هنا..."
+                  placeholder="نص المقال..."
                   className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white outline-none focus:border-amber-400 resize-none leading-relaxed"
                 />
               </div>
@@ -762,7 +758,7 @@ export const AdminSeoView: React.FC = () => {
                     onChange={e => setArticleForm(p => ({ ...p, published: e.target.checked }))}
                     className="rounded bg-black/40 border-white/20 text-amber-500 focus:ring-0"
                   />
-                  <span>نشر المقال فوراً</span>
+                  <span>نشر المقال</span>
                 </label>
 
                 <div className="flex items-center gap-2">
@@ -777,7 +773,7 @@ export const AdminSeoView: React.FC = () => {
                     type="submit"
                     className="px-5 py-2 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-600 text-black cursor-pointer shadow-lg shadow-amber-500/20"
                   >
-                    تأكيد وإضافة
+                    حفظ المقال
                   </button>
                 </div>
               </div>

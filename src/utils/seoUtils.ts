@@ -30,51 +30,22 @@ export interface SeoArticle {
 }
 
 export const DEFAULT_SEO_SETTINGS: SeoSettings = {
-  meta_title: 'جمر التنور | المنيو الإلكتروني والطلب أونلاين - أفضل فطائر ومشاوي بالرياض',
-  meta_description: 'مطعم جمر التنور - المنيو الإلكتروني الرسمي. تصفح أشهى الفطائر على الفحم، الشاورما، الفلافل، والمقبلات. اطلب أونلاين بسهولة مع خدمة التوصيل السريع والاستلام من الفرع.',
-  meta_keywords: 'جمر التنور, منيو جمر التنور, مطعم جمر التنور بالرياض, مشاوي على الفحم, فطائر تنور, شاورما, فلافل, منيو الكتروني, مطاعم السويدي, توصيل طلبات',
+  meta_title: 'جمر التنور | المنيو الإلكتروني والطلب أونلاين',
+  meta_description: 'مطعم جمر التنور - المنيو الإلكتروني الرسمي. تصفح الفطائر، البيتزا، الشاورما، البرجر، الفطور، الفلافل، والمشروبات واطلب أونلاين مع خدمة التوصيل والاستلام.',
+  meta_keywords: 'جمر التنور, منيو جمر التنور, مطعم جمر التنور, فطائر, بيتزا, شاورما, برجر, فلافل, فطور, منيو الكتروني, مطاعم الرياض',
   og_image: 'https://jamraltanour.com/assets/logo.png',
   canonical_url: 'https://jamraltanour.com/',
   robots_index: true,
   restaurant_name: 'جمر التنور',
-  restaurant_cuisine: 'فطائر ومشويات ومأكولات شرقية وسريعة',
-  restaurant_phone: '0500000000',
-  restaurant_address: 'الرياض - السويدي الغربي',
-  business_hours: 'يومياً من 12:00 ظهراً حتى 02:00 صباحاً',
+  restaurant_cuisine: 'فطائر، بيتزا، شاورما، برجر، فطور، فلافل، مقبلات',
+  restaurant_phone: '',
+  restaurant_address: 'الرياض',
+  business_hours: '',
   google_site_verification: '',
   enable_rich_schema: true
 };
 
-export const DEFAULT_SEO_ARTICLES: SeoArticle[] = [
-  {
-    id: 'art_1',
-    title: 'سر النكهة الأصيلة في فطائر ومشويات جمر التنور',
-    slug: 'secret-of-jamr-altanour-taste',
-    category: 'قصتنا ومطبخنا',
-    summary: 'تعرف على سر تسوية العجين على نار الحطب والجمر الهادئ وكيف نحافظ على أعلى معايير الجودة والنضارة يومياً في فروع جمر التنور.',
-    content: 'في مطعم جمر التنور نحرص كل صباح على اختيار أجود أنواع اللحوم الطازجة والدقيق الفاخر لإعداد أشهى الفطائر والمشويات. التخمير الطبيعي ودرجة حرارة التنور المصنوع من الطين البركاني تمنح العجين قرمشة ذهبية لا تُقاوم مع حفاظ اللحم على عصارته ونكهته الأصلية المدخنة.',
-    image_url: 'https://jamraltanour.com/assets/logo.png',
-    keywords: 'فطائر تنور, مشاوي بالرياض, أكل طازج, منيو جمر التنور',
-    published: true,
-    views_count: 342,
-    created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
-    updated_at: new Date(Date.now() - 2 * 86400000).toISOString()
-  },
-  {
-    id: 'art_2',
-    title: 'دليل اختيار الوجبة المثالية لجمعات العائلة والأصدقاء',
-    slug: 'family-gathering-meal-guide',
-    category: 'دليل واقتراحات',
-    summary: 'اكتشف أفضل بوكسات العائلة وتشكيلات الفطائر والشاورما الموفرة التي تناسب سهراتكم وتجمعاتكم مع خدمة التوصيل السريع.',
-    content: 'سواء كنت تخطط لجمعة عائلية في عطلة نهاية الأسبوع أو اجتماع عمل في المكتب، نوفر لك بوكسات المشاركة المشكلة من الفطائر، الشاورما، والمقبلات المتنوعة مع صوصاتنا الخاصة وخبز التنور الساخن مباشرة من الفرن إلى مائدتك.',
-    image_url: 'https://jamraltanour.com/assets/logo.png',
-    keywords: 'بوكسات عائلية, بوكس شاورما, عشاء عائلي, مطاعم الرياض',
-    published: true,
-    views_count: 218,
-    created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
-    updated_at: new Date(Date.now() - 86400000).toISOString()
-  }
-];
+export const DEFAULT_SEO_ARTICLES: SeoArticle[] = [];
 
 /**
  * Apply SEO meta tags dynamically to the document head
@@ -109,14 +80,14 @@ export function applySeoSettings(settings?: Partial<SeoSettings>) {
     setMeta('name', 'google-site-verification', seo.google_site_verification);
   }
 
-  // 3. Open Graph (WhatsApp, Facebook, LinkedIn)
+  // 3. Open Graph
   setMeta('property', 'og:title', seo.meta_title);
   setMeta('property', 'og:description', seo.meta_description);
   setMeta('property', 'og:image', seo.og_image);
   setMeta('property', 'og:url', seo.canonical_url || window.location.origin);
   setMeta('property', 'og:site_name', seo.restaurant_name || 'جمر التنور');
 
-  // 4. Twitter / X Card
+  // 4. Twitter Card
   setMeta('name', 'twitter:title', seo.meta_title);
   setMeta('name', 'twitter:description', seo.meta_description);
   setMeta('name', 'twitter:image', seo.og_image);
@@ -143,24 +114,41 @@ export function applySeoSettings(settings?: Partial<SeoSettings>) {
       document.head.appendChild(schemaScript);
     }
 
-    const schemaData = {
+    const cuisines = (seo.restaurant_cuisine || "Pies, Pizza, Shawarma, Burger, Falafel")
+      .split(/[،,]/)
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    const schemaData: Record<string, any> = {
       "@context": "https://schema.org",
       "@type": "Restaurant",
       "name": seo.restaurant_name || "جمر التنور",
       "description": seo.meta_description,
       "image": seo.og_image,
       "url": seo.canonical_url || window.location.origin,
-      "telephone": seo.restaurant_phone || "",
-      "servesCuisine": (seo.restaurant_cuisine || "Arabic, Middle Eastern, Pies").split(',').map(s => s.trim()),
-      "priceRange": "$$",
-      "address": {
+      "priceRange": "$$"
+    };
+
+    if (seo.restaurant_phone) {
+      schemaData["telephone"] = seo.restaurant_phone;
+    }
+
+    if (cuisines.length > 0) {
+      schemaData["servesCuisine"] = cuisines;
+    }
+
+    if (seo.restaurant_address) {
+      schemaData["address"] = {
         "@type": "PostalAddress",
-        "streetAddress": seo.restaurant_address || "الرياض",
+        "streetAddress": seo.restaurant_address,
         "addressLocality": "Riyadh",
         "addressCountry": "SA"
-      },
-      "openingHours": seo.business_hours || "Mo-Su 12:00-02:00"
-    };
+      };
+    }
+
+    if (seo.business_hours) {
+      schemaData["openingHours"] = seo.business_hours;
+    }
 
     schemaScript.textContent = JSON.stringify(schemaData, null, 2);
   }
@@ -174,55 +162,55 @@ export function calculateSeoScore(settings?: Partial<SeoSettings>) {
   let score = 0;
   const checks: { label: string; passed: boolean; tip: string }[] = [];
 
-  // 1. Title check (ideal: 40 - 70 chars)
+  // 1. Title check
   const titleLen = (seo.meta_title || '').trim().length;
-  const titleOk = titleLen >= 35 && titleLen <= 70;
+  const titleOk = titleLen >= 25 && titleLen <= 70;
   if (titleOk) score += 25;
   else if (titleLen > 0) score += 10;
   checks.push({
     label: 'عنوان الصفحة (Title Tag)',
     passed: titleOk,
-    tip: titleLen < 35 ? 'العنوان قصير جداً، حاول إضافة اسم الفرع أو تخصص المطعم.' : titleLen > 70 ? 'العنوان طويل جداً وقد يقتطعه قوقل بالنقاط (...).' : 'طول العنوان مثالي جداً لنتائج البحث (بين 35 و 70 حرفاً).'
+    tip: titleLen < 25 ? 'العنوان قصير.' : titleLen > 70 ? 'العنوان طويل.' : 'طول العنوان مناسب.'
   });
 
-  // 2. Description check (ideal: 110 - 165 chars)
+  // 2. Description check
   const descLen = (seo.meta_description || '').trim().length;
-  const descOk = descLen >= 100 && descLen <= 170;
+  const descOk = descLen >= 70 && descLen <= 170;
   if (descOk) score += 25;
   else if (descLen > 0) score += 12;
   checks.push({
     label: 'الوصف التعريفي (Meta Description)',
     passed: descOk,
-    tip: descLen < 100 ? 'الوصف قصير، أضف تفاصيل عن الأصناف، التوصيل، وجودة الطعام.' : descLen > 170 ? 'الوصف طويل بعض الشيء، الأفضل أن يكون أقل من 165 حرفاً.' : 'طول الوصف مثالي لمحركات البحث وتطبيقات المراسلة.'
+    tip: descLen < 70 ? 'الوصف قصير.' : descLen > 170 ? 'الوصف طويل.' : 'طول الوصف مناسب.'
   });
 
-  // 3. Keywords check (at least 3 keywords)
-  const kwList = (seo.meta_keywords || '').split(',').map(k => k.trim()).filter(Boolean);
-  const kwOk = kwList.length >= 4;
+  // 3. Keywords check
+  const kwList = (seo.meta_keywords || '').split(/[،,]/).map(k => k.trim()).filter(Boolean);
+  const kwOk = kwList.length >= 3;
   if (kwOk) score += 20;
   else if (kwList.length > 0) score += 10;
   checks.push({
-    label: 'الكلمات المفتاحية المستهدفة',
+    label: 'الكلمات المفتاحية',
     passed: kwOk,
-    tip: kwOk ? `تم تحديد ${kwList.length} كلمات مفتاحية بنجاح.` : 'يُفضل إضافة 4 كلمات مفتاحية على الأقل تفصل بينها بفواصل.'
+    tip: kwOk ? `تم تحديد ${kwList.length} كلمات مفتاحية.` : 'حدد 3 كلمات مفتاحية على الأقل تفصل بينها بفواصل.'
   });
 
-  // 4. Social Sharing & Logo image
+  // 4. Social Sharing image
   const imgOk = Boolean(seo.og_image && seo.og_image.startsWith('http'));
   if (imgOk) score += 15;
   checks.push({
     label: 'صورة المشاركة (Social Image)',
     passed: imgOk,
-    tip: imgOk ? 'الصورة جاهزة وستظهر في معاينات واتساب وتويتر.' : 'يرجى وضع رابط صورة بدقة جيدة تظهر عند مشاركة الرابط.'
+    tip: imgOk ? 'رابط الصورة موجود.' : 'يرجى وضع رابط الصورة.'
   });
 
   // 5. Local Schema & Business data
-  const schemaOk = Boolean(seo.enable_rich_schema && seo.restaurant_name && seo.restaurant_phone);
+  const schemaOk = Boolean(seo.enable_rich_schema && seo.restaurant_name);
   if (schemaOk) score += 15;
   checks.push({
-    label: 'بيانات المطعم المنظمة (Schema)',
+    label: 'بيانات المطعم (Schema)',
     passed: schemaOk,
-    tip: schemaOk ? 'بيانات المطعم جاهزة لمساعدة قوقل على إبراز موقعك وساعات عملك.' : 'أكمل اسم المطعم ورقم الهاتف لتفعيل كود السكيما بالكامل.'
+    tip: schemaOk ? 'اسم المطعم محدد.' : 'أدخل اسم المطعم لتفعيل السكيما.'
   });
 
   return {

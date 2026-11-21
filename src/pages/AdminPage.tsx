@@ -195,7 +195,7 @@ export const AdminPage: React.FC = () => {
                         { id: 'coupons', label: 'كوبونات الخصم', icon: <TicketPercent size={16} /> },
                         { id: 'loyalty', label: 'نظام الولاء والنقاط 🌟', icon: <Gift size={16} /> },
                         { id: 'marketing', label: 'التسويق والإشعارات 📢', icon: <Send size={16} /> },
-                        { id: 'seo', label: 'إعدادات SEO والمحتوى 🔍', icon: <Search size={16} /> },
+                        { id: 'seo', label: 'إعدادات SEO والمحتوى', icon: <Search size={16} /> },
                         { id: 'theme', label: '🎨 ثيم المتجر والمواسم', icon: <Sparkles size={16} /> },
                         { id: 'settings', label: 'الفروع والإعدادات', icon: <SettingsIcon size={16} /> }
                     ].map(tab => (
