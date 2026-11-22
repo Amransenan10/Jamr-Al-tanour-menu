@@ -9,9 +9,13 @@ import { AdminPage } from './pages/AdminPage';
 import './index.css';
 import { ErrorBoundary } from './ErrorBoundary';
 import { initSecurityGuard } from './utils/securityGuard';
+import { initLiveUpdateService } from './utils/liveUpdateService';
 
 // تفعيل نظام الحماية ومنع لوحة الأوامر وفحص الأكواد
 initSecurityGuard();
+
+// تفعيل نظام التحديث اللحظي الفوري لجميع أجهزة العملاء والكاشير
+initLiveUpdateService();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

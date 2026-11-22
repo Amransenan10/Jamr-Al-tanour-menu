@@ -25,6 +25,7 @@ import { formatOrderNumber } from '../utils/orderUtils';
 import { secureAuth } from '../utils/securityGuard';
 import { posDeviceManager, PosDevice } from '../utils/posDeviceManager';
 import { compressImageFile, compressRemoteImageUrl } from '../lib/imageOptimization';
+import { broadcastInstantUpdateToAll } from '../utils/liveUpdateService';
 
 export const AdminPage: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -172,9 +173,29 @@ export const AdminPage: React.FC = () => {
                             <p className="text-[10px] text-gray-400 hidden sm:block">مطعم جمر التنور</p>
                         </div>
                     </div>
-                    <button onClick={() => { secureAuth.clearSession('admin'); setIsAuthenticated(false); }} className="flex items-center gap-1.5 text-red-400 bg-red-500/10 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl hover:bg-red-500/20 font-bold text-xs sm:text-sm transition-colors cursor-pointer">
-                        <LogOut size={16} /> <span className="hidden sm:inline">تسجيل خروج</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            type="button"
+                            onClick={async () => {
+                                const ok = window.confirm('هل تريد إرسال أمر تحديث فوري ولحظي لجميع شاشات وهواتف الزبائن المتصلة الآن؟');
+                                if (!ok) return;
+                                const success = await broadcastInstantUpdateToAll();
+                                if (success) {
+                                    toast.success('تم إرسال أمر التحديث الفوري لجميع العملاء بنجاح! 🚀');
+                                } else {
+                                    toast.error('تعذر الإرسال، يرجى المحاولة لاحقاً');
+                                }
+                            }}
+                            className="flex items-center gap-1.5 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl font-bold text-xs transition-colors cursor-pointer border border-emerald-500/20"
+                            title="تحديث فوري لجميع شاشات وهواتف الزبائن"
+                        >
+                            <RefreshCw size={14} className="hover:rotate-180 transition-transform duration-500" />
+                            <span className="hidden md:inline">تحديث فوري للزبائن</span>
+                        </button>
+                        <button onClick={() => { secureAuth.clearSession('admin'); setIsAuthenticated(false); }} className="flex items-center gap-1.5 text-red-400 bg-red-500/10 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl hover:bg-red-500/20 font-bold text-xs sm:text-sm transition-colors cursor-pointer">
+                            <LogOut size={16} /> <span className="hidden sm:inline">تسجيل خروج</span>
+                        </button>
+                    </div>
                 </div>
                 {/* Responsive Touch & Mouse Friendly Tabs */}
                 <div 

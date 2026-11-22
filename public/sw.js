@@ -4,7 +4,7 @@ importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
 self.addEventListener('install', (e) => {
     self.skipWaiting();
     e.waitUntil(
-        caches.open('jamr-al-tanour-v2').then((cache) => cache.addAll([
+        caches.open('jamr-al-tanour-v3').then((cache) => cache.addAll([
             '/',
             '/index.html'
         ]))
@@ -15,7 +15,7 @@ self.addEventListener('activate', (e) => {
     e.waitUntil(
         caches.keys().then((keys) => {
             return Promise.all(
-                keys.filter((key) => key !== 'jamr-al-tanour-v2' && key !== 'jamr-images-v1').map((key) => caches.delete(key))
+                keys.filter((key) => key !== 'jamr-al-tanour-v3' && key !== 'jamr-images-v1').map((key) => caches.delete(key))
             );
         })
     );
@@ -78,6 +78,12 @@ self.addEventListener('fetch', (event) => {
 
     // Cache-first for images, Network-first for everything else
     const isImage = event.request.destination === 'image';
+
+    // Never cache version.json - always bypass to network
+    if (event.request.url.includes('version.json')) {
+        event.respondWith(fetch(event.request, { cache: 'no-store' }));
+        return;
+    }
 
     if (isImage) {
         event.respondWith(
