@@ -15,11 +15,40 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+const healCartItem = (item: CartItem): CartItem => {
+  const optionsTotal = Array.isArray(item.options)
+    ? item.options.reduce((sum, opt) => sum + (Number(opt.price) || 0), 0)
+    : 0;
+  let basePrice = Number(item.price) || 0;
+
+  // Self-heal items affected by the double-pricing bug:
+  // If basePrice was accidentally set to optionsTotal (or unitPrice) while options already contain the price
+  if (optionsTotal > 0 && (basePrice === optionsTotal || (item.totalPrice && basePrice === Math.round(item.totalPrice / (item.quantity || 1))))) {
+    basePrice = 0;
+  }
+
+  const effectiveUnit = (basePrice > 0 || optionsTotal > 0)
+    ? (basePrice + optionsTotal)
+    : (item.totalPrice && item.quantity ? item.totalPrice / item.quantity : 0);
+  const qty = Math.max(1, Number(item.quantity) || 1);
+  const total = Math.round(effectiveUnit * qty * 100) / 100;
+
+  return {
+    ...item,
+    price: basePrice,
+    quantity: qty,
+    totalPrice: total > 0 ? total : (item.totalPrice || 0)
+  };
+};
+
 const calculateItemUnitPrice = (item: CartItem): number => {
   const optionsTotal = Array.isArray(item.options)
     ? item.options.reduce((sum, opt) => sum + (Number(opt.price) || 0), 0)
     : 0;
-  const base = Number(item.price) || 0;
+  let base = Number(item.price) || 0;
+  if (optionsTotal > 0 && (base === optionsTotal || (item.totalPrice && base === Math.round(item.totalPrice / (item.quantity || 1))))) {
+    base = 0;
+  }
   if (base > 0 || optionsTotal > 0) {
     return base + optionsTotal;
   }
@@ -57,7 +86,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const unit = (basePrice + optionsSum) > 0 ? (basePrice + optionsSum) : (Number(item.totalPrice ?? item.t ?? 0) / (qty || 1));
                 const total = Math.round(unit * qty * 100) / 100;
 
-                return {
+                return healCartItem({
                   id: item.id || item.i || `cart_item_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
                   productId: item.productId || item.p || '',
                   name: item.name || item.n || item.name_ar || 'وجبة',
@@ -67,7 +96,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   removedIngredients: item.removedIngredients || item.r || [],
                   totalPrice: total,
                   notes: item.notes || item.nt || ''
-                };
+                });
               });
 
               setCart(restoredItems);
@@ -99,7 +128,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const unit = (basePrice + optionsSum) > 0 ? (basePrice + optionsSum) : (Number(item.totalPrice ?? item.t ?? 0) / (qty || 1));
               const total = Math.round(unit * qty * 100) / 100;
 
-              return {
+              return healCartItem({
                 id: item.id || item.i || `cart_item_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
                 productId: item.productId || item.p || '',
                 name: item.name || item.n || item.name_ar || 'وجبة',
@@ -109,7 +138,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 removedIngredients: item.removedIngredients || item.r || [],
                 totalPrice: total,
                 notes: item.notes || item.nt || ''
-              };
+              });
             });
 
             setCart(restoredItems);
@@ -127,11 +156,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const parsed = JSON.parse(savedCart);
         if (Array.isArray(parsed)) {
-          const selfHealed = parsed.map((item: CartItem) => {
-            const unitPrice = calculateItemUnitPrice(item);
-            const correctedTotal = unitPrice > 0 ? Math.round(unitPrice * item.quantity * 100) / 100 : (item.totalPrice || 0);
-            return { ...item, totalPrice: correctedTotal };
-          });
+          const selfHealed = parsed.map(healCartItem);
           setCart(selfHealed);
         }
       } catch (e) {
@@ -142,11 +167,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const restoreCart = (items: CartItem[]) => {
     if (Array.isArray(items) && items.length > 0) {
-      const selfHealed = items.map((item: CartItem) => {
-        const unitPrice = calculateItemUnitPrice(item);
-        const correctedTotal = unitPrice > 0 ? Math.round(unitPrice * item.quantity * 100) / 100 : (item.totalPrice || 0);
-        return { ...item, totalPrice: correctedTotal };
-      });
+      const selfHealed = items.map(healCartItem);
       setCart(selfHealed);
       localStorage.setItem('jamr_al_tannour_cart', JSON.stringify(selfHealed));
     }
@@ -157,14 +178,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [cart]);
 
   const addToCart = (item: CartItem) => {
-    const unitPrice = calculateItemUnitPrice(item);
-    if (unitPrice <= 0 && (!item.totalPrice || item.totalPrice <= 0)) {
-      console.warn('Blocked adding zero-price item to cart:', item);
+    const healed = healCartItem(item);
+    const unitPrice = calculateItemUnitPrice(healed);
+    if (unitPrice <= 0 && (!healed.totalPrice || healed.totalPrice <= 0)) {
+      console.warn('Blocked adding zero-price item to cart:', healed);
       return;
     }
-    const effectiveUnitPrice = unitPrice > 0 ? unitPrice : (item.totalPrice / (item.quantity || 1));
-    const correctedTotal = Math.round(effectiveUnitPrice * item.quantity * 100) / 100;
-    setCart((prev) => [...prev, { ...item, price: item.price > 0 ? item.price : effectiveUnitPrice, totalPrice: correctedTotal }]);
+    setCart((prev) => [...prev, healed]);
   };
 
   const removeFromCart = (cartItemId: string) => {
@@ -175,10 +195,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCart((prev) =>
       prev.map((item) => {
         if (item.id === cartItemId) {
-          const newQty = Math.max(1, item.quantity + delta);
-          const unitPrice = calculateItemUnitPrice(item);
+          const healed = healCartItem(item);
+          const newQty = Math.max(1, healed.quantity + delta);
+          const unitPrice = calculateItemUnitPrice(healed);
           const newTotal = Math.round(unitPrice * newQty * 100) / 100;
-          return { ...item, quantity: newQty, totalPrice: newTotal };
+          return { ...healed, quantity: newQty, totalPrice: newTotal };
         }
         return item;
       })

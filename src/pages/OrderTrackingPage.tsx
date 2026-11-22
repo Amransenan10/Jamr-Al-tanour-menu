@@ -332,7 +332,11 @@ export const OrderTrackingPage: React.FC = () => {
                                         <div className="font-bold text-gray-900 dark:text-white">
                                             {(() => {
                                                 const optionsSum = item.options?.reduce((s: number, o: any) => s + (Number(o.price) || 0), 0) || 0;
-                                                const unit = (Number(item.price) || 0) + optionsSum;
+                                                let base = Number(item.price) || 0;
+                                                if (optionsSum > 0 && (base === optionsSum || (item.totalPrice && base === Math.round(item.totalPrice / (item.quantity || 1))))) {
+                                                    base = 0;
+                                                }
+                                                const unit = base + optionsSum;
                                                 const total = unit > 0 ? (unit * (item.quantity || 1)) : (item.totalPrice || 0);
                                                 return Number(total.toFixed(2));
                                             })()} ر.س

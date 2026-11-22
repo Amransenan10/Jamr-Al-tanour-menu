@@ -424,7 +424,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
 
     // Safeguard: Disallow submitting any order containing an item with 0 SAR price
     const invalidZeroItems = cart.filter(item => {
-      const unit = (Number(item.price) || 0) + (item.options?.reduce((s: number, o: any) => s + (Number(o.price) || 0), 0) || 0);
+      const optionsSum = item.options?.reduce((s: number, o: any) => s + (Number(o.price) || 0), 0) || 0;
+      let base = Number(item.price) || 0;
+      if (optionsSum > 0 && (base === optionsSum || (item.totalPrice && base === Math.round(item.totalPrice / (item.quantity || 1))))) {
+        base = 0;
+      }
+      const unit = base + optionsSum;
       const isZero = (item.totalPrice <= 0 || unit <= 0);
       const isGift = (item.name || '').includes('هدية') || (item.name || '').includes('مجاني');
       return isZero && !isGift;
@@ -632,7 +637,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
                   ) : (
                     cart.map((item) => {
                       const optionsSum = item.options?.reduce((s, o) => s + (Number(o.price) || 0), 0) || 0;
-                      const unit = (Number(item.price) || 0) + optionsSum;
+                      let base = Number(item.price) || 0;
+                      if (optionsSum > 0 && (base === optionsSum || (item.totalPrice && base === Math.round(item.totalPrice / (item.quantity || 1))))) {
+                        base = 0;
+                      }
+                      const unit = base + optionsSum;
                       const itemDisplayPrice = unit > 0 ? (unit * item.quantity) : (item.totalPrice || 0);
 
                       return (

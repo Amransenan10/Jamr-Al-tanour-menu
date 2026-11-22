@@ -82,7 +82,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
       const filtered = prev.filter(o => o.groupId !== group.id || group.max_selection > 1);
       const exists = prev.find(o => o.itemId === item.id);
 
+      const isRequiredSingle = group.max_selection === 1 && (group.min_selection > 0 || Number(product?.price || 0) === 0);
       if (exists) {
+        if (isRequiredSingle) {
+          return prev;
+        }
         return prev.filter(o => o.itemId !== item.id);
       }
 
@@ -202,7 +206,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
       id: Math.random().toString(36).substr(2, 9),
       productId: product.id,
       name: product.name_ar,
-      price: product.price > 0 ? product.price : unitPrice,
+      price: Number(product.price) || 0,
       quantity,
       options: finalOptions,
       removedIngredients,
