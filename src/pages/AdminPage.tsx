@@ -979,10 +979,36 @@ const AdminMenuView = () => {
     const fetchData = async () => {
         setLoading(true);
         const [prodRes, catRes] = await Promise.all([
-            supabaseAdmin.from('products').select('*').order('category_id').order('name_ar'),
-            supabaseAdmin.from('categories').select('*').order('sort_order')
+            (supabaseAdmin || supabase)
+                .from('products')
+                .select('*, option_groups(id, min_selection, max_selection, option_items(id, name_ar, price, is_available))')
+                .order('category_id')
+                .order('name_ar'),
+            (supabaseAdmin || supabase).from('categories').select('*').order('sort_order')
         ]);
-        if (prodRes.data) setProducts(prodRes.data);
+        if (prodRes.data) {
+            const processed = prodRes.data.map((p: any) => {
+                let startPrice = Number(p.price) || 0;
+                if (startPrice === 0 && p.option_groups && p.option_groups.length > 0) {
+                    const validPrices: number[] = [];
+                    p.option_groups.forEach((g: any) => {
+                        if (g.option_items && g.option_items.length > 0) {
+                            g.option_items.forEach((i: any) => {
+                                const priceNum = Number(i.price);
+                                if (!isNaN(priceNum) && priceNum > 0) {
+                                    validPrices.push(priceNum);
+                                }
+                            });
+                        }
+                    });
+                    if (validPrices.length > 0) {
+                        startPrice = Math.min(...validPrices);
+                    }
+                }
+                return { ...p, starting_price: startPrice };
+            });
+            setProducts(processed);
+        }
         if (catRes.data) {
             setCategories(catRes.data);
             if (!formData.category_id && catRes.data.length > 0) {
@@ -1390,7 +1416,21 @@ const AdminMenuView = () => {
                                             {!(p.is_available ?? true) && <span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full font-bold">نَفَد</span>}
                                         </div>
                                     </h3>
-                                    <p className="text-primary font-bold text-sm mt-1">{p.price} ر.س</p>
+                                    <div className="mt-1">
+                                        {p.price > 0 ? (
+                                            <p className="text-primary font-bold text-sm">{p.price} ر.س</p>
+                                        ) : p.starting_price > 0 ? (
+                                            <p className="text-primary font-bold text-sm flex items-center gap-1.5 flex-wrap">
+                                                <span className="text-[11px] text-gray-400 font-normal">يبدأ من</span>
+                                                <span>{p.starting_price} ر.س</span>
+                                                <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 font-bold">متعدد الأحجام</span>
+                                            </p>
+                                        ) : (
+                                            <p className="text-amber-400 font-bold text-xs bg-amber-500/10 px-2 py-0.5 rounded-md inline-block">
+                                                0 ر.س (يرجى تحديد السعر)
+                                            </p>
+                                        )}
+                                    </div>
                                     <p className="text-xs text-gray-500 mt-1 line-clamp-2">{p.description_ar}</p>
                                 </div>
                             </div>
@@ -2433,10 +2473,35 @@ const AdminAdditionsView: React.FC = () => {
     const fetchProductsData = async () => {
         setLoading(true);
         const [prodRes, catRes] = await Promise.all([
-            supabaseAdmin.from('products').select('*').order('name_ar'),
-            supabaseAdmin.from('categories').select('*').order('sort_order')
+            (supabaseAdmin || supabase)
+                .from('products')
+                .select('*, option_groups(id, min_selection, max_selection, option_items(id, name_ar, price, is_available))')
+                .order('name_ar'),
+            (supabaseAdmin || supabase).from('categories').select('*').order('sort_order')
         ]);
-        if (prodRes.data) setProducts(prodRes.data);
+        if (prodRes.data) {
+            const processed = prodRes.data.map((p: any) => {
+                let startPrice = Number(p.price) || 0;
+                if (startPrice === 0 && p.option_groups && p.option_groups.length > 0) {
+                    const validPrices: number[] = [];
+                    p.option_groups.forEach((g: any) => {
+                        if (g.option_items && g.option_items.length > 0) {
+                            g.option_items.forEach((i: any) => {
+                                const priceNum = Number(i.price);
+                                if (!isNaN(priceNum) && priceNum > 0) {
+                                    validPrices.push(priceNum);
+                                }
+                            });
+                        }
+                    });
+                    if (validPrices.length > 0) {
+                        startPrice = Math.min(...validPrices);
+                    }
+                }
+                return { ...p, starting_price: startPrice };
+            });
+            setProducts(processed);
+        }
         if (catRes.data) setCategories(catRes.data);
         setLoading(false);
     };
@@ -2481,7 +2546,7 @@ const AdminAdditionsView: React.FC = () => {
             product_id: selectedProductId, 
             name_ar: 'مجموعة خيارات جديدة', 
             name_en: 'New Option Group', 
-            min_selection: 0, 
+            min_selection: 1, 
             max_selection: 1 
         };
         const { data, error } = await supabaseAdmin.from('option_groups').insert([payload]).select().single();
@@ -2727,7 +2792,9 @@ const AdminAdditionsView: React.FC = () => {
                                 <img src={p.image_url || '/placeholder.png'} className="w-10 h-10 rounded-lg object-cover bg-zinc-805" />
                                 <div className="flex-1 min-w-0">
                                     <p className="font-bold text-xs truncate">{p.name_ar}</p>
-                                    <p className="text-[10px] text-gray-500">{p.price} ر.س</p>
+                                    <p className="text-[10px] text-gray-500">
+                                        {p.price > 0 ? `${p.price} ر.س` : p.starting_price > 0 ? `يبدأ من ${p.starting_price} ر.س` : '0 ر.س'}
+                                    </p>
                                 </div>
                             </button>
                         ))}
@@ -2761,7 +2828,9 @@ const AdminAdditionsView: React.FC = () => {
                                         <img src={p.image_url || '/placeholder.png'} className="w-14 h-14 rounded-xl object-cover bg-zinc-800 border border-white/10" />
                                         <div>
                                             <h3 className="font-black text-md text-white">{p.name_ar}</h3>
-                                            <p className="text-xs text-gray-400">{cat?.name_ar} • {p.price} ر.س</p>
+                                            <p className="text-xs text-gray-400">
+                                                {cat?.name_ar} • {p.price > 0 ? `${p.price} ر.س` : p.starting_price > 0 ? `يبدأ من ${p.starting_price} ر.س` : '0 ر.س'}
+                                            </p>
                                         </div>
                                     </div>
                                     <button 

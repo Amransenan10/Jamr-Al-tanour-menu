@@ -563,17 +563,24 @@ export default function App() {
       }
       if (prodsRes.data) {
         const processedProducts = prodsRes.data.map((p: any) => {
-          if (p.price === 0 && p.option_groups && p.option_groups.length > 0) {
-            const requiredGroups = p.option_groups.filter((g: any) => g.min_selection > 0);
-            if (requiredGroups.length > 0) {
-              const firstGroup = requiredGroups[0];
-              if (firstGroup.option_items && firstGroup.option_items.length > 0) {
-                const minPrice = Math.min(...firstGroup.option_items.map((i: any) => i.price));
-                return { ...p, starting_price: minPrice };
+          let startPrice = Number(p.price) || 0;
+          if (startPrice === 0 && p.option_groups && p.option_groups.length > 0) {
+            const validPrices: number[] = [];
+            p.option_groups.forEach((g: any) => {
+              if (g.option_items && g.option_items.length > 0) {
+                g.option_items.forEach((i: any) => {
+                  const priceNum = Number(i.price);
+                  if (!isNaN(priceNum) && priceNum > 0) {
+                    validPrices.push(priceNum);
+                  }
+                });
               }
+            });
+            if (validPrices.length > 0) {
+              startPrice = Math.min(...validPrices);
             }
           }
-          return p;
+          return { ...p, starting_price: startPrice };
         });
         setProducts(processedProducts);
         localStorage.setItem('jamr_prods_cache', JSON.stringify(processedProducts));

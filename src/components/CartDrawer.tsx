@@ -422,6 +422,19 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ isOpen, onClose, branch,
       return;
     }
 
+    // Safeguard: Disallow submitting any order containing an item with 0 SAR price
+    const invalidZeroItems = cart.filter(item => {
+      const unit = (Number(item.price) || 0) + (item.options?.reduce((s: number, o: any) => s + (Number(o.price) || 0), 0) || 0);
+      const isZero = (item.totalPrice <= 0 || unit <= 0);
+      const isGift = (item.name || '').includes('هدية') || (item.name || '').includes('مجاني');
+      return isZero && !isGift;
+    });
+
+    if (invalidZeroItems.length > 0) {
+      alert(`عذراً، الصنف "${invalidZeroItems[0].name}" غير محدد السعر أو الحجم بشكل صحيح (0 ر.س). يرجى حذفه وإعادة اختياره وتحديد الحجم.`);
+      return;
+    }
+
     setLoading(true);
     try {
       // Re-verify promo with phone one more time to prevent bypasses when user enters phone AFTER applying promo

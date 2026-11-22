@@ -51,15 +51,19 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
       if (groupsRes.data && itemsRes.data) {
         const initialSelections: CartItem['options'] = [];
         groupsRes.data.forEach((group: OptionGroup) => {
-          if (group.min_selection > 0 && group.max_selection === 1) {
-            const firstItem = itemsRes.data.find((item: OptionItem) => item.group_id === group.id);
+          const isSingleChoice = group.max_selection === 1;
+          const isRequired = group.min_selection > 0;
+          // Preselect if explicitly required OR if product has price 0 and it's a single selection group (e.g. sizes)
+          const shouldPreselect = (isRequired && isSingleChoice) || (Number(product.price || 0) === 0 && isSingleChoice && initialSelections.length === 0);
+          if (shouldPreselect) {
+            const firstItem = itemsRes.data.find((item: OptionItem) => item.group_id === group.id && (item.is_available ?? true));
             if (firstItem) {
               initialSelections.push({
                 groupId: group.id,
                 groupName: group.name_ar,
                 itemId: firstItem.id,
                 itemName: firstItem.name_ar,
-                price: firstItem.price
+                price: Number(firstItem.price) || 0
               });
             }
           }
@@ -118,68 +122,74 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
   const calculateTotal = () => {
     if (!product) return 0;
 
-    let basePrice = product.price;
+    let basePrice = Number(product.price) || 0;
     let additivesTotal = 0;
 
-    const singleSelectionGroups = groups.filter(g => g.max_selection === 1 && g.min_selection > 0);
+    const singleSelectionGroups = groups.filter(g => g.max_selection === 1 && (g.min_selection > 0 || Number(product.price || 0) === 0));
     const overrides = selectedOptions.filter(o => singleSelectionGroups.some(g => g.id === o.groupId));
     const additives = selectedOptions.filter(o => !singleSelectionGroups.some(g => g.id === o.groupId));
 
     const isOffer = product.is_offer || product.category_id === 'offers_weekly' || (product.original_price && product.original_price > product.price);
 
-    if (product.price === 0 && overrides.length > 0) {
-      basePrice = overrides.reduce((sum, o) => sum + o.price, 0);
-    } else if (product.price > 0) {
-      if (!isOffer) {
-        additivesTotal += overrides.reduce((sum, o) => sum + (o.price || 0), 0);
-      }
-      
-      additivesTotal += additives.reduce((sum, o) => {
-        let currentPrice = o.price;
-        const originalItem = items.find(i => i.id === o.itemId);
-        if (originalItem && originalItem.price_rules) {
-          for (const otherOpt of selectedOptions) {
-            if (originalItem.price_rules[otherOpt.itemName] !== undefined) {
-              currentPrice = originalItem.price_rules[otherOpt.itemName];
-              break;
-            }
-          }
-        }
-        return sum + currentPrice;
-      }, 0);
+    if (basePrice === 0 && overrides.length > 0) {
+      basePrice = overrides.reduce((sum, o) => sum + (Number(o.price) || 0), 0);
+    } else if (basePrice > 0 && !isOffer) {
+      additivesTotal += overrides.reduce((sum, o) => sum + (Number(o.price) || 0), 0);
     }
 
-    return (basePrice + additivesTotal) * quantity;
+    additivesTotal += additives.reduce((sum, o) => {
+      let currentPrice = Number(o.price) || 0;
+      const originalItem = items.find(i => i.id === o.itemId);
+      if (originalItem && originalItem.price_rules) {
+        for (const otherOpt of selectedOptions) {
+          if (originalItem.price_rules[otherOpt.itemName] !== undefined) {
+            currentPrice = Number(originalItem.price_rules[otherOpt.itemName]) || 0;
+            break;
+          }
+        }
+      }
+      return sum + currentPrice;
+    }, 0);
+
+    return Math.max(0, (basePrice + additivesTotal) * quantity);
   };
 
   const getMissingRequiredGroups = () => {
     return groups.filter(group => {
       const selectionsCount = selectedOptions.filter(o => o.groupId === group.id).length;
-      return selectionsCount < group.min_selection;
+      // If product.price is 0, require selection for single-selection choice/size group
+      const effectiveMin = (product && Number(product.price || 0) === 0 && group.max_selection === 1 && groups.length > 0)
+        ? Math.max(1, group.min_selection)
+        : group.min_selection;
+      return selectionsCount < effectiveMin;
     });
   };
 
   const isAddToCartDisabled = () => {
     if (loading) return true;
     if (product && product.is_available === false) return true;
-    return getMissingRequiredGroups().length > 0;
+    if (getMissingRequiredGroups().length > 0) return true;
+    // Disallow adding if calculated total is 0 SAR
+    if (calculateTotal() <= 0) return true;
+    return false;
   };
 
   const handleAddToCart = () => {
     if (!product || loading || isAddToCartDisabled()) return;
 
     const calculatedPrice = calculateTotal();
-    if (calculatedPrice <= 0 && product.price <= 0 && selectedOptions.length === 0) {
+    if (calculatedPrice <= 0) {
+      alert('يرجى اختيار الحجم أو الخيارات قبل إضافة الصنف');
       return;
     }
 
     const finalOptions = selectedOptions.map(opt => {
       const originalItem = items.find(i => i.id === opt.itemId);
-      let finalPrice = opt.price;
+      let finalPrice = Number(opt.price) || 0;
       if (originalItem && originalItem.price_rules) {
         for (const otherOpt of selectedOptions) {
           if (originalItem.price_rules[otherOpt.itemName] !== undefined) {
-            finalPrice = originalItem.price_rules[otherOpt.itemName];
+            finalPrice = Number(originalItem.price_rules[otherOpt.itemName]) || 0;
             break;
           }
         }
@@ -187,11 +197,12 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
       return { ...opt, price: finalPrice };
     });
 
+    const unitPrice = calculatedPrice / (quantity || 1);
     const cartItem: CartItem = {
       id: Math.random().toString(36).substr(2, 9),
       productId: product.id,
       name: product.name_ar,
-      price: product.price,
+      price: product.price > 0 ? product.price : unitPrice,
       quantity,
       options: finalOptions,
       removedIngredients,
@@ -437,6 +448,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                     <span>غير متوفر حالياً</span>
                   ) : getMissingRequiredGroups().length > 0 ? (
                     <span>اختر {getMissingRequiredGroups()[0]?.name_ar}</span>
+                  ) : calculateTotal() <= 0 ? (
+                    <span>اختر الحجم / الخيارات</span>
                   ) : (
                     <span>إضافة • {calculateTotal()} ر.س</span>
                   )}

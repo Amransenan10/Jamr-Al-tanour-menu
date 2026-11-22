@@ -178,9 +178,13 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                                     {(() => {
                                         const optionsSum = item?.options?.reduce((s: number, o: any) => s + (Number(o.price) || 0), 0) || 0;
                                         const unit = (Number(item?.price) || 0) + optionsSum;
-                                        const total = unit > 0 ? (unit * (item?.quantity || 1)) : (item?.totalPrice || 0);
-                                        return Number(total.toFixed(2));
-                                    })()} ر.س
+                                        const total = unit > 0 ? (unit * (item?.quantity || 1)) : (Number(item?.totalPrice) || 0);
+                                        const formatted = Number(total.toFixed(2));
+                                        if (formatted === 0 && !item?.name?.includes('هدية') && !item?.name?.includes('مجاني')) {
+                                            return <span className="text-red-400 font-bold bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">0 ر.س ⚠️</span>;
+                                        }
+                                        return `${formatted} ر.س`;
+                                    })()}
                                 </span>
                             </div>
                             

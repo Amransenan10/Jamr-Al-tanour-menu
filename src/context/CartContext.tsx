@@ -158,8 +158,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addToCart = (item: CartItem) => {
     const unitPrice = calculateItemUnitPrice(item);
-    const correctedTotal = Math.round(unitPrice * item.quantity * 100) / 100;
-    setCart((prev) => [...prev, { ...item, totalPrice: correctedTotal }]);
+    if (unitPrice <= 0 && (!item.totalPrice || item.totalPrice <= 0)) {
+      console.warn('Blocked adding zero-price item to cart:', item);
+      return;
+    }
+    const effectiveUnitPrice = unitPrice > 0 ? unitPrice : (item.totalPrice / (item.quantity || 1));
+    const correctedTotal = Math.round(effectiveUnitPrice * item.quantity * 100) / 100;
+    setCart((prev) => [...prev, { ...item, price: item.price > 0 ? item.price : effectiveUnitPrice, totalPrice: correctedTotal }]);
   };
 
   const removeFromCart = (cartItemId: string) => {
