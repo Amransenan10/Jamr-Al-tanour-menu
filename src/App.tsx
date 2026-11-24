@@ -65,6 +65,25 @@ export default function App() {
   const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null);
   const [isLoyaltyModalOpen, setIsLoyaltyModalOpen] = useState(false);
   const storeStatus = storeSettings?.status || 'open';
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerHeight, setHeaderHeight] = useState<number>(128);
+
+  useEffect(() => {
+    if (!headerRef.current) return;
+    const updateHeaderHeight = () => {
+      if (headerRef.current) {
+        setHeaderHeight(headerRef.current.offsetHeight);
+      }
+    };
+    updateHeaderHeight();
+    const ro = new ResizeObserver(updateHeaderHeight);
+    ro.observe(headerRef.current);
+    window.addEventListener('resize', updateHeaderHeight);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', updateHeaderHeight);
+    };
+  }, [selectedBranch, loyaltyPoints, appSettings]);
 
   // Hardware Back Button Handlers
   useBackButton(isCartOpen, () => setIsCartOpen(false), 'cart');
@@ -721,6 +740,7 @@ export default function App() {
           />
           
           <Header
+            ref={headerRef}
             selectedBranch={selectedBranch}
             onBranchChange={handleBranchSelect}
             onCartOpen={() => setIsCartOpen(true)}
@@ -781,6 +801,7 @@ export default function App() {
           />
 
           <CategoryBar
+            stickyTop={headerHeight}
             categories={navCategories}
             activeCategoryId={activeCategoryId}
             onCategoryChange={handleCategoryClick}

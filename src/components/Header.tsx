@@ -19,7 +19,7 @@ interface HeaderProps {
   eventSettings?: SeasonalEventSettings;
 }
 
-export const Header: React.FC<HeaderProps> = ({
+export const Header = React.forwardRef<HTMLElement, HeaderProps>(({
   selectedBranch,
   onBranchChange,
   onCartOpen,
@@ -29,7 +29,7 @@ export const Header: React.FC<HeaderProps> = ({
   loyaltyPoints,
   logoUrl,
   eventSettings
-}) => {
+}, ref) => {
   const { totalItems } = useCart();
   const [isBranchMenuOpen, setIsBranchMenuOpen] = React.useState(false);
 
@@ -37,8 +37,10 @@ export const Header: React.FC<HeaderProps> = ({
   const presetDetails = isEventActive ? getPresetDetails(eventSettings?.event_preset) : null;
 
   return (
-    <header className={cn(
-      "sticky top-0 z-40 transition-all border-b shadow-sm",
+    <header 
+      ref={ref}
+      className={cn(
+        "sticky top-0 z-40 transition-all border-b shadow-sm",
       isEventActive 
         ? `bg-gradient-to-r ${presetDetails?.colors.gradient || 'from-emerald-950 via-zinc-900 to-emerald-950'} text-white border-b border-white/10 shadow-lg`
         : "bg-white dark:bg-zinc-950 border-gray-100 dark:border-white/10"
@@ -173,4 +175,6 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
     </header>
   );
-};
+});
+
+Header.displayName = 'Header';

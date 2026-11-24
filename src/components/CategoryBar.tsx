@@ -9,6 +9,7 @@ interface CategoryBarProps {
   onCategoryChange: (id: string | null) => void;
   showWeeklyOffers?: boolean;
   offersTitle?: string;
+  stickyTop?: number;
 }
 
 export const CategoryBar: React.FC<CategoryBarProps> = ({
@@ -17,6 +18,7 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
   onCategoryChange,
   showWeeklyOffers = true,
   offersTitle = 'العروض الأسبوعية',
+  stickyTop,
 }) => {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -35,7 +37,13 @@ export const CategoryBar: React.FC<CategoryBarProps> = ({
   }, [activeCategoryId]);
 
   return (
-    <div className="sticky top-[125px] sm:top-[133px] z-30 bg-white dark:bg-zinc-950 py-2.5 sm:py-3.5 border-b border-gray-100 dark:border-white/10 shadow-sm transition-all">
+    <div 
+      className={cn(
+        "sticky z-30 bg-white dark:bg-zinc-950 py-2.5 sm:py-3.5 border-b border-gray-100 dark:border-white/10 shadow-sm transition-[top]",
+        stickyTop === undefined && "top-[125px] sm:top-[133px]"
+      )}
+      style={{ top: stickyTop !== undefined ? `${stickyTop}px` : undefined }}
+    >
       <div className="container mx-auto px-2 sm:px-4 relative">
         {/* Gradient Masks for Scroll */}
         <div className="absolute left-0 top-0 bottom-0 w-6 sm:w-8 bg-gradient-to-r from-white dark:from-charcoal to-transparent z-10 pointer-events-none" />

@@ -15,7 +15,6 @@ export const CollapsibleHeroSection: React.FC<CollapsibleHeroSectionProps> = ({
   onSelectProductById,
   onAddDirectOfferToCart
 }) => {
-  const [scrollY, setScrollY] = useState(0);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
@@ -23,15 +22,6 @@ export const CollapsibleHeroSection: React.FC<CollapsibleHeroSectionProps> = ({
   const activeStories = React.useMemo(() => {
     return stories.filter(s => s.is_active !== false);
   }, [stories]);
-
-  // Listen to window scroll to collapse/expand
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrollY(window.scrollY || document.documentElement.scrollTop);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   // Auto slide interval
   useEffect(() => {
@@ -43,9 +33,6 @@ export const CollapsibleHeroSection: React.FC<CollapsibleHeroSectionProps> = ({
   }, [activeStories.length]);
 
   if (activeStories.length === 0) return null;
-
-  // Collapse threshold: when scrolled past 70px
-  const isCollapsed = scrollY > 70;
 
   const currentStory = activeStories[currentIndex] || activeStories[0];
   const displayTitle = currentStory.title || currentStory.offer_name;
@@ -65,12 +52,7 @@ export const CollapsibleHeroSection: React.FC<CollapsibleHeroSectionProps> = ({
 
   return (
     <>
-      <div 
-        className={cn(
-          "transition-all duration-500 ease-out overflow-hidden px-4 container mx-auto",
-          isCollapsed ? "max-h-0 opacity-0 my-0 py-0 scale-95" : "max-h-[550px] opacity-100 mt-4 mb-2 scale-100"
-        )}
-      >
+      <div className="overflow-hidden px-4 container mx-auto mt-4 mb-2">
         <div className="relative max-w-4xl mx-auto rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl bg-zinc-900 border border-white/10 group">
           {/* Main Hero Slider Container - aspect 2:1 matches standard restaurant designs (1080x540) */}
           <div className="relative aspect-[2/1] sm:aspect-[2.1/1] w-full overflow-hidden bg-zinc-950">

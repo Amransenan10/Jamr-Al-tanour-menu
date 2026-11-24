@@ -12,13 +12,13 @@
 @layer base {
   html {
     direction: rtl;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
   body {
     @apply bg-white text-charcoal;
     font-family: var(--font-sans);
     direction: rtl;
-    overflow-x: hidden;
+    overflow-x: clip;
     width: 100%;
     min-width: 100%;
   }
