@@ -809,32 +809,6 @@ export default function App() {
             offersTitle={appSettings?.offers_title || 'العروض الأسبوعية'}
           />
 
-          {(() => {
-            const seoH1 = typeof appSettings?.seo_settings?.restaurant_name === 'string'
-              ? appSettings.seo_settings.restaurant_name.trim()
-              : '';
-            const seoDescription = typeof appSettings?.seo_settings?.meta_description === 'string'
-              ? appSettings.seo_settings.meta_description.trim()
-              : '';
-            if (!seoH1 && !seoDescription) return null;
-            return (
-              <section aria-label="تعريف المطعم" className="container mx-auto px-4 pt-5 pb-1">
-                <div className="max-w-4xl mx-auto text-right">
-                  {seoH1 && (
-                    <h1 className="text-xl sm:text-2xl font-black text-gray-900 dark:text-white leading-snug">
-                      {seoH1}
-                    </h1>
-                  )}
-                  {seoDescription && (
-                    <p className="mt-1.5 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-                      {seoDescription}
-                    </p>
-                  )}
-                </div>
-              </section>
-            );
-          })()}
-
           <main className="container mx-auto px-4 py-8">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-32 gap-4">
@@ -925,6 +899,32 @@ export default function App() {
               </div>
             )}
           </main>
+
+          {(() => {
+            const seoH1 = typeof appSettings?.seo_settings?.restaurant_name === 'string'
+              ? appSettings.seo_settings.restaurant_name.trim()
+              : '';
+            const seoDescription = typeof appSettings?.seo_settings?.meta_description === 'string'
+              ? appSettings.seo_settings.meta_description.trim()
+              : '';
+            if (!seoH1 && !seoDescription) return null;
+            return (
+              <section aria-label="تعريف المطعم" className="container mx-auto px-4 pt-2 pb-6">
+                <div className="max-w-4xl mx-auto text-center border-t border-gray-100 dark:border-white/5 pt-6">
+                  {seoH1 && (
+                    <h1 className="text-base sm:text-lg font-extrabold text-gray-800 dark:text-gray-200 leading-snug">
+                      {seoH1}
+                    </h1>
+                  )}
+                  {seoDescription && (
+                    <p className="mt-1.5 text-xs sm:text-sm text-gray-500 dark:text-gray-400 leading-relaxed max-w-2xl mx-auto">
+                      {seoDescription}
+                    </p>
+                  )}
+                </div>
+              </section>
+            );
+          })()}
 
           <SocialLinks 
             instagram={appSettings?.social_instagram}
