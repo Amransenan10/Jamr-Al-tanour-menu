@@ -27,12 +27,29 @@ import { posDeviceManager, PosDevice } from '../utils/posDeviceManager';
 import { compressImageFile, compressRemoteImageUrl } from '../lib/imageOptimization';
 import { broadcastInstantUpdateToAll } from '../utils/liveUpdateService';
 
-export const AdminPage: React.FC = () => {
+export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState('');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
-    const [activeTab, setActiveTab] = useState<'analytics' | 'orders' | 'menu' | 'categories' | 'additions' | 'stories' | 'coupons' | 'loyalty' | 'marketing' | 'theme' | 'seo' | 'settings'>('analytics');
+    const [activeTab, setActiveTab] = useState<'analytics' | 'orders' | 'menu' | 'categories' | 'additions' | 'stories' | 'coupons' | 'loyalty' | 'marketing' | 'theme' | 'seo' | 'settings'>(seoOnly ? 'seo' : 'analytics');
     const [posDevices, setPosDevices] = useState<PosDevice[]>([]);
+
+    useEffect(() => {
+        let robotsMeta = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
+        const previousContent = robotsMeta?.getAttribute('content') || null;
+        if (!robotsMeta) {
+            robotsMeta = document.createElement('meta');
+            robotsMeta.setAttribute('name', 'robots');
+            document.head.appendChild(robotsMeta);
+        }
+        robotsMeta.setAttribute('content', 'noindex, nofollow');
+
+        return () => {
+            if (robotsMeta && previousContent !== null) {
+                robotsMeta.setAttribute('content', previousContent);
+            }
+        };
+    }, []);
 
     const fetchPosDevices = async () => {
         try {
@@ -132,15 +149,15 @@ export const AdminPage: React.FC = () => {
     };
 
     if (!isAuthenticated) return (
-        <div className="min-h-screen bg-charcoal flex items-center justify-center p-6 text-white text-right" dir="rtl">
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-sm bg-zinc-900 rounded-[2rem] p-8 shadow-2xl border border-white/5 relative">
+        <div className="min-h-screen bg-[#09090b] flex items-center justify-center p-6 text-white text-right" dir="rtl">
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-sm bg-zinc-900 rounded-[2rem] p-8 shadow-2xl border border-zinc-700/80 relative">
                 <div className="text-center space-y-6">
-                    <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
+                    <div className="w-20 h-20 bg-primary/15 border border-primary/30 rounded-full flex items-center justify-center mx-auto text-primary">
                         <KeyRound size={32} />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-black">إدارة النظام</h1>
-                        <p className="text-gray-500 text-sm mt-1">الرجاء إدخال كلمة المرور للمشرفين</p>
+                        <h1 className="text-2xl font-black text-white">{seoOnly ? 'مركز تحكم SEO' : 'إدارة النظام'}</h1>
+                        <p className="text-gray-300 text-sm mt-1">الرجاء إدخال كلمة المرور للمشرفين</p>
                     </div>
                     <form onSubmit={handleLogin} className="space-y-4">
                         <input
@@ -148,9 +165,9 @@ export const AdminPage: React.FC = () => {
                             placeholder="كلمة المرور"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-zinc-800 text-white rounded-xl p-4 text-center font-bold focus:ring-2 focus:ring-primary outline-none"
+                            className="w-full bg-zinc-800 border border-zinc-700 text-white placeholder:text-gray-400 rounded-xl p-4 text-center font-bold focus:border-primary focus:ring-2 focus:ring-primary outline-none"
                         />
-                        <button type="submit" disabled={isLoggingIn || !password} className="w-full bg-primary text-white font-black p-4 rounded-xl flex items-center justify-center gap-2">
+                        <button type="submit" disabled={isLoggingIn || !password} className="w-full bg-primary hover:bg-primary/90 text-white font-black p-4 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50">
                             {isLoggingIn ? <Loader2 className="animate-spin" /> : 'دخول'}
                         </button>
                     </form>
@@ -160,20 +177,21 @@ export const AdminPage: React.FC = () => {
     );
 
     return (
-        <div className="min-h-screen bg-charcoal text-white text-right select-none w-full max-w-[100vw] overflow-x-hidden print:bg-white print:text-black print:min-h-0 print:overflow-visible" dir="rtl">
+        <div className="min-h-screen bg-[#09090b] text-white text-right select-none w-full max-w-[100vw] overflow-x-hidden print:bg-white print:text-black print:min-h-0 print:overflow-visible" dir="rtl">
             {/* Admin Header */}
-            <div className="sticky top-0 z-40 bg-zinc-900/95 backdrop-blur-md border-b border-white/5 shadow-xl print:hidden">
+            <div className="sticky top-0 z-40 bg-zinc-900/95 backdrop-blur-md border-b border-zinc-800 shadow-xl print:hidden">
                 <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 sm:w-10 sm:h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary shrink-0">
-                            <LayoutDashboard size={20} />
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 bg-primary/20 border border-primary/30 rounded-xl flex items-center justify-center text-primary shrink-0">
+                            {seoOnly ? <Search size={20} /> : <LayoutDashboard size={20} />}
                         </div>
                         <div>
-                            <h1 className="font-black text-base sm:text-xl text-white">لوحة الإدارة</h1>
-                            <p className="text-[10px] text-gray-400 hidden sm:block">مطعم جمر التنور</p>
+                            <h1 className="font-black text-base sm:text-xl text-white">{seoOnly ? 'مركز تحكم SEO' : 'لوحة الإدارة'}</h1>
+                            <p className="text-[11px] text-gray-300 hidden sm:block">مطعم جمر التنور</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        {!seoOnly && (
                         <button 
                             type="button"
                             onClick={async () => {
@@ -186,18 +204,20 @@ export const AdminPage: React.FC = () => {
                                     toast.error('تعذر الإرسال، يرجى المحاولة لاحقاً');
                                 }
                             }}
-                            className="flex items-center gap-1.5 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl font-bold text-xs transition-colors cursor-pointer border border-emerald-500/20"
+                            className="flex items-center gap-1.5 text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl font-bold text-xs transition-colors cursor-pointer border border-emerald-500/30"
                             title="تحديث فوري لجميع شاشات وهواتف الزبائن"
                         >
                             <RefreshCw size={14} className="hover:rotate-180 transition-transform duration-500" />
                             <span className="hidden md:inline">تحديث فوري للزبائن</span>
                         </button>
-                        <button onClick={() => { secureAuth.clearSession('admin'); setIsAuthenticated(false); }} className="flex items-center gap-1.5 text-red-400 bg-red-500/10 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl hover:bg-red-500/20 font-bold text-xs sm:text-sm transition-colors cursor-pointer">
+                        )}
+                        <button onClick={() => { secureAuth.clearSession('admin'); setIsAuthenticated(false); }} className="flex items-center gap-1.5 text-red-300 bg-red-500/15 border border-red-500/30 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl hover:bg-red-500/25 font-bold text-xs sm:text-sm transition-colors cursor-pointer">
                             <LogOut size={16} /> <span className="hidden sm:inline">تسجيل خروج</span>
                         </button>
                     </div>
                 </div>
                 {/* Responsive Touch & Mouse Friendly Tabs */}
+                {!seoOnly && (
                 <div 
                     onWheel={(e) => {
                         if (e.deltaY !== 0 && window.innerWidth < 1280) {
@@ -226,8 +246,8 @@ export const AdminPage: React.FC = () => {
                             className={cn(
                                 "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer snap-start shrink-0 relative", 
                                 activeTab === tab.id 
-                                    ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]" 
-                                    : "bg-zinc-800/80 text-gray-400 hover:bg-zinc-700 hover:text-white"
+                                    ? "bg-primary text-white shadow-lg shadow-primary/25 scale-[1.02]" 
+                                    : "bg-zinc-800/90 text-gray-200 border border-zinc-700/60 hover:bg-zinc-700 hover:text-white"
                             )}
                         >
                             {tab.icon} {tab.label}
@@ -239,11 +259,12 @@ export const AdminPage: React.FC = () => {
                         </button>
                     ))}
                 </div>
+                )}
             </div>
 
             <main className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 w-full max-w-full overflow-hidden print:p-0 print:m-0 print:max-w-none print:overflow-visible">
                 {/* Pending Device Approval Urgent Banner */}
-                {pendingDevicesCount > 0 && (
+                {!seoOnly && pendingDevicesCount > 0 && (
                     <motion.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}

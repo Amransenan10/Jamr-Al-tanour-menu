@@ -180,9 +180,9 @@ export const AdminSeoView: React.FC = () => {
   return (
     <div className="space-y-6 text-right pb-12" dir="rtl">
       {/* Top Header Card */}
-      <div className="bg-gradient-to-r from-amber-950/60 via-zinc-900 to-amber-950/40 p-6 rounded-3xl border border-amber-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+      <div className="bg-gradient-to-r from-amber-950/60 via-zinc-900 to-amber-950/40 p-6 rounded-3xl border border-amber-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/30">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/35">
             <Search size={24} />
           </div>
           <div>
@@ -192,7 +192,7 @@ export const AdminSeoView: React.FC = () => {
                 <CheckCircle2 size={12} /> Google Ready
               </span>
             </div>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-gray-300 mt-1">
               إدارة العناوين، الكلمات المفتاحية، المقالات، وبيانات المتجر في نتائج البحث.
             </p>
           </div>
@@ -204,7 +204,7 @@ export const AdminSeoView: React.FC = () => {
             type="button"
             onClick={fetchSeoData}
             disabled={loading}
-            className="px-3.5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-gray-300 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors border border-white/10 cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-gray-100 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors border border-zinc-700 cursor-pointer disabled:opacity-50"
             title="تحديث البيانات"
           >
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />

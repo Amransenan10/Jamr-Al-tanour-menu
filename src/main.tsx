@@ -27,6 +27,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/track/:id" element={<OrderTrackingPage />} />
           <Route path="/my-orders" element={<MyOrders />} />
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin/seo" element={<AdminPage seoOnly />} />
 
           {/* روابط المنيو المباشرة عبر المنصات الإعلانية ومواقع التواصل - تفتح المنيو فوراً */}
           <Route path="/t" element={<App />} />
