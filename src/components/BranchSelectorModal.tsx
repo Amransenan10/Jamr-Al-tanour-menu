@@ -33,7 +33,7 @@ export const BranchSelectorModal: React.FC<BranchSelectorModalProps> = ({ onSele
             <div className="relative text-center space-y-8">
               <div className="space-y-4">
                 <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center shadow-2xl shadow-primary/30 mx-auto mb-6 p-2 border border-white/10 overflow-hidden">
-                  <img src="/assets/logo.png" alt="جمر التنور" className="w-full h-full object-contain" />
+                  <img src="/assets/logo.png" alt="شعار مطعم جمر التنور" className="w-full h-full object-contain" />
                 </div>
                 <h2 className="text-3xl font-black text-gray-900 dark:text-white">أهلاً بك في جمر التنور</h2>
                 <p className="text-gray-500 dark:text-gray-400">يرجى اختيار الفرع لتصفح المنيو والطلب</p>

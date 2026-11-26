@@ -31,7 +31,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect, isP
         {product.image_url ? (
           <img
             src={product.image_url}
-            alt={product.name_ar}
+            alt={product.name_ar || 'صورة صنف من المنيو'}
             loading="lazy"
             decoding="async"
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"

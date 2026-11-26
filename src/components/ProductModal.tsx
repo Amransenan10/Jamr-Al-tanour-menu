@@ -249,7 +249,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({ product, onClose }) 
                 {product.image_url ? (
                   <img
                     src={product.image_url}
-                    alt={product.name_ar}
+                    alt={product.name_ar || 'صورة صنف من المنيو'}
                     loading="eager"
                     decoding="async"
                     className="w-full h-full object-cover"

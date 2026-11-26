@@ -59,6 +59,23 @@ export const OrderTracking: React.FC = () => {
   };
 
   useEffect(() => {
+    let robotsMeta = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
+    const previousContent = robotsMeta?.getAttribute('content') || null;
+    if (!robotsMeta) {
+      robotsMeta = document.createElement('meta');
+      robotsMeta.setAttribute('name', 'robots');
+      document.head.appendChild(robotsMeta);
+    }
+    robotsMeta.setAttribute('content', 'noindex, nofollow');
+
+    return () => {
+      if (robotsMeta && previousContent !== null) {
+        robotsMeta.setAttribute('content', previousContent);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!orderId) {
       navigate('/');
       return;
