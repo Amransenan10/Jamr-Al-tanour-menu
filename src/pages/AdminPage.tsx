@@ -23,6 +23,7 @@ import { extractCoordinatesFromLocation } from '../utils/distanceUtils';
 import { saveAppSettings, parseAppSettings } from '../utils/appSettingsUtils';
 import { formatOrderNumber } from '../utils/orderUtils';
 import { secureAuth } from '../utils/securityGuard';
+import { normalizeSaudiPhone, buildPhoneOrFilter } from '../utils/phoneUtils';
 import { posDeviceManager, PosDevice } from '../utils/posDeviceManager';
 import { compressImageFile, compressRemoteImageUrl } from '../lib/imageOptimization';
 import { broadcastInstantUpdateToAll } from '../utils/liveUpdateService';
@@ -963,6 +964,12 @@ const AdminOrdersView = () => {
                                                                                     key={s.status} 
                                                                                     onClick={async (e) => {
                                                                                         e.stopPropagation();
+                                                                                        if (order.status === s.status) return;
+                                                                                        if (order.status === 'completed' && s.status === 'cancelled') {
+                                                                                            if (!window.confirm('هذا الطلب مكتمل بالفعل، هل تريد إلغاءه وخصم أي نقاط ولاء مكتسبة منه؟')) {
+                                                                                                return;
+                                                                                            }
+                                                                                        }
                                                                                         const { error } = await supabaseAdmin.from('orders').update({ status: s.status }).eq('id', order.id);
                                                                                         if (error) {
                                                                                             toast.error('فشل تحديث الحالة');
@@ -974,22 +981,24 @@ const AdminOrdersView = () => {
                                                                                                 const diff = loyaltyEarned - loyaltyUsed;
                                                                                                 if (diff !== 0 || loyaltyUsed > 0) {
                                                                                                     try {
+                                                                                                        const orderPhone = normalizeSaudiPhone(order.phone);
+                                                                                                        const orFilter = buildPhoneOrFilter(orderPhone, 'phone_number');
                                                                                                         const { data: customer } = await supabaseAdmin
                                                                                                             .from('customers')
-                                                                                                            .select('points_balance')
-                                                                                                            .eq('phone_number', order.phone)
-                                                                                                            .single();
+                                                                                                            .select('phone_number, points_balance')
+                                                                                                            .or(orFilter)
+                                                                                                            .maybeSingle();
 
                                                                                                         if (customer) {
                                                                                                             await supabaseAdmin
                                                                                                                 .from('customers')
                                                                                                                 .update({ points_balance: Math.max(0, (customer.points_balance || 0) + diff) })
-                                                                                                                .eq('phone_number', order.phone);
+                                                                                                                .eq('phone_number', customer.phone_number);
                                                                                                         } else if (diff > 0) {
                                                                                                             await supabaseAdmin
                                                                                                                 .from('customers')
                                                                                                                 .insert([{
-                                                                                                                    phone_number: order.phone,
+                                                                                                                    phone_number: orderPhone,
                                                                                                                     full_name: order.customer_name || 'عميل المنيو',
                                                                                                                     points_balance: diff
                                                                                                                 }]);
@@ -997,7 +1006,7 @@ const AdminOrdersView = () => {
 
                                                                                                         if (loyaltyUsed > 0) {
                                                                                                             await supabaseAdmin.from('transactions').insert([{
-                                                                                                                customer_phone: order.phone,
+                                                                                                                customer_phone: orderPhone,
                                                                                                                 type: 'redeem',
                                                                                                                 amount: order.total_price || 0,
                                                                                                                 points_earned: 0,
@@ -1009,7 +1018,7 @@ const AdminOrdersView = () => {
                                                                                                         }
                                                                                                         if (loyaltyEarned > 0) {
                                                                                                             await supabaseAdmin.from('transactions').insert([{
-                                                                                                                customer_phone: order.phone,
+                                                                                                                customer_phone: orderPhone,
                                                                                                                 type: 'earn',
                                                                                                                 amount: order.total_price || 0,
                                                                                                                 points_earned: loyaltyEarned,
@@ -1021,6 +1030,57 @@ const AdminOrdersView = () => {
                                                                                                         }
                                                                                                     } catch (err) {
                                                                                                         console.error('Loyalty sync error:', err);
+                                                                                                    }
+                                                                                                }
+                                                                                            }
+
+                                                                                            // Reverse loyalty points if a completed order is cancelled or reverted by Admin
+                                                                                            if (order.status === 'completed' && s.status !== 'completed' && order.phone) {
+                                                                                                const reverseDiff = loyaltyUsed - loyaltyEarned;
+                                                                                                if (reverseDiff !== 0 || loyaltyEarned > 0 || loyaltyUsed > 0) {
+                                                                                                    try {
+                                                                                                        const orderPhone = normalizeSaudiPhone(order.phone);
+                                                                                                        const orFilter = buildPhoneOrFilter(orderPhone, 'phone_number');
+                                                                                                        const { data: customer } = await supabaseAdmin
+                                                                                                            .from('customers')
+                                                                                                            .select('phone_number, points_balance')
+                                                                                                            .or(orFilter)
+                                                                                                            .maybeSingle();
+
+                                                                                                        if (customer) {
+                                                                                                            await supabaseAdmin
+                                                                                                                .from('customers')
+                                                                                                                .update({ points_balance: Math.max(0, (customer.points_balance || 0) + reverseDiff) })
+                                                                                                                .eq('phone_number', customer.phone_number);
+                                                                                                        }
+
+                                                                                                        if (loyaltyEarned > 0) {
+                                                                                                            await supabaseAdmin.from('transactions').insert([{
+                                                                                                                customer_phone: orderPhone,
+                                                                                                                type: 'redeem',
+                                                                                                                amount: order.total_price || 0,
+                                                                                                                points_earned: 0,
+                                                                                                                points_redeemed: loyaltyEarned,
+                                                                                                                notes: `خصم نقاط بسبب إلغاء الطلب بعد الاكتمال`,
+                                                                                                                staff_id: 'الأدمن',
+                                                                                                                created_at: new Date().toISOString()
+                                                                                                            }]);
+                                                                                                        }
+                                                                                                        if (loyaltyUsed > 0) {
+                                                                                                            await supabaseAdmin.from('transactions').insert([{
+                                                                                                                customer_phone: orderPhone,
+                                                                                                                type: 'earn',
+                                                                                                                amount: order.total_price || 0,
+                                                                                                                points_earned: loyaltyUsed,
+                                                                                                                points_redeemed: 0,
+                                                                                                                notes: `استرجاع نقاط مستبدلة بسبب إلغاء الطلب`,
+                                                                                                                staff_id: 'الأدمن',
+                                                                                                                created_at: new Date().toISOString()
+                                                                                                            }]);
+                                                                                                        }
+                                                                                                        toast.success('تم خصم نقاط الطلب الملغي من رصيد العميل');
+                                                                                                    } catch (err) {
+                                                                                                        console.error('Loyalty reversal error:', err);
                                                                                                     }
                                                                                                 }
                                                                                             }

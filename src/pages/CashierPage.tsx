@@ -317,10 +317,14 @@ const OrderCard: React.FC<{ order: Order & { id: string; created_at: string; sta
                     >
                         {updating ? <Loader2 size={16} className="animate-spin" /> : nextLabel}
                     </button>
-                    {status === 'new' && (
+                    {status !== 'completed' && status !== 'cancelled' && (
                         <button
                             disabled={updating}
-                            onClick={() => onStatusChange((order as any).id, 'cancelled')}
+                            onClick={() => {
+                                if (window.confirm('هل أنت متأكد من إلغاء هذا الطلب؟')) {
+                                    onStatusChange((order as any).id, 'cancelled');
+                                }
+                            }}
                             className="px-4 py-3 bg-red-500/10 text-red-400 border border-red-500/20 rounded-2xl text-sm font-bold hover:bg-red-500/20 active:scale-95 transition-all"
                         >
                             إلغاء
@@ -1143,9 +1147,15 @@ export const CashierPage: React.FC = () => {
     // ── Update status ─────────────────────────────────────────────────────────
     const handleStatusChange = async (id: string, newStatus: OrderStatus) => {
         if (updatingId) return; // prevent double-clicks
-        setUpdatingId(id);
-
         const order = orders.find(o => o.id === id);
+
+        // Cashier cannot cancel an already-completed order (Admin only)
+        if (order?.status === 'completed' && newStatus === 'cancelled') {
+            toast.error('لا يمكن للكاشير إلغاء طلب مكتمل؛ الإلغاء بعد الاكتمال متاح للأدمن فقط');
+            return;
+        }
+
+        setUpdatingId(id);
 
         try {
             // Handle Sales Count Increment

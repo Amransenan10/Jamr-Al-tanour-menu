@@ -108,13 +108,13 @@
   color: #2B2118;
 }
 
-.admin-warm-theme :is(.bg-zinc-900, .bg-zinc-950, .bg-slate-900, .bg-charcoal, [class*="bg-zinc-900/"], [class*="bg-slate-900/"]) {
+.admin-warm-theme :is(.bg-zinc-900, .bg-zinc-950, .bg-slate-900, .bg-gray-900, .bg-gray-950, .bg-neutral-900, .bg-charcoal, [class*="bg-zinc-900/"], [class*="bg-slate-900/"], [class*="bg-gray-900/"]) {
   background-color: #FFFFFF !important;
   border-color: #E8DFD2 !important;
   box-shadow: 0 1px 2px rgba(43, 33, 24, 0.04);
 }
 
-.admin-warm-theme :is(.bg-zinc-800, .bg-slate-800, [class*="bg-zinc-800/"], [class*="bg-slate-800/"], [class*="bg-black/40"], [class*="bg-black/30"], [class*="bg-black/20"], [class*="bg-white/5"], [class*="bg-white/10"]) {
+.admin-warm-theme :is(.bg-zinc-800, .bg-slate-800, .bg-gray-800, [class*="bg-zinc-800/"], [class*="bg-slate-800/"], [class*="bg-black/40"], [class*="bg-black/30"], [class*="bg-black/20"], [class*="bg-white/5"], [class*="bg-white/10"]) {
   background-color: #FAF6F0 !important;
   border-color: #E8DFD2 !important;
 }
