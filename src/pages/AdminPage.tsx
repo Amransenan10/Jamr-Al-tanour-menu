@@ -150,18 +150,26 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
     };
 
     if (!isAuthenticated) return (
-        <div className="min-h-screen bg-[#0B0F17] flex items-center justify-center p-6 text-slate-100 text-right" dir="rtl">
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-sm bg-slate-900/95 rounded-[2rem] p-8 shadow-2xl border border-slate-800 relative">
+        <div className={cn(
+            "min-h-screen flex items-center justify-center p-6 text-right",
+            seoOnly ? "bg-[#FAF8F5] text-stone-900" : "bg-[#0B0F17] text-slate-100"
+        )} dir="rtl">
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className={cn(
+                "w-full max-w-sm rounded-[2rem] p-8 relative",
+                seoOnly ? "bg-white border border-[#E5E0D8] shadow-xl" : "bg-slate-900/95 border border-slate-800 shadow-2xl"
+            )}>
                 <div className="text-center space-y-6">
                     <div className={cn(
                         "w-20 h-20 rounded-full flex items-center justify-center mx-auto border",
-                        seoOnly ? "bg-teal-500/15 border-teal-500/30 text-teal-400" : "bg-primary/15 border-primary/30 text-primary"
+                        seoOnly ? "bg-[#C2410C]/10 border-[#C2410C]/25 text-[#C2410C]" : "bg-primary/15 border-primary/30 text-primary"
                     )}>
                         <KeyRound size={32} />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-black text-white">{seoOnly ? 'مركز تحكم SEO' : 'إدارة النظام'}</h1>
-                        <p className="text-slate-300 text-sm mt-1">
+                        <h1 className={cn("text-2xl font-black", seoOnly ? "text-stone-900" : "text-white")}>
+                            {seoOnly ? 'جمر التنور — السيو' : 'إدارة النظام'}
+                        </h1>
+                        <p className={cn("text-sm mt-1", seoOnly ? "text-stone-500" : "text-slate-300")}>
                             {seoOnly ? 'الرجاء إدخال كلمة مرور مسؤول السيو' : 'الرجاء إدخال كلمة المرور للمشرفين'}
                         </p>
                     </div>
@@ -172,8 +180,10 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className={cn(
-                                "w-full bg-slate-950/90 border border-slate-700 text-white placeholder:text-slate-400 rounded-xl p-4 text-center font-bold focus:ring-2 outline-none",
-                                seoOnly ? "focus:border-teal-400 focus:ring-teal-500/40" : "focus:border-primary focus:ring-primary/40"
+                                "w-full rounded-xl p-4 text-center font-bold focus:ring-2 outline-none border",
+                                seoOnly
+                                    ? "bg-[#FAF8F5] border-[#E5E0D8] text-stone-900 placeholder:text-stone-400 focus:border-[#C2410C] focus:ring-[#C2410C]/20"
+                                    : "bg-slate-950/90 border-slate-700 text-white placeholder:text-slate-400 focus:border-primary focus:ring-primary/40"
                             )}
                         />
                         <button
@@ -181,7 +191,7 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
                             disabled={isLoggingIn || !password}
                             className={cn(
                                 "w-full text-white font-black p-4 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50",
-                                seoOnly ? "bg-teal-600 hover:bg-teal-500" : "bg-primary hover:bg-primary/90"
+                                seoOnly ? "bg-[#C2410C] hover:bg-[#9A3412]" : "bg-primary hover:bg-primary/90"
                             )}
                         >
                             {isLoggingIn ? <Loader2 className="animate-spin" /> : 'دخول'}
@@ -208,23 +218,44 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
     ];
 
     return (
-        <div className="min-h-screen bg-[#0B0F17] text-slate-100 text-right select-none w-full max-w-[100vw] overflow-x-hidden print:bg-white print:text-black print:min-h-0 print:overflow-visible" dir="rtl">
+        <div className={cn(
+            "min-h-screen text-right select-none w-full max-w-[100vw] overflow-x-hidden print:bg-white print:text-black print:min-h-0 print:overflow-visible",
+            seoOnly ? "bg-[#FAF8F5] text-stone-900" : "bg-[#0B0F17] text-slate-100"
+        )} dir="rtl">
             {/* Admin Header */}
-            <div className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 shadow-lg print:hidden">
-                <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
+            <div className={cn(
+                "sticky top-0 z-40 backdrop-blur-md border-b print:hidden",
+                seoOnly ? "bg-white/95 border-[#E5E0D8] shadow-xs" : "bg-slate-900/95 border-slate-800 shadow-lg"
+            )}>
+                <div className="max-w-7xl mx-auto px-4 py-3 sm:py-3.5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
                         <div className={cn(
-                            "w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 border",
-                            seoOnly ? "bg-teal-500/15 border-teal-500/30 text-teal-400" : "bg-primary/15 border-primary/30 text-primary"
+                            "w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 font-black",
+                            seoOnly ? "bg-[#C2410C] text-white text-lg shadow-sm" : "bg-primary/15 border border-primary/30 text-primary"
                         )}>
-                            {seoOnly ? <Search size={20} /> : <LayoutDashboard size={20} />}
+                            {seoOnly ? 'ج' : <LayoutDashboard size={20} />}
                         </div>
                         <div>
-                            <h1 className="font-black text-base sm:text-xl text-white">{seoOnly ? 'مركز تحكم SEO' : 'لوحة الإدارة'}</h1>
-                            <p className="text-[11px] text-slate-300 hidden sm:block">مطعم جمر التنور</p>
+                            <h1 className={cn("font-black text-base sm:text-lg", seoOnly ? "text-stone-900" : "text-white")}>
+                                {seoOnly ? 'جمر التنور' : 'لوحة الإدارة'}
+                            </h1>
+                            <p className={cn("text-[11px] hidden sm:block", seoOnly ? "text-stone-500" : "text-slate-300")}>
+                                {seoOnly ? 'لوحة تحكم السيو' : 'مطعم جمر التنور'}
+                            </p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        {seoOnly && (
+                            <a
+                                href="/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 text-[#C2410C] bg-[#FAF8F5] hover:bg-orange-50 border border-[#E5E0D8] px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl font-bold text-xs transition-colors"
+                            >
+                                <span>معاينة الموقع</span>
+                                <span aria-hidden="true">↗</span>
+                            </a>
+                        )}
                         {!seoOnly && (
                         <button 
                             type="button"
@@ -245,7 +276,15 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
                             <span className="hidden md:inline">تحديث فوري للزبائن</span>
                         </button>
                         )}
-                        <button onClick={() => { secureAuth.clearSession(authScope); setIsAuthenticated(false); }} className="flex items-center gap-1.5 text-rose-300 bg-rose-500/15 border border-rose-500/30 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl hover:bg-rose-500/25 font-bold text-xs sm:text-sm transition-colors cursor-pointer">
+                        <button
+                            onClick={() => { secureAuth.clearSession(authScope); setIsAuthenticated(false); }}
+                            className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl font-bold text-xs sm:text-sm transition-colors cursor-pointer border",
+                                seoOnly
+                                    ? "text-stone-600 bg-stone-100 border-stone-200 hover:bg-stone-200"
+                                    : "text-rose-300 bg-rose-500/15 border-rose-500/30 hover:bg-rose-500/25"
+                            )}
+                        >
                             <LogOut size={16} /> <span className="hidden sm:inline">تسجيل خروج</span>
                         </button>
                     </div>
@@ -374,7 +413,7 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
                 {activeTab === 'loyalty' && <AdminLoyaltyView />}
                 {activeTab === 'marketing' && <AdminMarketingView />}
                 {activeTab === 'theme' && <AdminThemeView />}
-                {activeTab === 'seo' && <AdminSeoView />}
+                {activeTab === 'seo' && <AdminSeoView variant={seoOnly ? 'light' : 'dark'} />}
                 {activeTab === 'settings' && <AdminSettingsView />}
                 </main>
             </div>

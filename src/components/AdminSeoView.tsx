@@ -14,10 +14,12 @@ import {
   DEFAULT_SEO_ARTICLES, applySeoSettings, calculateSeoScore 
 } from '../utils/seoUtils';
 
-export const AdminSeoView: React.FC = () => {
+export const AdminSeoView: React.FC<{ variant?: 'light' | 'dark' }> = ({ variant = 'dark' }) => {
+  const isLight = variant === 'light';
   const [activeTab, setActiveTab] = useState<'meta' | 'articles' | 'schema' | 'preview'>('meta');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [seoForm, setSeoForm] = useState<SeoSettings>(DEFAULT_SEO_SETTINGS);
   const [articles, setArticles] = useState<SeoArticle[]>(DEFAULT_SEO_ARTICLES);
   const [previewDevice, setPreviewDevice] = useState<'mobile' | 'desktop'>('mobile');
@@ -83,6 +85,7 @@ export const AdminSeoView: React.FC = () => {
       // Apply dynamically to DOM
       applySeoSettings(seoForm);
 
+      setLastSavedAt(new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }));
       toast.success('تم حفظ وتفعيل إعدادات الـ SEO بنجاح');
     } catch (error: any) {
       console.error('Error saving SEO settings:', error);
@@ -178,11 +181,492 @@ export const AdminSeoView: React.FC = () => {
   const seoScoreData = calculateSeoScore(seoForm);
 
   const seoTabs = [
-    { id: 'meta', label: 'العناوين والأوصاف', icon: <Search size={16} /> },
-    { id: 'articles', label: `المقالات والمدونة (${articles.length})`, icon: <FileText size={16} /> },
-    { id: 'schema', label: 'بيانات المطعم', icon: <Globe size={16} /> },
-    { id: 'preview', label: 'معاينة الظهور', icon: <Eye size={16} /> }
+    { id: 'meta', label: isLight ? 'السيو SEO' : 'العناوين والأوصاف', icon: <Search size={16} /> },
+    { id: 'articles', label: `المقالات (${articles.length})`, icon: <FileText size={16} /> },
+    { id: 'schema', label: 'معلومات المطعم', icon: <Globe size={16} /> },
+    { id: 'preview', label: 'معاينة إضافية', icon: <Eye size={16} /> }
   ];
+
+  if (isLight) {
+    const scoreRadius = 42;
+    const scoreCircumference = 2 * Math.PI * scoreRadius;
+    const scoreOffset = scoreCircumference - (seoScoreData.score / 100) * scoreCircumference;
+    const scoreColor =
+      seoScoreData.score >= 80 ? '#15803D' : seoScoreData.score >= 50 ? '#B45309' : '#DC2626';
+
+    return (
+      <div className="space-y-6 text-right pb-12" dir="rtl">
+        {/* Top Centered Pill Navigation */}
+        <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
+          {seoTabs.map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id as any)}
+              className={cn(
+                "px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer",
+                activeTab === tab.id
+                  ? "bg-white text-[#C2410C] border border-[#E5E0D8] shadow-xs"
+                  : "text-stone-600 hover:text-stone-900 hover:bg-white/60"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Two-Column Layout matching screenshot */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Right Column: Main Editor (lg:col-span-8) */}
+          <div className="lg:col-span-8 space-y-6">
+            {activeTab === 'meta' && (
+              <div className="bg-white border border-[#E5E0D8] rounded-2xl p-5 sm:p-7 shadow-xs space-y-6">
+                <div className="flex items-start justify-between gap-4 border-b border-[#F1EDE6] pb-4">
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-black text-stone-900">إعدادات السيو — الصفحة الرئيسية</h2>
+                    <p className="text-xs text-stone-500 mt-1">
+                      هذه النصوص تظهر لقوقل ولزوار موقعك. اكتبها بأسلوبك، والنظام يحدّثها تلقائياً.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={fetchSeoData}
+                    disabled={loading}
+                    className="px-3 py-1.5 bg-[#FAF8F5] hover:bg-stone-100 text-stone-600 font-bold text-xs rounded-xl flex items-center gap-1.5 border border-[#E5E0D8] cursor-pointer shrink-0"
+                    title="تحديث البيانات"
+                  >
+                    <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+                    <span>تحديث</span>
+                  </button>
+                </div>
+
+                {/* H1: Restaurant Name */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-sm font-bold text-stone-800 flex items-center gap-1.5">
+                      <span>عنوان الصفحة الرئيسي (H1)</span>
+                      <span className="text-xs font-normal text-stone-500">— العنوان الذي يظهر للزائر وقوقل أول شيء</span>
+                    </label>
+                    <span className={cn(
+                      "text-xs font-bold",
+                      (seoForm.restaurant_name || '').trim().length > 0 ? "text-emerald-700" : "text-stone-400"
+                    )}>
+                      {(seoForm.restaurant_name || '').length} حرفاً
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={seoForm.restaurant_name}
+                    onChange={e => setSeoForm(prev => ({ ...prev, restaurant_name: e.target.value }))}
+                    placeholder="اتركه فارغاً إذا لا تريد إظهار H1"
+                    className="w-full bg-[#FAF8F5] border border-[#E5E0D8] focus:border-[#C2410C] focus:bg-white rounded-xl px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 outline-none transition-colors"
+                  />
+                </div>
+
+                {/* Meta Title */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-sm font-bold text-stone-800 flex items-center gap-1.5">
+                      <span>عنوان نتائج البحث (Meta Title)</span>
+                      <span className="text-xs font-normal text-stone-500">— يظهر في تبويب المتصفح وقوقل</span>
+                    </label>
+                    <span className={cn(
+                      "text-xs font-mono font-bold",
+                      seoForm.meta_title.length >= 25 && seoForm.meta_title.length <= 70 ? "text-emerald-700" : "text-amber-700"
+                    )}>
+                      {seoForm.meta_title.length} / 70 حرفاً
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={seoForm.meta_title}
+                    onChange={e => setSeoForm(prev => ({ ...prev, meta_title: e.target.value }))}
+                    placeholder="عنوان الصفحة في محركات البحث..."
+                    className="w-full bg-[#FAF8F5] border border-[#E5E0D8] focus:border-[#C2410C] focus:bg-white rounded-xl px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 outline-none transition-colors"
+                  />
+                  <p className="text-[11px] text-stone-500 mt-1">يفضّل بين 30 و 60 حرفاً</p>
+                </div>
+
+                {/* Meta Description */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-sm font-bold text-stone-800 flex items-center gap-1.5">
+                      <span>وصف المطعم (وصف قوقل والصفحة الرئيسية)</span>
+                    </label>
+                    <span className={cn(
+                      "text-xs font-mono font-bold",
+                      seoForm.meta_description.length >= 70 && seoForm.meta_description.length <= 170 ? "text-emerald-700" : "text-amber-700"
+                    )}>
+                      {seoForm.meta_description.length} / 165 حرفاً
+                    </span>
+                  </div>
+                  <textarea
+                    rows={3}
+                    value={seoForm.meta_description}
+                    onChange={e => setSeoForm(prev => ({ ...prev, meta_description: e.target.value }))}
+                    placeholder="اكتب وصف المطعم..."
+                    className="w-full bg-[#FAF8F5] border border-[#E5E0D8] focus:border-[#C2410C] focus:bg-white rounded-xl p-4 text-sm text-stone-900 placeholder:text-stone-400 outline-none transition-colors resize-y"
+                  />
+                  <p className="text-[11px] text-stone-500 mt-1">يفضّل بين 120 و 160 حرفاً</p>
+                </div>
+
+                {/* Keywords */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-sm font-bold text-stone-800">
+                      الكلمات المفتاحية <span className="text-xs font-normal text-stone-500">— افصل بينها بفاصلة</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={addSuggestedKeywords}
+                      className="text-xs text-[#C2410C] hover:underline font-bold cursor-pointer"
+                    >
+                      إضافة كلمات المنيو تلقائياً
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={seoForm.meta_keywords}
+                    onChange={e => setSeoForm(prev => ({ ...prev, meta_keywords: e.target.value }))}
+                    placeholder="افصل بين الكلمات بفواصل"
+                    className="w-full bg-[#FAF8F5] border border-[#E5E0D8] focus:border-[#C2410C] focus:bg-white rounded-xl px-4 py-3 text-sm text-stone-900 placeholder:text-stone-400 outline-none transition-colors"
+                  />
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-[11px] text-stone-500">من 5 إلى 10 كلمات مرتبطة بمطعمك</span>
+                    <span className="text-[11px] font-bold text-stone-600">
+                      {seoForm.meta_keywords.split(/[،,]/).map(s => s.trim()).filter(Boolean).length} كلمات
+                    </span>
+                  </div>
+                </div>
+
+                {/* OG Image & Canonical */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-[#F1EDE6]">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1.5">رابط صورة المشاركة (OG Image)</label>
+                    <input
+                      type="text"
+                      value={seoForm.og_image}
+                      onChange={e => setSeoForm(prev => ({ ...prev, og_image: e.target.value }))}
+                      placeholder="https://..."
+                      className="w-full bg-[#FAF8F5] border border-[#E5E0D8] focus:border-[#C2410C] focus:bg-white rounded-xl px-3.5 py-2.5 text-xs font-mono text-stone-800 outline-none dir-ltr text-right"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1.5">الرابط الأساسي (Canonical URL)</label>
+                    <input
+                      type="text"
+                      value={seoForm.canonical_url}
+                      onChange={e => setSeoForm(prev => ({ ...prev, canonical_url: e.target.value }))}
+                      placeholder="https://jamraltanour.com/"
+                      className="w-full bg-[#FAF8F5] border border-[#E5E0D8] focus:border-[#C2410C] focus:bg-white rounded-xl px-3.5 py-2.5 text-xs font-mono text-stone-800 outline-none dir-ltr text-right"
+                    />
+                  </div>
+                </div>
+
+                {/* Indexing Toggle */}
+                <div className="flex items-center justify-between p-4 bg-[#FAF8F5] rounded-xl border border-[#E5E0D8]">
+                  <div>
+                    <h4 className="font-bold text-sm text-stone-800 flex items-center gap-2">
+                      <span>السماح بمحركات البحث وفهرسة الموقع</span>
+                      <span className={cn(
+                        "text-[10px] px-2 py-0.5 rounded-full font-bold",
+                        seoForm.robots_index ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-700"
+                      )}>
+                        {seoForm.robots_index ? 'مفعل' : 'معطل'}
+                      </span>
+                    </h4>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSeoForm(prev => ({ ...prev, robots_index: !prev.robots_index }))}
+                    className={cn(
+                      "w-12 h-6 rounded-full p-1 transition-colors cursor-pointer relative",
+                      seoForm.robots_index ? "bg-emerald-600" : "bg-stone-300"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-4 h-4 rounded-full bg-white transition-transform",
+                      seoForm.robots_index ? "translate-x-0" : "-translate-x-6"
+                    )} />
+                  </button>
+                </div>
+
+                {/* Full-width Save Button */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSaveAll()}
+                    disabled={saving}
+                    className="w-full py-3.5 bg-[#C2410C] hover:bg-[#9A3412] text-white font-black text-sm rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer active:scale-[0.99] disabled:opacity-50"
+                  >
+                    {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                    <span>حفظ وتفعيل</span>
+                  </button>
+                  <p className="text-center text-[11px] text-stone-500 mt-2.5">
+                    {lastSavedAt
+                      ? `آخر حفظ: اليوم ${lastSavedAt} — التغييرات تظهر للزوار فوراً`
+                      : 'اضغط حفظ وتفعيل لتحديث الإعدادات في قاعدة البيانات'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'articles' && (
+              <div className="bg-white border border-[#E5E0D8] rounded-2xl p-6 shadow-xs space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-black text-stone-900">إدارة المقالات والمحتوى</h3>
+                    <p className="text-xs text-stone-500 mt-0.5">إضافة مقالات وتدوينات تظهر في الموقع ومحركات البحث.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleOpenNewArticle}
+                      className="px-4 py-2 bg-[#C2410C] hover:bg-[#9A3412] text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus size={15} />
+                      <span>إضافة مقال</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSaveAll()}
+                      disabled={saving}
+                      className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <Save size={14} />
+                      <span>حفظ</span>
+                    </button>
+                  </div>
+                </div>
+
+                {articles.length === 0 ? (
+                  <div className="bg-[#FAF8F5] border border-[#E5E0D8] rounded-xl p-10 text-center text-stone-500 text-sm">
+                    لا توجد مقالات مضافة حالياً. اضغط على "إضافة مقال" لكتابة مقال.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {articles.map(art => (
+                      <div key={art.id} className="bg-[#FAF8F5] border border-[#E5E0D8] p-4 rounded-xl space-y-3 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="text-[10px] bg-orange-100 text-[#C2410C] px-2.5 py-0.5 rounded-full font-bold">
+                              {art.category}
+                            </span>
+                            <span className={cn(
+                              "text-[10px] px-2 py-0.5 rounded-full font-bold",
+                              art.published ? "bg-emerald-100 text-emerald-800" : "bg-stone-200 text-stone-600"
+                            )}>
+                              {art.published ? 'منشور' : 'مسودة'}
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-black text-stone-900 line-clamp-1">{art.title}</h4>
+                          <p className="text-xs text-stone-600 mt-1.5 line-clamp-2">{art.summary || art.content}</p>
+                        </div>
+                        <div className="pt-2.5 border-t border-[#E5E0D8] flex items-center justify-between text-xs text-stone-500">
+                          <span className="font-mono text-[11px]">/{art.slug}</span>
+                          <div className="flex items-center gap-1.5">
+                            <button type="button" onClick={() => handleEditArticle(art)} className="p-1.5 bg-white border border-[#E5E0D8] text-stone-700 hover:text-[#C2410C] rounded-lg cursor-pointer">
+                              <Edit3 size={14} />
+                            </button>
+                            <button type="button" onClick={() => handleDeleteArticle(art.id)} className="p-1.5 bg-white border border-[#E5E0D8] text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'schema' && (
+              <div className="bg-white border border-[#E5E0D8] rounded-2xl p-6 shadow-xs space-y-5">
+                <div>
+                  <h3 className="text-base font-black text-stone-900">بيانات المطعم المنظمة (Local Business Schema)</h3>
+                  <p className="text-xs text-stone-500 mt-0.5">كود تقني يقرأه محرك البحث لربط موقع المطعم وتصنيفه وساعات العمل.</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1.5">اسم المطعم الرسمي (H1)</label>
+                    <input type="text" value={seoForm.restaurant_name} onChange={e => setSeoForm(prev => ({ ...prev, restaurant_name: e.target.value }))} className="w-full bg-[#FAF8F5] border border-[#E5E0D8] rounded-xl px-4 py-2.5 text-xs text-stone-900 outline-none focus:border-[#C2410C]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1.5">نوع المطبخ والتصنيف</label>
+                    <input type="text" value={seoForm.restaurant_cuisine} onChange={e => setSeoForm(prev => ({ ...prev, restaurant_cuisine: e.target.value }))} className="w-full bg-[#FAF8F5] border border-[#E5E0D8] rounded-xl px-4 py-2.5 text-xs text-stone-900 outline-none focus:border-[#C2410C]" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1.5">رقم الهاتف للتواصل</label>
+                    <input type="text" value={seoForm.restaurant_phone} onChange={e => setSeoForm(prev => ({ ...prev, restaurant_phone: e.target.value }))} className="w-full bg-[#FAF8F5] border border-[#E5E0D8] rounded-xl px-4 py-2.5 text-xs text-stone-900 outline-none focus:border-[#C2410C] dir-ltr text-right" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1.5">عنوان الفرع والمدينة</label>
+                    <input type="text" value={seoForm.restaurant_address} onChange={e => setSeoForm(prev => ({ ...prev, restaurant_address: e.target.value }))} className="w-full bg-[#FAF8F5] border border-[#E5E0D8] rounded-xl px-4 py-2.5 text-xs text-stone-900 outline-none focus:border-[#C2410C]" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1.5">ساعات العمل الرسمية</label>
+                  <input type="text" value={seoForm.business_hours} onChange={e => setSeoForm(prev => ({ ...prev, business_hours: e.target.value }))} className="w-full bg-[#FAF8F5] border border-[#E5E0D8] rounded-xl px-4 py-2.5 text-xs text-stone-900 outline-none focus:border-[#C2410C]" />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSaveAll()}
+                  disabled={saving}
+                  className="w-full py-3 bg-[#C2410C] hover:bg-[#9A3412] text-white font-black text-sm rounded-xl flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                  <span>حفظ وتفعيل</span>
+                </button>
+              </div>
+            )}
+
+            {activeTab === 'preview' && (
+              <div className="bg-white border border-[#E5E0D8] rounded-2xl p-6 shadow-xs space-y-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-black text-stone-900">معاينة المشاركة في المنصات</h3>
+                  <div className="flex items-center gap-1 bg-[#FAF8F5] border border-[#E5E0D8] p-1 rounded-xl">
+                    <button type="button" onClick={() => setPreviewDevice('mobile')} className={cn("px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer", previewDevice === 'mobile' ? "bg-[#C2410C] text-white" : "text-stone-600")}>
+                      <Smartphone size={13} /> جوال
+                    </button>
+                    <button type="button" onClick={() => setPreviewDevice('desktop')} className={cn("px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer", previewDevice === 'desktop' ? "bg-[#C2410C] text-white" : "text-stone-600")}>
+                      <Monitor size={13} /> كمبيوتر
+                    </button>
+                  </div>
+                </div>
+                <div className={cn("bg-[#FAF8F5] rounded-xl p-4 border border-[#E5E0D8]", previewDevice === 'mobile' ? "max-w-sm mx-auto" : "w-full")}>
+                  {seoForm.og_image && (
+                    <img src={seoForm.og_image} alt="صورة المشاركة" className="w-full h-44 object-cover rounded-lg mb-3" />
+                  )}
+                  <h4 className="font-bold text-sm text-stone-900">{seoForm.meta_title}</h4>
+                  <p className="text-xs text-stone-600 mt-1 line-clamp-2">{seoForm.meta_description}</p>
+                  <span className="text-[11px] text-stone-400 mt-2 block font-mono">jamraltanour.com</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Left Column: Readiness Ring + Google Preview + Checklist (lg:col-span-4) */}
+          <aside className="lg:col-span-4 space-y-5 lg:sticky lg:top-24">
+            {/* 1. Circular SEO Score */}
+            <div className="bg-white border border-[#E5E0D8] rounded-2xl p-6 shadow-xs text-center space-y-3">
+              <h3 className="text-sm font-black text-stone-800">جاهزية السيو</h3>
+              <div className="relative w-28 h-28 mx-auto flex items-center justify-center">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r={scoreRadius} fill="none" stroke="#EFECE6" strokeWidth="9" />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r={scoreRadius}
+                    fill="none"
+                    stroke={scoreColor}
+                    strokeWidth="9"
+                    strokeLinecap="round"
+                    strokeDasharray={scoreCircumference}
+                    strokeDashoffset={scoreOffset}
+                    className="transition-all duration-500"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-black" style={{ color: scoreColor }}>{seoScoreData.score}%</span>
+                  <span className="text-[11px] font-bold text-stone-500">جاهز</span>
+                </div>
+              </div>
+              <p className="text-xs text-stone-500">
+                {seoScoreData.score >= 80 ? 'ممتاز. أكمل البنود الباقية تحت' : 'أكمل الحقول الأساسية لرفع الجاهزية'}
+              </p>
+            </div>
+
+            {/* 2. Live Google Search Preview */}
+            <div className="bg-white border border-[#E5E0D8] rounded-2xl p-5 shadow-xs space-y-3">
+              <h3 className="text-sm font-black text-stone-800">هكذا تظهر في قوقل</h3>
+              <div className="bg-[#FAF8F5] border border-[#E5E0D8] rounded-xl p-3.5 text-right space-y-1">
+                <div className="text-[11px] text-stone-500">معاينة نتيجة البحث</div>
+                <div className="text-[11px] text-stone-600 font-mono dir-ltr text-right">
+                  {(seoForm.canonical_url || 'https://jamraltanour.com').replace(/^https?:\/\//, '').replace(/\/$/, '')} › ar
+                </div>
+                <h4 className="text-sm font-bold text-[#1A0DAB] leading-snug line-clamp-2">
+                  {seoForm.meta_title || 'عنوان الصفحة'}
+                </h4>
+                <p className="text-xs text-stone-600 leading-relaxed line-clamp-3">
+                  {seoForm.meta_description || 'وصف الموقع يظهر هنا...'}
+                </p>
+              </div>
+            </div>
+
+            {/* 3. Checklist */}
+            <div className="bg-white border border-[#E5E0D8] rounded-2xl p-5 shadow-xs space-y-3">
+              <h3 className="text-sm font-black text-stone-800">قائمة التحقق</h3>
+              <div className="space-y-2.5">
+                {seoScoreData.checks.map((c, i) => (
+                  <div key={i} className="flex items-center gap-2.5 text-xs">
+                    <span className={cn(
+                      "w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-[11px]",
+                      c.passed ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                    )}>
+                      {c.passed ? '✓' : '!'}
+                    </span>
+                    <span className={c.passed ? "text-stone-700 font-medium" : "text-stone-500"}>
+                      {c.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        {/* Article Modal (Light) */}
+        {isArticleModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white border border-[#E5E0D8] rounded-2xl max-w-xl w-full p-6 space-y-4 text-right shadow-2xl" dir="rtl">
+              <div className="flex items-center justify-between border-b border-[#F1EDE6] pb-3">
+                <h3 className="text-base font-black text-stone-900">
+                  {editingArticleId ? 'تعديل المقال' : 'إضافة مقال جديد'}
+                </h3>
+                <button type="button" onClick={() => setIsArticleModalOpen(false)} className="text-stone-500 hover:text-stone-900 text-xs px-2.5 py-1 rounded-lg bg-stone-100 cursor-pointer">
+                  إغلاق
+                </button>
+              </div>
+              <form onSubmit={handleSaveArticleModal} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">عنوان المقال *</label>
+                  <input type="text" required value={articleForm.title || ''} onChange={e => setArticleForm(p => ({ ...p, title: e.target.value }))} className="w-full bg-[#FAF8F5] border border-[#E5E0D8] rounded-xl px-4 py-2.5 text-xs text-stone-900 outline-none focus:border-[#C2410C]" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">الرابط (Slug)</label>
+                    <input type="text" value={articleForm.slug || ''} onChange={e => setArticleForm(p => ({ ...p, slug: e.target.value }))} className="w-full bg-[#FAF8F5] border border-[#E5E0D8] rounded-xl px-4 py-2 text-xs text-stone-900 outline-none font-mono dir-ltr text-right" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">التصنيف</label>
+                    <input type="text" value={articleForm.category || ''} onChange={e => setArticleForm(p => ({ ...p, category: e.target.value }))} className="w-full bg-[#FAF8F5] border border-[#E5E0D8] rounded-xl px-4 py-2 text-xs text-stone-900 outline-none" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">ملخص المقال</label>
+                  <textarea rows={2} value={articleForm.summary || ''} onChange={e => setArticleForm(p => ({ ...p, summary: e.target.value }))} className="w-full bg-[#FAF8F5] border border-[#E5E0D8] rounded-xl p-3 text-xs text-stone-900 outline-none resize-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">المحتوى</label>
+                  <textarea rows={4} value={articleForm.content || ''} onChange={e => setArticleForm(p => ({ ...p, content: e.target.value }))} className="w-full bg-[#FAF8F5] border border-[#E5E0D8] rounded-xl p-3 text-xs text-stone-900 outline-none resize-none" />
+                </div>
+                <div className="flex items-center justify-between pt-2">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-stone-800">
+                    <input type="checkbox" checked={articleForm.published ?? true} onChange={e => setArticleForm(p => ({ ...p, published: e.target.checked }))} className="rounded text-[#C2410C]" />
+                    <span>نشر المقال</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setIsArticleModalOpen(false)} className="px-4 py-2 rounded-xl text-xs font-bold bg-stone-100 text-stone-700 cursor-pointer">إلغاء</button>
+                    <button type="submit" className="px-5 py-2 rounded-xl text-xs font-black bg-[#C2410C] hover:bg-[#9A3412] text-white cursor-pointer">حفظ المقال</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 text-right pb-12" dir="rtl">
