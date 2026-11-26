@@ -931,7 +931,7 @@ export default function App() {
             snapchat={appSettings?.social_snapchat}
             twitter={appSettings?.social_twitter}
             tiktok={appSettings?.social_tiktok}
-            whatsapp={appSettings?.social_whatsapp}
+            whatsapp={(selectedBranch && appSettings?.branch_whatsapp?.[selectedBranch]?.trim()) || appSettings?.social_whatsapp}
           />
 
           <ProductModal
@@ -956,6 +956,7 @@ export default function App() {
             isOpen={isSideMenuOpen}
             onClose={() => setIsSideMenuOpen(false)}
             appSettings={appSettings}
+            selectedBranch={selectedBranch}
           />
 
           <LoyaltyModal

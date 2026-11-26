@@ -1866,6 +1866,7 @@ const AdminSettingsView = () => {
         social_tiktok: '',
         social_twitter: '',
         social_whatsapp: '',
+        branch_whatsapp: {} as Record<string, string>,
         logo_url: '',
         working_hours: ''
     });
@@ -1890,16 +1891,18 @@ const AdminSettingsView = () => {
         }
         if (storeRes.data) setStoreSettingsList(storeRes.data);
         if (appRes.data) {
+            const parsedApp = parseAppSettings(appRes.data);
             setAppSettings({
-                announcement_text: appRes.data.announcement_text || '',
-                announcement_active: appRes.data.announcement_active || false,
-                social_instagram: appRes.data.social_instagram || '',
-                social_snapchat: appRes.data.social_snapchat || '',
-                social_tiktok: appRes.data.social_tiktok || '',
-                social_twitter: appRes.data.social_twitter || '',
-                social_whatsapp: appRes.data.social_whatsapp || '',
-                logo_url: appRes.data.logo_url || '',
-                working_hours: appRes.data.working_hours || ''
+                announcement_text: parsedApp.announcement_text || '',
+                announcement_active: parsedApp.announcement_active || false,
+                social_instagram: parsedApp.social_instagram || '',
+                social_snapchat: parsedApp.social_snapchat || '',
+                social_tiktok: parsedApp.social_tiktok || '',
+                social_twitter: parsedApp.social_twitter || '',
+                social_whatsapp: parsedApp.social_whatsapp || '',
+                branch_whatsapp: (parsedApp.branch_whatsapp || {}) as Record<string, string>,
+                logo_url: parsedApp.logo_url || '',
+                working_hours: parsedApp.working_hours || ''
             });
         }
         setLoading(false);
@@ -2097,10 +2100,48 @@ const AdminSettingsView = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
                                     <div className="flex justify-between items-center text-xs">
-                                        <label className="font-bold text-gray-400">واتساب الدعم (بدون فواصل، مثال: 966500000000)</label>
-                                        <span className="text-[10px] text-emerald-400 font-mono">jamraltanour.com/w</span>
+                                        <label className="font-bold text-gray-400">واتساب الدعم العام (بدون فواصل، مثال: 966500000000)</label>
+                                        <span className="text-xs text-emerald-400 font-mono">jamraltanour.com/w</span>
                                     </div>
                                     <input type="text" placeholder="9665..." value={appSettings.social_whatsapp} onChange={e => setAppSettings({...appSettings, social_whatsapp: e.target.value})} className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm focus:border-primary/50 outline-none border border-transparent" dir="ltr" />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <div className="flex justify-between items-center text-xs">
+                                        <label className="font-bold text-gray-400">واتساب الدعم — فرع السويدي الغربي</label>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="9665..."
+                                        value={appSettings.branch_whatsapp?.['السويدي الغربي'] || ''}
+                                        onChange={e => setAppSettings({
+                                            ...appSettings,
+                                            branch_whatsapp: {
+                                                ...(appSettings.branch_whatsapp || {}),
+                                                'السويدي الغربي': e.target.value
+                                            }
+                                        })}
+                                        className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm focus:border-primary/50 outline-none border border-transparent"
+                                        dir="ltr"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <div className="flex justify-between items-center text-xs">
+                                        <label className="font-bold text-gray-400">واتساب الدعم — فرع طويق</label>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="9665..."
+                                        value={appSettings.branch_whatsapp?.['طويق'] || ''}
+                                        onChange={e => setAppSettings({
+                                            ...appSettings,
+                                            branch_whatsapp: {
+                                                ...(appSettings.branch_whatsapp || {}),
+                                                'طويق': e.target.value
+                                            }
+                                        })}
+                                        className="w-full bg-zinc-800 text-white rounded-xl p-3 text-sm focus:border-primary/50 outline-none border border-transparent"
+                                        dir="ltr"
+                                    />
                                 </div>
                                 <div className="space-y-1.5">
                                     <div className="flex justify-between items-center text-xs">

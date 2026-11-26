@@ -128,6 +128,7 @@ export const saveAppSettings = async (newPartial: Record<string, any>) => {
   if (merged.authorized_pos_devices !== undefined) extraConfig.authorized_pos_devices = merged.authorized_pos_devices;
   if (merged.seo_settings !== undefined) extraConfig.seo_settings = merged.seo_settings;
   if (merged.seo_articles !== undefined) extraConfig.seo_articles = merged.seo_articles;
+  if (merged.branch_whatsapp !== undefined) extraConfig.branch_whatsapp = merged.branch_whatsapp;
 
   const hasExtra = Object.keys(extraConfig).length > 0;
   const packedAnnouncement = hasExtra

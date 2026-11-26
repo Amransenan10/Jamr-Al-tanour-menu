@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, FileText, MessageCircle, Star, Instagram, Twitter, Navigation } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabaseLoyalty } from '../lib/loyaltySupabase';
+import { Branch } from '../types';
 
 const TiktokIcon = ({ size = 20, className = "" }) => (
   <svg viewBox="0 0 448 512" width={size} height={size} className={className} fill="currentColor">
@@ -14,9 +15,10 @@ interface SideMenuDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   appSettings: any;
+  selectedBranch?: Branch | null;
 }
 
-export const SideMenuDrawer: React.FC<SideMenuDrawerProps> = ({ isOpen, onClose, appSettings }) => {
+export const SideMenuDrawer: React.FC<SideMenuDrawerProps> = ({ isOpen, onClose, appSettings, selectedBranch }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loadingPoints, setLoadingPoints] = useState(false);
   const [pointsResult, setPointsResult] = useState<{ points?: number, error?: string } | null>(null);
@@ -68,8 +70,9 @@ export const SideMenuDrawer: React.FC<SideMenuDrawerProps> = ({ isOpen, onClose,
     }
   };
 
-  // Prepare support URL
-  const supportPhone = appSettings?.social_whatsapp;
+  // Prepare support URL (branch-specific first, fallback to general social_whatsapp)
+  const supportPhone = (selectedBranch && appSettings?.branch_whatsapp?.[selectedBranch]?.trim())
+    || appSettings?.social_whatsapp;
   const supportUrl = supportPhone 
     ? `https://wa.me/${supportPhone}?text=${encodeURIComponent('أهلاً، لدي استفسار/شكوى بخصوص مطعم جمر التنور:')}`
     : '#';
