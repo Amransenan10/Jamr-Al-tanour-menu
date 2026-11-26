@@ -26,17 +26,17 @@ export const AdminPixelsView: React.FC<AdminPixelsViewProps> = ({
     <div className="space-y-6 text-right" dir="rtl">
       <form onSubmit={onSave} className="space-y-6">
         {/* Header description */}
-        <div className="bg-gradient-to-r from-indigo-950/60 via-zinc-900 to-indigo-950/40 p-6 rounded-3xl border border-indigo-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="bg-white p-6 rounded-2xl border border-[#E8DFD2] shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/30">
+            <div className="w-12 h-12 rounded-2xl bg-[#FDEBDD] text-[#C2410C] flex items-center justify-center shrink-0 border border-[#F5D0B5]">
               <Activity size={24} />
             </div>
             <div>
-              <h3 className="text-lg font-black text-white flex items-center gap-2">
+              <h3 className="text-lg font-black text-[#2B2118] flex items-center gap-2 flex-wrap">
                 <span>منظومة أدوات التتبع والبيكسل الذكية</span>
-                <span className="bg-indigo-500/20 text-indigo-300 text-xs px-2.5 py-0.5 rounded-full font-bold border border-indigo-500/30">Live Tracking</span>
+                <span className="bg-emerald-50 text-emerald-700 text-xs px-2.5 py-0.5 rounded-full font-bold border border-emerald-200">Live Tracking</span>
               </h3>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-[#7A6A5A] mt-1">
                 اربط إعلانات سناب شات وتيك توك وإنستغرام وقوقل لقياس المبيعات وأحداث الشراء تلقائياً دون كتابة كود.
               </p>
             </div>
@@ -46,17 +46,17 @@ export const AdminPixelsView: React.FC<AdminPixelsViewProps> = ({
             <button
               type="button"
               onClick={onTest}
-              className="flex-1 sm:flex-initial px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-gray-200 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer border border-white/10"
+              className="flex-1 sm:flex-initial px-4 py-2.5 bg-white hover:bg-[#FAF6F0] text-[#2B2118] font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer border border-[#E8DFD2]"
               title="إرسال حدث تجريبي للمنصات لفحص الاتصال"
             >
-              <Play size={14} className="text-amber-400 fill-amber-400" />
+              <Play size={14} className="text-[#C2410C] fill-[#C2410C]" />
               <span>فحص اتصال البيكسل 🚀</span>
             </button>
 
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 sm:flex-initial px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white font-black text-sm rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 transition-all cursor-pointer disabled:opacity-50"
+              className="flex-1 sm:flex-initial px-6 py-2.5 bg-[#C2410C] hover:bg-[#9A3412] text-white font-black text-sm rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50"
             >
               {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
               <span>حفظ وتفعيل الإعدادات</span>

@@ -874,6 +874,15 @@ export const CashierPage: React.FC = () => {
 
             if (isValid) {
                 await deviceSecurity.authorizeDevice();
+                try {
+                    await posDeviceManager.addManualApprovedDevice(
+                        deviceSecurity.getDeviceId(),
+                        selectedBranchForApproval,
+                        customDeviceName
+                    );
+                } catch (e) {
+                    console.warn('[Cashier] Could not persist manual approval to DB:', e);
+                }
                 setIsDeviceAuthorized(true);
                 setShowAuthorizeForm(false);
                 setManagerPin('');
@@ -1295,7 +1304,16 @@ export const CashierPage: React.FC = () => {
         return () => clearInterval(interval);
     }, [counts.new]);
 
-    // ── Device authorization lock screen ──────────────────────────────────────
+    // ── Device authorization loading & lock screen ──────────────────────────
+    if (isDeviceAuthorized === null) {
+        return (
+            <div className={cn("min-h-screen flex flex-col items-center justify-center gap-3 p-6 text-right select-none font-sans", isDark ? 'bg-charcoal text-white' : 'bg-gray-100 text-gray-900')} dir="rtl">
+                <Loader2 size={32} className="animate-spin text-primary" />
+                <p className={cn("text-sm font-bold", isDark ? 'text-gray-300' : 'text-gray-600')}>جاري التحقق من اعتماد الجهاز...</p>
+            </div>
+        );
+    }
+
     if (isDeviceAuthorized === false) {
         return (
             <div className={cn("min-h-screen flex items-center justify-center p-6 text-right select-none font-sans", isDark ? 'bg-charcoal text-white' : 'bg-gray-100 text-gray-900')} dir="rtl">

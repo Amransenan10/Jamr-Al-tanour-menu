@@ -145,17 +145,17 @@ export const AdminThemeView: React.FC = () => {
   return (
     <div className="space-y-6 text-right" dir="rtl">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-emerald-950 via-zinc-900 to-zinc-950 border border-emerald-500/30 p-6 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+      <div className="bg-white border border-[#E8DFD2] p-6 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl shadow-lg border border-emerald-500/30">
+          <div className="w-12 h-12 rounded-2xl bg-[#FDEBDD] text-[#C2410C] flex items-center justify-center text-2xl border border-[#F5D0B5] shrink-0">
             🎨
           </div>
           <div>
-            <h2 className="text-xl font-black text-white flex items-center gap-2">
+            <h2 className="text-xl font-black text-[#2B2118] flex items-center gap-2 flex-wrap">
               <span>نظام ثيمات المتجر والمواسم المباشرة</span>
-              <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">مستقل 100%</span>
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">مستقل 100%</span>
             </h2>
-            <p className="text-xs text-gray-400 mt-1">تفعيل وتصميم الطابع الخاص بالمتجر للمناسبات الوطنية والدينية والعروض المخصصة</p>
+            <p className="text-xs text-[#7A6A5A] mt-1">تفعيل وتصميم الطابع الخاص بالمتجر للمناسبات الوطنية والدينية والعروض المخصصة</p>
           </div>
         </div>
 
@@ -165,10 +165,10 @@ export const AdminThemeView: React.FC = () => {
           onClick={handleToggle}
           disabled={saving}
           className={cn(
-            "px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-3 transition-all cursor-pointer shadow-xl shrink-0",
+            "px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-3 transition-all cursor-pointer shrink-0 border",
             themeForm.event_active
-              ? "bg-emerald-500 text-black shadow-emerald-500/30 hover:bg-emerald-400"
-              : "bg-zinc-800 text-gray-400 hover:text-white hover:bg-zinc-700"
+              ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+              : "bg-[#FAF6F0] text-[#7A6A5A] border-[#E8DFD2] hover:text-[#2B2118]"
           )}
         >
           {saving ? <Loader2 size={22} className="animate-spin" /> : themeForm.event_active ? <ToggleRight size={26} /> : <ToggleLeft size={26} />}
@@ -331,7 +331,7 @@ export const AdminThemeView: React.FC = () => {
             <button
               type="submit"
               disabled={saving}
-              className="w-full py-4 bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 text-black font-black text-base rounded-2xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20 cursor-pointer mt-4"
+              className="w-full py-4 bg-[#C2410C] hover:bg-[#9A3412] text-white font-black text-base rounded-2xl active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer mt-4"
             >
               {saving ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
               <span>حفظ وتطبيق إعدادات ثيم المناسبة على المتجر 🚀</span>
@@ -343,20 +343,20 @@ export const AdminThemeView: React.FC = () => {
         <div className="lg:col-span-1 bg-zinc-900 p-6 rounded-3xl border border-white/5 space-y-4 shadow-xl">
           <h4 className="font-black text-sm text-gray-300 flex items-center gap-2">
             <span>معاينة حية للمظهر في المتجر</span>
-            <span className={cn("text-xs font-bold px-2 py-0.5 rounded", themeForm.event_active ? "bg-emerald-500/20 text-emerald-400" : "bg-gray-800 text-gray-500")}>
+            <span className={cn("text-xs font-bold px-2 py-0.5 rounded", themeForm.event_active ? "bg-emerald-50 text-emerald-700" : "bg-stone-100 text-[#7A6A5A]")}>
               {themeForm.event_active ? '🟢 Live' : '⚪ Disabled'}
             </span>
           </h4>
 
           {/* Top Banner Preview */}
-          <div className={`p-4 rounded-2xl bg-gradient-to-r ${currentPresetDetails.colors.gradient} text-white border border-white/10 shadow-lg space-y-1.5`}>
+          <div className={`keep-dark-preview p-4 rounded-2xl bg-gradient-to-r ${currentPresetDetails.colors.gradient} text-white border border-white/10 shadow-lg space-y-1.5`}>
             <div className="flex items-center gap-2">
               <span className="text-2xl">{currentPresetDetails.icon}</span>
               <p className="font-black text-xs text-white truncate">
                 {themeForm.event_title || currentPresetDetails.badge}
               </p>
             </div>
-            <p className="text-[11px] text-gray-200 line-clamp-2 leading-relaxed">
+            <p className="text-xs text-white/95 line-clamp-2 leading-relaxed">
               {themeForm.event_subtitle}
             </p>
             {themeForm.event_promo_code && (

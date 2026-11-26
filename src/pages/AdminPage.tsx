@@ -259,9 +259,9 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
     }
 
     const renderSidebarContent = (isMobile = false) => (
-        <div className="flex flex-col h-full justify-between gap-4">
+        <div className="flex flex-col h-full min-h-0 justify-between gap-3">
             {/* Top: Restaurant Logo & Name */}
-            <div className="flex items-center justify-between gap-3 pb-4 border-b border-[#E8DFD2]">
+            <div className="shrink-0 flex items-center justify-between gap-3 pb-4 border-b border-[#E8DFD2]">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl overflow-hidden bg-[#FAF6F0] border border-[#E8DFD2] flex items-center justify-center shrink-0 p-1">
                         <img src="/assets/logo.png" alt="شعار مطعم جمر التنور" className="w-full h-full object-contain" />
@@ -284,7 +284,7 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
             </div>
 
             {/* Middle: Navigation Items */}
-            <nav className="flex-1 overflow-y-auto space-y-1 py-1 no-scrollbar">
+            <nav className="flex-1 min-h-0 overflow-y-auto space-y-1 py-1 no-scrollbar">
                 {adminTabs.map(tab => {
                     const isActive = activeTab === tab.id;
                     return (
@@ -317,7 +317,7 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
             </nav>
 
             {/* Bottom: Instant Update & Logout */}
-            <div className="pt-4 border-t border-[#E8DFD2] space-y-2">
+            <div className="shrink-0 pt-3 border-t border-[#E8DFD2] space-y-2">
                 <button
                     type="button"
                     onClick={handleInstantCustomerUpdate}
@@ -390,7 +390,7 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
 
             {/* Desktop Layout: Right Vertical Sidebar + Left Main Content */}
             <div className="flex min-h-screen w-full items-start">
-                <aside className="hidden lg:flex flex-col w-72 shrink-0 bg-white border-l border-[#E8DFD2] sticky top-0 h-screen p-4 shadow-xs print:hidden">
+                <aside className="hidden lg:flex flex-col w-72 shrink-0 bg-white border-l border-[#E8DFD2] sticky top-0 h-screen overflow-hidden p-4 shadow-xs print:hidden">
                     {renderSidebarContent(false)}
                 </aside>
 

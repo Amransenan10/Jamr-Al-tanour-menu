@@ -150,7 +150,31 @@
   color: #7A6A5A !important;
 }
 
-.admin-warm-theme :is([class*="text-[10px]"], [class*="text-[11px]"]) {
+.admin-warm-theme :is([class*="text-[10px]"], [class*="text-[11px]"], [class*="text-[9px]"], [class*="text-[8px]"]) {
   font-size: 12px !important;
   line-height: 1.4 !important;
+}
+
+.admin-warm-theme table {
+  background-color: #FFFFFF !important;
+  color: #2B2118 !important;
+}
+
+.admin-warm-theme thead,
+.admin-warm-theme thead tr {
+  background-color: #F3ECE2 !important;
+  color: #2B2118 !important;
+  border-color: #E8DFD2 !important;
+}
+
+.admin-warm-theme tbody tr,
+.admin-warm-theme tbody td {
+  border-color: #E8DFD2 !important;
+}
+
+.admin-warm-theme .keep-dark-preview,
+.admin-warm-theme .keep-dark-preview p,
+.admin-warm-theme .keep-dark-preview span,
+.admin-warm-theme .keep-dark-preview h4 {
+  color: #FFFFFF !important;
 }

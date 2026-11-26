@@ -762,25 +762,25 @@ export const AdminLoyaltyView: React.FC = () => {
     return (
         <div className="space-y-8 select-none text-right max-w-full overflow-hidden" dir="rtl">
             {/* Header Title & Status Bar */}
-            <div className="bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 border border-white/10 p-4 sm:p-6 rounded-3xl shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
+            <div className="bg-white border border-[#E8DFD2] p-4 sm:p-6 rounded-2xl shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
                 <div className="space-y-1">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-400 border border-amber-500/30 shrink-0">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#FDEBDD] rounded-2xl flex items-center justify-center text-[#C2410C] border border-[#F5D0B5] shrink-0">
                             <Gift size={22} />
                         </div>
                         <div>
-                            <h2 className="text-base sm:text-xl font-black text-white flex items-center gap-2 flex-wrap">
+                            <h2 className="text-base sm:text-xl font-black text-[#2B2118] flex items-center gap-2 flex-wrap">
                                 إدارة نظام الولاء والنقاط
                                 <span className={cn(
-                                    "text-[10px] sm:text-xs px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full font-bold border",
+                                    "text-xs px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full font-bold border",
                                     config.is_enabled 
-                                        ? "bg-green-500/10 text-green-400 border-green-500/30" 
-                                        : "bg-red-500/10 text-red-400 border-red-500/30"
+                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                                        : "bg-red-50 text-red-700 border-red-200"
                                 )}>
                                     {config.is_enabled ? '● نَشِط ومُفَعَّل' : '○ مُعَطَّل حالياً'}
                                 </span>
                             </h2>
-                            <p className="text-[11px] sm:text-xs text-gray-400">تحكم كامل بالإعدادات، نسب الاكتساب والاستبدال، ورصيد نقاط العملاء</p>
+                            <p className="text-xs text-[#7A6A5A]">تحكم كامل بالإعدادات، نسب الاكتساب والاستبدال، ورصيد نقاط العملاء</p>
                         </div>
                     </div>
                 </div>
@@ -788,7 +788,7 @@ export const AdminLoyaltyView: React.FC = () => {
                 <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-start sm:justify-end">
                     <button
                         onClick={() => { fetchConfig(); fetchCustomers(); fetchTransactions(); }}
-                        className="p-2.5 sm:p-3 bg-zinc-800/80 hover:bg-zinc-700 text-gray-300 rounded-2xl transition-all cursor-pointer border border-white/5 shrink-0"
+                        className="p-2.5 sm:p-3 bg-[#FAF6F0] hover:bg-stone-100 text-[#2B2118] rounded-2xl transition-all cursor-pointer border border-[#E8DFD2] shrink-0"
                         title="تحديث البيانات"
                     >
                         <RefreshCw size={18} />
@@ -796,14 +796,14 @@ export const AdminLoyaltyView: React.FC = () => {
                     
                     <button
                         onClick={() => setExportModalOpen(true)}
-                        className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm shadow-lg shadow-emerald-600/20 transition-all cursor-pointer whitespace-nowrap"
+                        className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-white hover:bg-[#FFF7ED] text-[#C2410C] border border-[#C2410C] font-bold px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap"
                     >
                         <FileSpreadsheet size={16} /> <span className="hidden xs:inline">تصدير تقرير الولاء (Excel)</span><span className="xs:hidden">تصدير Excel</span>
                     </button>
 
                     <button
                         onClick={() => setNewCustomerModal(prev => ({ ...prev, isOpen: true }))}
-                        className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-primary hover:bg-primary/90 text-white font-bold px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm shadow-lg shadow-primary/20 transition-all cursor-pointer whitespace-nowrap"
+                        className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-[#C2410C] hover:bg-[#9A3412] text-white font-bold px-3 sm:px-4 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap"
                     >
                         <Plus size={16} /> إضافة عميل بالولاء
                     </button>
@@ -858,7 +858,7 @@ export const AdminLoyaltyView: React.FC = () => {
             </div>
 
             {/* Inner Tabs Navigation */}
-            <div className="flex border-b border-white/10 gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar scroll-smooth flex-nowrap pb-1 print:hidden">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar scroll-smooth flex-nowrap pb-2 print:hidden">
                 {[
                     { id: 'config', label: 'إعدادات وقواعد الولاء ⚙️', icon: <Settings size={16} /> },
                     { id: 'customers', label: 'دليل وأرصدة العملاء 👥', icon: <Users size={16} /> },
@@ -869,10 +869,10 @@ export const AdminLoyaltyView: React.FC = () => {
                         key={t.id}
                         onClick={() => setActiveSubTab(t.id as any)}
                         className={cn(
-                            "flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-t-2xl font-bold text-xs sm:text-sm transition-all cursor-pointer border-b-2 shrink-0 whitespace-nowrap",
+                            "flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer border shrink-0 whitespace-nowrap",
                             activeSubTab === t.id
-                                ? "bg-zinc-900 text-primary border-primary shadow-sm"
-                                : "text-gray-400 hover:text-white border-transparent hover:bg-zinc-900/50"
+                                ? "bg-[#C2410C] text-white border-[#C2410C] shadow-xs"
+                                : "bg-white text-[#2B2118] border-[#E8DFD2] hover:bg-[#FAF6F0]"
                         )}
                     >
                         {t.icon} {t.label}

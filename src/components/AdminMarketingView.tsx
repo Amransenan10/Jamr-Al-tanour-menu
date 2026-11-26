@@ -651,17 +651,17 @@ export const AdminMarketingView: React.FC = () => {
       </div>
 
       {/* Main Mode Navigation */}
-      <div className="flex gap-2 border-b border-white/10 pb-3 flex-wrap">
+      <div className="flex gap-2 border-b border-[#E8DFD2] pb-3 flex-wrap">
         <button
           onClick={() => setSubView('events')}
           className={cn(
-            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm cursor-pointer relative overflow-hidden",
+            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm cursor-pointer relative overflow-hidden border",
             subView === 'events'
-              ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20 font-black"
-              : "bg-zinc-900 text-gray-400 hover:bg-zinc-800"
+              ? "bg-[#C2410C] text-white border-[#C2410C] shadow-xs"
+              : "bg-white text-[#2B2118] border-[#E8DFD2] hover:bg-[#FAF6F0]"
           )}
         >
-          <Sparkles size={18} className="animate-pulse" />
+          <Sparkles size={18} />
           <span>إدارة المواسم والاحتفالات (اليوم الوطني 🇸🇦)</span>
           {eventForm.event_active && (
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
@@ -671,10 +671,10 @@ export const AdminMarketingView: React.FC = () => {
         <button
           onClick={() => setSubView('broadcast')}
           className={cn(
-            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm cursor-pointer",
+            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm cursor-pointer border",
             subView === 'broadcast'
-              ? "bg-amber-500 text-black shadow-lg shadow-amber-500/20"
-              : "bg-zinc-900 text-gray-400 hover:bg-zinc-800"
+              ? "bg-[#C2410C] text-white border-[#C2410C] shadow-xs"
+              : "bg-white text-[#2B2118] border-[#E8DFD2] hover:bg-[#FAF6F0]"
           )}
         >
           <Bell size={18} />
@@ -684,10 +684,10 @@ export const AdminMarketingView: React.FC = () => {
         <button
           onClick={() => setSubView('vip')}
           className={cn(
-            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm cursor-pointer",
+            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm cursor-pointer border",
             subView === 'vip'
-              ? "bg-amber-500 text-black shadow-lg shadow-amber-500/20"
-              : "bg-zinc-900 text-gray-400 hover:bg-zinc-800"
+              ? "bg-[#C2410C] text-white border-[#C2410C] shadow-xs"
+              : "bg-white text-[#2B2118] border-[#E8DFD2] hover:bg-[#FAF6F0]"
           )}
         >
           <Crown size={18} />
@@ -697,10 +697,10 @@ export const AdminMarketingView: React.FC = () => {
         <button
           onClick={() => setSubView('pixels')}
           className={cn(
-            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm cursor-pointer",
+            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm cursor-pointer border",
             subView === 'pixels'
-              ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 font-black"
-              : "bg-zinc-900 text-gray-400 hover:bg-zinc-800"
+              ? "bg-[#C2410C] text-white border-[#C2410C] shadow-xs"
+              : "bg-white text-[#2B2118] border-[#E8DFD2] hover:bg-[#FAF6F0]"
           )}
         >
           <Activity size={18} />
@@ -710,16 +710,19 @@ export const AdminMarketingView: React.FC = () => {
         <button
           onClick={() => { setSubView('abandoned'); loadAbandonedCarts(); }}
           className={cn(
-            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm cursor-pointer relative",
+            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm cursor-pointer relative border",
             subView === 'abandoned'
-              ? "bg-rose-500 text-white shadow-lg shadow-rose-500/20 font-black"
-              : "bg-zinc-900 text-gray-400 hover:bg-zinc-800"
+              ? "bg-[#C2410C] text-white border-[#C2410C] shadow-xs"
+              : "bg-white text-[#2B2118] border-[#E8DFD2] hover:bg-[#FAF6F0]"
           )}
         >
           <ShoppingCart size={18} />
           <span>السلات المتروكة (Abandoned Carts)</span>
           {abandonedCarts.length > 0 && (
-            <span className="bg-rose-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
+            <span className={cn(
+              "text-xs font-black px-2 py-0.5 rounded-full",
+              subView === 'abandoned' ? "bg-white text-[#C2410C]" : "bg-[#C2410C] text-white"
+            )}>
               {abandonedCarts.length}
             </span>
           )}
@@ -728,10 +731,10 @@ export const AdminMarketingView: React.FC = () => {
         <button
           onClick={() => setSubView('traffic')}
           className={cn(
-            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm cursor-pointer",
+            "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all text-sm cursor-pointer border",
             subView === 'traffic'
-              ? "bg-cyan-500 text-black shadow-lg shadow-cyan-500/20 font-black"
-              : "bg-zinc-900 text-gray-400 hover:bg-zinc-800"
+              ? "bg-[#C2410C] text-white border-[#C2410C] shadow-xs"
+              : "bg-white text-[#2B2118] border-[#E8DFD2] hover:bg-[#FAF6F0]"
           )}
         >
           <Compass size={18} />
@@ -740,9 +743,9 @@ export const AdminMarketingView: React.FC = () => {
 
         <button
           onClick={() => { fetchEventSettings(); fetchCustomersData(); }}
-          className="mr-auto p-2 bg-zinc-900 hover:bg-zinc-800 text-gray-400 rounded-xl transition-colors cursor-pointer"
+          className="mr-auto p-2.5 bg-white hover:bg-[#FAF6F0] text-[#7A6A5A] border border-[#E8DFD2] rounded-xl transition-colors cursor-pointer"
         >
-          <RefreshCw size={18} className={loading ? "animate-spin text-primary" : ""} />
+          <RefreshCw size={18} className={loading ? "animate-spin text-[#C2410C]" : ""} />
         </button>
       </div>
 
@@ -936,7 +939,7 @@ export const AdminMarketingView: React.FC = () => {
                 type="button"
                 onClick={handleSaveEventSettings}
                 disabled={savingEvents}
-                className="w-full py-4 bg-gradient-to-r from-emerald-500 via-green-500 to-emerald-600 text-black font-black text-base rounded-2xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20 cursor-pointer mt-4"
+                className="w-full py-4 bg-[#C2410C] hover:bg-[#9A3412] text-white font-black text-base rounded-2xl active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer mt-4"
               >
                 {savingEvents ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
                 <span>حفظ وتطبيق إعدادات ثيم المناسبة على المتجر 🚀</span>
@@ -948,18 +951,18 @@ export const AdminMarketingView: React.FC = () => {
           <div className="lg:col-span-1 bg-zinc-900 p-6 rounded-3xl border border-white/5 space-y-4">
             <h4 className="font-black text-sm text-gray-300 flex items-center gap-2">
               <span>معاينة حية للمظهر في الواجهة</span>
-              <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">Live</span>
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">Live</span>
             </h4>
 
             {/* Top Ribbon Banner Preview */}
-            <div className={`p-3.5 rounded-2xl bg-gradient-to-r ${currentPresetDetails.colors.gradient} text-white border border-white/10 shadow-lg space-y-1`}>
+            <div className={`keep-dark-preview p-3.5 rounded-2xl bg-gradient-to-r ${currentPresetDetails.colors.gradient} text-white border border-white/10 shadow-lg space-y-1`}>
               <div className="flex items-center gap-2">
                 <span className="text-xl">{currentPresetDetails.icon}</span>
                 <p className="font-black text-xs text-white truncate">
                   {eventForm.event_title || currentPresetDetails.badge}
                 </p>
               </div>
-              <p className="text-[11px] text-gray-200 line-clamp-2 leading-relaxed">
+              <p className="text-xs text-white/95 line-clamp-2 leading-relaxed">
                 {eventForm.event_subtitle}
               </p>
               {eventForm.event_promo_code && (
@@ -1094,7 +1097,7 @@ export const AdminMarketingView: React.FC = () => {
               <button
                 type="submit"
                 disabled={sending}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-black font-black rounded-xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer"
+                className="w-full py-3.5 bg-[#C2410C] hover:bg-[#9A3412] text-white font-black rounded-xl active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
               >
                 {sending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                 <span>إرسال لجميع المشتركين 🚀</span>

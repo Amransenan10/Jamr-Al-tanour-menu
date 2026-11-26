@@ -530,21 +530,21 @@ export const AdminAnalyticsView: React.FC = () => {
                         </button>
                         <button
                             onClick={exportToExcel}
-                            className="px-3.5 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                            className="px-3.5 py-2.5 bg-white hover:bg-[#FFF7ED] text-[#C2410C] border border-[#C2410C] rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
                         >
                             <FileSpreadsheet size={15} />
                             <span>تصدير Excel</span>
                         </button>
                         <button
                             onClick={exportToCSV}
-                            className="px-3.5 py-2.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                            className="px-3.5 py-2.5 bg-white hover:bg-[#FAF6F0] text-[#2B2118] border border-[#E8DFD2] rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
                         >
                             <Download size={15} />
                             <span>CSV</span>
                         </button>
                         <button
                             onClick={handlePrintReport}
-                            className="px-3.5 py-2.5 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                            className="px-3.5 py-2.5 bg-[#C2410C] hover:bg-[#9A3412] text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
                         >
                             <Printer size={15} />
                             <span>طباعة التقرير</span>
@@ -851,7 +851,7 @@ export const AdminAnalyticsView: React.FC = () => {
                         <p className="text-xs text-gray-400">مخططات تفاعلية لحركة المبيعات وساعات الذروة والمنتجات الأكثر مبيعاً</p>
                     </div>
 
-                    <div className="flex bg-zinc-800 p-1 rounded-2xl gap-1 no-print">
+                    <div className="flex bg-[#FAF6F0] p-1 rounded-2xl gap-1 border border-[#E8DFD2] no-print">
                         {[
                             { id: 'sales', label: 'المبيعات حسب الأيام', icon: <TrendingUp size={14} /> },
                             { id: 'hours', label: 'ساعات الذروة', icon: <Clock size={14} /> },
@@ -863,8 +863,8 @@ export const AdminAnalyticsView: React.FC = () => {
                                 className={cn(
                                     "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
                                     activeChartTab === chart.id 
-                                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30" 
-                                        : "text-gray-400 hover:text-white"
+                                        ? "bg-[#C2410C] text-white shadow-xs" 
+                                        : "bg-white text-[#2B2118] border border-[#E8DFD2] hover:bg-[#FAF6F0]"
                                 )}
                             >
                                 {chart.icon}

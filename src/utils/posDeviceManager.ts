@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { supabaseAdmin } from '../lib/supabaseAdmin';
 import { parseAppSettings, saveAppSettings } from './appSettingsUtils';
 
 export interface PosDevice {
@@ -17,11 +18,20 @@ export const posDeviceManager = {
      */
     async getDevices(): Promise<PosDevice[]> {
         try {
-            const { data } = await supabase
+            let { data, error } = await supabaseAdmin
                 .from('app_settings')
                 .select('*')
                 .eq('id', 1)
                 .maybeSingle();
+
+            if (error || !data) {
+                const anonRes = await supabase
+                    .from('app_settings')
+                    .select('*')
+                    .eq('id', 1)
+                    .maybeSingle();
+                data = anonRes.data;
+            }
 
             if (!data) return [];
             const parsed = parseAppSettings(data);
