@@ -7,7 +7,7 @@ import {
     UtensilsCrossed, LogOut, Loader2, Plus, Edit2, Trash2, CheckCircle2,
     X, Store, Clock, RefreshCw, Upload, TicketPercent, Image as ImageIcon,
     Camera, Sliders, Volume2, VolumeX, Copy, Search, User, BarChart3, Send, Layers, Gift, MapPin, Sparkles,
-    Tablet
+    Tablet, Menu
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -33,6 +33,7 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
     const [password, setPassword] = useState('');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [activeTab, setActiveTab] = useState<'analytics' | 'orders' | 'menu' | 'categories' | 'additions' | 'stories' | 'coupons' | 'loyalty' | 'marketing' | 'theme' | 'seo' | 'settings'>(seoOnly ? 'seo' : 'analytics');
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [posDevices, setPosDevices] = useState<PosDevice[]>([]);
 
     useEffect(() => {
@@ -150,26 +151,17 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
     };
 
     if (!isAuthenticated) return (
-        <div className={cn(
-            "min-h-screen flex items-center justify-center p-6 text-right",
-            seoOnly ? "bg-[#FAF8F5] text-stone-900" : "bg-[#0B0F17] text-slate-100"
-        )} dir="rtl">
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className={cn(
-                "w-full max-w-sm rounded-[2rem] p-8 relative",
-                seoOnly ? "bg-white border border-[#E5E0D8] shadow-xl" : "bg-slate-900/95 border border-slate-800 shadow-2xl"
-            )}>
+        <div className="min-h-screen bg-[#FAF6F0] flex items-center justify-center p-6 text-[#2B2118] text-right" dir="rtl">
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-sm bg-white rounded-[2rem] p-8 shadow-xl border border-[#E8DFD2] relative">
                 <div className="text-center space-y-6">
-                    <div className={cn(
-                        "w-20 h-20 rounded-full flex items-center justify-center mx-auto border",
-                        seoOnly ? "bg-[#C2410C]/10 border-[#C2410C]/25 text-[#C2410C]" : "bg-primary/15 border-primary/30 text-primary"
-                    )}>
+                    <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto border bg-[#C2410C]/10 border-[#C2410C]/25 text-[#C2410C]">
                         <KeyRound size={32} />
                     </div>
                     <div>
-                        <h1 className={cn("text-2xl font-black", seoOnly ? "text-stone-900" : "text-white")}>
+                        <h1 className="text-2xl font-black text-[#2B2118]">
                             {seoOnly ? 'جمر التنور — السيو' : 'إدارة النظام'}
                         </h1>
-                        <p className={cn("text-sm mt-1", seoOnly ? "text-stone-500" : "text-slate-300")}>
+                        <p className="text-sm mt-1 text-[#7A6A5A]">
                             {seoOnly ? 'الرجاء إدخال كلمة مرور مسؤول السيو' : 'الرجاء إدخال كلمة المرور للمشرفين'}
                         </p>
                     </div>
@@ -179,20 +171,12 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
                             placeholder="كلمة المرور"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className={cn(
-                                "w-full rounded-xl p-4 text-center font-bold focus:ring-2 outline-none border",
-                                seoOnly
-                                    ? "bg-[#FAF8F5] border-[#E5E0D8] text-stone-900 placeholder:text-stone-400 focus:border-[#C2410C] focus:ring-[#C2410C]/20"
-                                    : "bg-slate-950/90 border-slate-700 text-white placeholder:text-slate-400 focus:border-primary focus:ring-primary/40"
-                            )}
+                            className="w-full rounded-xl p-4 text-center font-bold focus:ring-2 outline-none border bg-[#FAF6F0] border-[#E8DFD2] text-[#2B2118] placeholder:text-[#7A6A5A] focus:border-[#C2410C] focus:ring-[#C2410C]/20"
                         />
                         <button
                             type="submit"
                             disabled={isLoggingIn || !password}
-                            className={cn(
-                                "w-full text-white font-black p-4 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50",
-                                seoOnly ? "bg-[#C2410C] hover:bg-[#9A3412]" : "bg-primary hover:bg-primary/90"
-                            )}
+                            className="w-full bg-[#C2410C] hover:bg-[#9A3412] text-white font-black p-4 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
                         >
                             {isLoggingIn ? <Loader2 className="animate-spin" /> : 'دخول'}
                         </button>
@@ -217,146 +201,201 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
         { id: 'settings', label: 'الفروع والإعدادات', icon: <SettingsIcon size={17} /> }
     ];
 
-    return (
-        <div className={cn(
-            "min-h-screen text-right select-none w-full max-w-[100vw] overflow-x-hidden print:bg-white print:text-black print:min-h-0 print:overflow-visible",
-            seoOnly ? "bg-[#FAF8F5] text-stone-900" : "bg-[#0B0F17] text-slate-100"
-        )} dir="rtl">
-            {/* Admin Header */}
-            <div className={cn(
-                "sticky top-0 z-40 backdrop-blur-md border-b print:hidden",
-                seoOnly ? "bg-white/95 border-[#E5E0D8] shadow-xs" : "bg-slate-900/95 border-slate-800 shadow-lg"
-            )}>
-                <div className="max-w-7xl mx-auto px-4 py-3 sm:py-3.5 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className={cn(
-                            "w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 font-black",
-                            seoOnly ? "bg-[#C2410C] text-white text-lg shadow-sm" : "bg-primary/15 border border-primary/30 text-primary"
-                        )}>
-                            {seoOnly ? 'ج' : <LayoutDashboard size={20} />}
+    const handleInstantCustomerUpdate = async () => {
+        const ok = window.confirm('هل تريد إرسال أمر تحديث فوري ولحظي لجميع شاشات وهواتف الزبائن المتصلة الآن؟');
+        if (!ok) return;
+        const success = await broadcastInstantUpdateToAll();
+        if (success) {
+            toast.success('تم إرسال أمر التحديث الفوري لجميع العملاء بنجاح! 🚀');
+        } else {
+            toast.error('تعذر الإرسال، يرجى المحاولة لاحقاً');
+        }
+    };
+
+    const handleLogout = () => {
+        secureAuth.clearSession(authScope);
+        setIsAuthenticated(false);
+    };
+
+    if (seoOnly) {
+        return (
+            <div className="min-h-screen bg-[#FAF6F0] text-[#2B2118] text-right select-none w-full max-w-[100vw] overflow-x-hidden" dir="rtl">
+                <div className="sticky top-0 z-40 backdrop-blur-md border-b bg-white/95 border-[#E8DFD2] shadow-xs print:hidden">
+                    <div className="max-w-7xl mx-auto px-4 py-3 sm:py-3.5 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 font-black bg-[#C2410C] text-white text-lg shadow-sm">
+                                ج
+                            </div>
+                            <div>
+                                <h1 className="font-black text-base sm:text-lg text-[#2B2118]">جمر التنور</h1>
+                                <p className="text-xs text-[#7A6A5A] hidden sm:block">لوحة تحكم السيو</p>
+                            </div>
                         </div>
-                        <div>
-                            <h1 className={cn("font-black text-base sm:text-lg", seoOnly ? "text-stone-900" : "text-white")}>
-                                {seoOnly ? 'جمر التنور' : 'لوحة الإدارة'}
-                            </h1>
-                            <p className={cn("text-[11px] hidden sm:block", seoOnly ? "text-stone-500" : "text-slate-300")}>
-                                {seoOnly ? 'لوحة تحكم السيو' : 'مطعم جمر التنور'}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {seoOnly && (
+                        <div className="flex items-center gap-2">
                             <a
                                 href="/"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 text-[#C2410C] bg-[#FAF8F5] hover:bg-orange-50 border border-[#E5E0D8] px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl font-bold text-xs transition-colors"
+                                className="flex items-center gap-1.5 text-[#C2410C] bg-[#FAF6F0] hover:bg-orange-50 border border-[#E8DFD2] px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl font-bold text-xs transition-colors"
                             >
                                 <span>معاينة الموقع</span>
                                 <span aria-hidden="true">↗</span>
                             </a>
-                        )}
-                        {!seoOnly && (
-                        <button 
-                            type="button"
-                            onClick={async () => {
-                                const ok = window.confirm('هل تريد إرسال أمر تحديث فوري ولحظي لجميع شاشات وهواتف الزبائن المتصلة الآن؟');
-                                if (!ok) return;
-                                const success = await broadcastInstantUpdateToAll();
-                                if (success) {
-                                    toast.success('تم إرسال أمر التحديث الفوري لجميع العملاء بنجاح! 🚀');
-                                } else {
-                                    toast.error('تعذر الإرسال، يرجى المحاولة لاحقاً');
-                                }
-                            }}
-                            className="flex items-center gap-1.5 text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl font-bold text-xs transition-colors cursor-pointer border border-emerald-500/30"
-                            title="تحديث فوري لجميع شاشات وهواتف الزبائن"
-                        >
-                            <RefreshCw size={14} className="hover:rotate-180 transition-transform duration-500" />
-                            <span className="hidden md:inline">تحديث فوري للزبائن</span>
-                        </button>
-                        )}
-                        <button
-                            onClick={() => { secureAuth.clearSession(authScope); setIsAuthenticated(false); }}
-                            className={cn(
-                                "flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl font-bold text-xs sm:text-sm transition-colors cursor-pointer border",
-                                seoOnly
-                                    ? "text-stone-600 bg-stone-100 border-stone-200 hover:bg-stone-200"
-                                    : "text-rose-300 bg-rose-500/15 border-rose-500/30 hover:bg-rose-500/25"
-                            )}
-                        >
-                            <LogOut size={16} /> <span className="hidden sm:inline">تسجيل خروج</span>
-                        </button>
+                            <button
+                                onClick={handleLogout}
+                                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl font-bold text-xs sm:text-sm transition-colors cursor-pointer border text-red-700 bg-red-50 border-red-200 hover:bg-red-100"
+                            >
+                                <LogOut size={16} /> <span className="hidden sm:inline">تسجيل الخروج</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
-                {/* Mobile Horizontal Tabs (< lg) */}
-                {!seoOnly && (
-                <div 
-                    onWheel={(e) => {
-                        if (e.deltaY !== 0 && window.innerWidth < 1024) {
-                            e.currentTarget.scrollLeft += e.deltaY;
-                        }
-                    }}
-                    className="lg:hidden max-w-7xl mx-auto px-2 sm:px-4 flex gap-1.5 sm:gap-2 flex-nowrap overflow-x-auto no-scrollbar pb-3 pt-1 snap-x snap-mandatory touch-pan-x"
-                >
-                    {adminTabs.map(tab => (
-                        <button 
-                            key={tab.id} 
-                            onClick={() => setActiveTab(tab.id as any)} 
+                <main className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
+                    <AdminSeoView variant="light" />
+                </main>
+            </div>
+        );
+    }
+
+    const renderSidebarContent = (isMobile = false) => (
+        <div className="flex flex-col h-full justify-between gap-4">
+            {/* Top: Restaurant Logo & Name */}
+            <div className="flex items-center justify-between gap-3 pb-4 border-b border-[#E8DFD2]">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-[#FAF6F0] border border-[#E8DFD2] flex items-center justify-center shrink-0 p-1">
+                        <img src="/assets/logo.png" alt="شعار مطعم جمر التنور" className="w-full h-full object-contain" />
+                    </div>
+                    <div>
+                        <h1 className="font-black text-base text-[#2B2118] leading-tight">جمر التنور</h1>
+                        <p className="text-xs text-[#7A6A5A]">لوحة الإدارة</p>
+                    </div>
+                </div>
+                {isMobile && (
+                    <button
+                        type="button"
+                        onClick={() => setIsMobileSidebarOpen(false)}
+                        className="p-2 rounded-xl text-[#7A6A5A] hover:bg-[#FAF6F0] cursor-pointer"
+                        aria-label="إغلاق القائمة"
+                    >
+                        <X size={20} />
+                    </button>
+                )}
+            </div>
+
+            {/* Middle: Navigation Items */}
+            <nav className="flex-1 overflow-y-auto space-y-1 py-1 no-scrollbar">
+                {adminTabs.map(tab => {
+                    const isActive = activeTab === tab.id;
+                    return (
+                        <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => {
+                                setActiveTab(tab.id as any);
+                                if (isMobile) setIsMobileSidebarOpen(false);
+                            }}
                             className={cn(
-                                "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer snap-start shrink-0 relative", 
-                                activeTab === tab.id 
-                                    ? "bg-teal-600 text-white shadow-md shadow-teal-600/25" 
-                                    : "bg-slate-800/90 text-slate-200 border border-slate-700/70 hover:bg-slate-700 hover:text-white"
+                                "w-full flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer text-right",
+                                isActive
+                                    ? "bg-[#C2410C] text-white shadow-sm"
+                                    : "text-[#2B2118] hover:bg-[#FAF6F0]"
                             )}
                         >
-                            {tab.icon} {tab.label}
+                            <span className="flex items-center gap-2.5">
+                                <span className={isActive ? "text-white" : "text-[#7A6A5A]"}>{tab.icon}</span>
+                                <span>{tab.label}</span>
+                            </span>
                             {tab.id === 'settings' && pendingDevicesCount > 0 && (
-                                <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-black animate-pulse shadow-sm shadow-red-500/50">
+                                <span className="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full font-black animate-pulse">
                                     {pendingDevicesCount}
                                 </span>
                             )}
                         </button>
-                    ))}
-                </div>
-                )}
+                    );
+                })}
+            </nav>
+
+            {/* Bottom: Instant Update & Logout */}
+            <div className="pt-4 border-t border-[#E8DFD2] space-y-2">
+                <button
+                    type="button"
+                    onClick={handleInstantCustomerUpdate}
+                    className="w-full flex items-center justify-center gap-2 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors cursor-pointer border border-emerald-200"
+                    title="تحديث فوري لجميع شاشات وهواتف الزبائن"
+                >
+                    <RefreshCw size={15} className="hover:rotate-180 transition-transform duration-500" />
+                    <span>تحديث فوري للزبائن</span>
+                </button>
+                <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="w-full flex items-center justify-center gap-2 text-red-700 bg-red-50 hover:bg-red-100 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors cursor-pointer border border-red-200"
+                >
+                    <LogOut size={15} />
+                    <span>تسجيل الخروج</span>
+                </button>
             </div>
+        </div>
+    );
 
-            <div className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 w-full flex flex-col lg:flex-row gap-6 items-start print:p-0 print:m-0 print:max-w-none">
-                {/* Desktop Vertical Sidebar (>= lg) */}
-                {!seoOnly && (
-                    <aside className="hidden lg:flex flex-col w-64 shrink-0 bg-slate-900/90 border border-slate-800 rounded-2xl p-3 gap-1.5 sticky top-24 shadow-xl print:hidden">
-                        <div className="px-3 py-2 text-[11px] font-bold text-slate-400">
-                            الأقسام والإدارة
+    return (
+        <div className="min-h-screen bg-[#FAF6F0] text-[#2B2118] text-right select-none w-full max-w-[100vw] overflow-x-hidden print:bg-white print:text-black print:min-h-0 print:overflow-visible" dir="rtl">
+            {/* Mobile Top Header (< lg) */}
+            <header className="lg:hidden sticky top-0 z-30 bg-white border-b border-[#E8DFD2] px-4 py-3 flex items-center justify-between shadow-xs print:hidden">
+                <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={() => setIsMobileSidebarOpen(true)}
+                        className="p-2 rounded-xl bg-[#FAF6F0] border border-[#E8DFD2] text-[#2B2118] hover:bg-stone-100 cursor-pointer"
+                        aria-label="فتح القائمة"
+                    >
+                        <Menu size={20} />
+                    </button>
+                    <div>
+                        <div className="font-black text-sm text-[#2B2118]">جمر التنور</div>
+                        <div className="text-xs text-[#7A6A5A]">
+                            {adminTabs.find(t => t.id === activeTab)?.label}
                         </div>
-                        {adminTabs.map(tab => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id as any)}
-                                className={cn(
-                                    "w-full flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer text-right",
-                                    activeTab === tab.id
-                                        ? "bg-teal-500/15 text-teal-300 border border-teal-500/35 shadow-sm"
-                                        : "text-slate-300 hover:bg-slate-800/80 hover:text-white border border-transparent"
-                                )}
-                            >
-                                <span className="flex items-center gap-2.5">
-                                    <span className={activeTab === tab.id ? "text-teal-400" : "text-slate-400"}>{tab.icon}</span>
-                                    <span>{tab.label}</span>
-                                </span>
-                                {tab.id === 'settings' && pendingDevicesCount > 0 && (
-                                    <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-black animate-pulse">
-                                        {pendingDevicesCount}
-                                    </span>
-                                )}
-                            </button>
-                        ))}
-                    </aside>
-                )}
+                    </div>
+                </div>
+                <div className="w-9 h-9 rounded-xl overflow-hidden bg-[#FAF6F0] border border-[#E8DFD2] p-1">
+                    <img src="/assets/logo.png" alt="شعار مطعم جمر التنور" className="w-full h-full object-contain" />
+                </div>
+            </header>
 
-                <main className="flex-1 min-w-0 w-full overflow-hidden print:p-0 print:m-0 print:max-w-none print:overflow-visible">
+            {/* Mobile Drawer & Backdrop (< lg) */}
+            <AnimatePresence>
+                {isMobileSidebarOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsMobileSidebarOpen(false)}
+                            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+                        />
+                        <motion.aside
+                            initial={{ x: '100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '100%' }}
+                            transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+                            className="fixed inset-y-0 right-0 z-50 w-72 bg-white border-l border-[#E8DFD2] shadow-2xl p-4 lg:hidden"
+                        >
+                            {renderSidebarContent(true)}
+                        </motion.aside>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* Desktop Layout: Right Vertical Sidebar + Left Main Content */}
+            <div className="flex min-h-screen w-full items-start">
+                <aside className="hidden lg:flex flex-col w-72 shrink-0 bg-white border-l border-[#E8DFD2] sticky top-0 h-screen p-4 shadow-xs print:hidden">
+                    {renderSidebarContent(false)}
+                </aside>
+
+                <main className="flex-1 min-w-0 w-full p-4 sm:p-6 lg:p-8 admin-warm-theme overflow-hidden print:p-0 print:m-0 print:max-w-none print:overflow-visible">
                 {/* Pending Device Approval Urgent Banner */}
-                {!seoOnly && pendingDevicesCount > 0 && (
+                {pendingDevicesCount > 0 && (
                     <motion.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -413,7 +452,7 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
                 {activeTab === 'loyalty' && <AdminLoyaltyView />}
                 {activeTab === 'marketing' && <AdminMarketingView />}
                 {activeTab === 'theme' && <AdminThemeView />}
-                {activeTab === 'seo' && <AdminSeoView variant={seoOnly ? 'light' : 'dark'} />}
+                {activeTab === 'seo' && <AdminSeoView variant="light" />}
                 {activeTab === 'settings' && <AdminSettingsView />}
                 </main>
             </div>

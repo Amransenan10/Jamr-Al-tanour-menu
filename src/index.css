@@ -100,3 +100,57 @@
     display: table-footer-group;
   }
 }
+
+/* ============================================================ */
+/* Scoped Warm Light Theme for /admin Dashboard Subviews        */
+/* ============================================================ */
+.admin-warm-theme {
+  color: #2B2118;
+}
+
+.admin-warm-theme :is(.bg-zinc-900, .bg-zinc-950, .bg-slate-900, .bg-charcoal, [class*="bg-zinc-900/"], [class*="bg-slate-900/"]) {
+  background-color: #FFFFFF !important;
+  border-color: #E8DFD2 !important;
+  box-shadow: 0 1px 2px rgba(43, 33, 24, 0.04);
+}
+
+.admin-warm-theme :is(.bg-zinc-800, .bg-slate-800, [class*="bg-zinc-800/"], [class*="bg-slate-800/"], [class*="bg-black/40"], [class*="bg-black/30"], [class*="bg-black/20"], [class*="bg-white/5"], [class*="bg-white/10"]) {
+  background-color: #FAF6F0 !important;
+  border-color: #E8DFD2 !important;
+}
+
+.admin-warm-theme :is(input, textarea, select) {
+  background-color: #FAF6F0 !important;
+  color: #2B2118 !important;
+  border-color: #E8DFD2 !important;
+}
+
+.admin-warm-theme :is(input, textarea, select)::placeholder {
+  color: #7A6A5A !important;
+}
+
+.admin-warm-theme :is(.border-white\/5, .border-white\/10, .border-white\/20, .border-zinc-700, .border-zinc-800, .border-slate-700, .border-slate-800) {
+  border-color: #E8DFD2 !important;
+}
+
+.admin-warm-theme .text-white:not(:is(.bg-primary, [class*="bg-[#C2410C]"], .bg-emerald-500, .bg-emerald-600, .bg-red-500, .bg-red-600, .bg-rose-500, .bg-rose-600, .bg-amber-500, .bg-blue-500, .bg-blue-600, .bg-teal-600) *) {
+  color: #2B2118 !important;
+}
+
+.admin-warm-theme :is(.bg-primary, [class*="bg-[#C2410C]"]) {
+  background-color: #C2410C !important;
+  color: #FFFFFF !important;
+}
+
+.admin-warm-theme :is(.bg-primary, [class*="bg-[#C2410C]"], .bg-emerald-500, .bg-emerald-600, .bg-red-500, .bg-red-600, .bg-rose-500, .bg-rose-600, .bg-blue-500, .bg-blue-600, .bg-teal-600) {
+  color: #FFFFFF !important;
+}
+
+.admin-warm-theme :is(.text-gray-300, .text-gray-400, .text-gray-500, .text-slate-300, .text-slate-400, .text-zinc-400, .text-zinc-500) {
+  color: #7A6A5A !important;
+}
+
+.admin-warm-theme :is([class*="text-[10px]"], [class*="text-[11px]"]) {
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+}
