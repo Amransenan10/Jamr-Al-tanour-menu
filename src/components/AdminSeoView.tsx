@@ -177,22 +177,29 @@ export const AdminSeoView: React.FC = () => {
 
   const seoScoreData = calculateSeoScore(seoForm);
 
+  const seoTabs = [
+    { id: 'meta', label: 'العناوين والأوصاف', icon: <Search size={16} /> },
+    { id: 'articles', label: `المقالات والمدونة (${articles.length})`, icon: <FileText size={16} /> },
+    { id: 'schema', label: 'بيانات المطعم', icon: <Globe size={16} /> },
+    { id: 'preview', label: 'معاينة الظهور', icon: <Eye size={16} /> }
+  ];
+
   return (
     <div className="space-y-6 text-right pb-12" dir="rtl">
       {/* Top Header Card */}
-      <div className="bg-gradient-to-r from-amber-950/60 via-zinc-900 to-amber-950/40 p-6 rounded-3xl border border-amber-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+      <div className="bg-slate-900/90 p-5 sm:p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/35">
-            <Search size={24} />
+          <div className="w-12 h-12 rounded-2xl bg-teal-500/15 text-teal-400 flex items-center justify-center shrink-0 border border-teal-500/30">
+            <Search size={22} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-black text-white">مركز تحكم SEO ومحركات البحث</h2>
-              <span className="bg-emerald-500/20 text-emerald-300 text-xs px-2.5 py-0.5 rounded-full font-bold border border-emerald-500/30 flex items-center gap-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg sm:text-xl font-black text-white">مركز تحكم SEO ومحركات البحث</h2>
+              <span className="bg-emerald-500/15 text-emerald-300 text-xs px-2.5 py-0.5 rounded-full font-bold border border-emerald-500/30 flex items-center gap-1">
                 <CheckCircle2 size={12} /> Google Ready
               </span>
             </div>
-            <p className="text-xs text-gray-300 mt-1">
+            <p className="text-xs text-slate-300 mt-1">
               إدارة العناوين، الكلمات المفتاحية، المقالات، وبيانات المتجر في نتائج البحث.
             </p>
           </div>
@@ -204,7 +211,7 @@ export const AdminSeoView: React.FC = () => {
             type="button"
             onClick={fetchSeoData}
             disabled={loading}
-            className="px-3.5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-gray-100 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors border border-zinc-700 cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors border border-slate-700 cursor-pointer disabled:opacity-50"
             title="تحديث البيانات"
           >
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
@@ -215,7 +222,7 @@ export const AdminSeoView: React.FC = () => {
             type="button"
             onClick={() => handleSaveAll()}
             disabled={saving}
-            className="flex-1 md:flex-none px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-black text-sm rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+            className="flex-1 md:flex-none px-6 py-2.5 bg-teal-600 hover:bg-teal-500 text-white font-black text-sm rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-teal-600/20 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
             <span>حفظ وتفعيل التعديلات</span>
@@ -223,81 +230,77 @@ export const AdminSeoView: React.FC = () => {
         </div>
       </div>
 
-      {/* SEO Score Bar */}
-      <div className="bg-zinc-900 border border-white/5 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className={cn(
-            "w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm border",
-            seoScoreData.score >= 80 ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" :
-            seoScoreData.score >= 50 ? "bg-amber-500/20 text-amber-400 border-amber-500/30" :
-            "bg-red-500/20 text-red-400 border-red-500/30"
-          )}>
-            {seoScoreData.score}%
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
-              <span>جاهزية الموقع لمحركات البحث:</span>
-              <span className={cn(
-                "text-xs font-black",
-                seoScoreData.score >= 80 ? "text-emerald-400" :
-                seoScoreData.score >= 50 ? "text-amber-400" : "text-red-400"
+      {/* Main Layout: Vertical Sidebar + Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Vertical Sidebar */}
+        <aside className="lg:col-span-3 space-y-4 lg:sticky lg:top-24">
+          <nav className="bg-slate-900/90 border border-slate-800 rounded-2xl p-2.5 flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-visible no-scrollbar">
+            <div className="hidden lg:block px-3 py-1.5 text-[11px] font-bold text-slate-400">
+              أقسام السيو
+            </div>
+            {seoTabs.map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id as any)}
+                className={cn(
+                  "flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer text-right shrink-0 lg:w-full",
+                  activeTab === tab.id
+                    ? "bg-teal-500/15 text-teal-300 border border-teal-500/35"
+                    : "text-slate-300 hover:bg-slate-800/80 hover:text-white border border-transparent"
+                )}
+              >
+                <span className={activeTab === tab.id ? "text-teal-400" : "text-slate-400"}>{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </nav>
+
+          {/* SEO Score Card in Sidebar */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm border shrink-0",
+                seoScoreData.score >= 80 ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" :
+                seoScoreData.score >= 50 ? "bg-sky-500/15 text-sky-300 border-sky-500/30" :
+                "bg-rose-500/15 text-rose-300 border-rose-500/30"
               )}>
-                {seoScoreData.score >= 80 ? "ممتازة" : seoScoreData.score >= 50 ? "جيدة" : "تحتاج ضبط"}
-              </span>
-            </h4>
-            <p className="text-[11px] text-gray-400 mt-0.5">
-              مؤشر اكتمال الحقول الأساسية للظهور في محركات البحث.
-            </p>
+                {seoScoreData.score}%
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-white">جاهزية محركات البحث</h4>
+                <span className={cn(
+                  "text-[11px] font-bold",
+                  seoScoreData.score >= 80 ? "text-emerald-400" :
+                  seoScoreData.score >= 50 ? "text-sky-400" : "text-rose-400"
+                )}>
+                  {seoScoreData.score >= 80 ? "ممتازة" : seoScoreData.score >= 50 ? "جيدة" : "تحتاج ضبط"}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 pt-1 border-t border-slate-800">
+              {seoScoreData.checks.map((c, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-2 text-[11px] text-slate-300"
+                  title={c.tip}
+                >
+                  {c.passed ? <Check size={12} className="text-emerald-400 shrink-0" /> : <AlertCircle size={12} className="text-slate-400 shrink-0" />}
+                  <span className={c.passed ? "text-slate-200" : "text-slate-400"}>{c.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </aside>
 
-        {/* Mini checks */}
-        <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-300">
-          {seoScoreData.checks.map((c, i) => (
-            <span 
-              key={i} 
-              className={cn(
-                "px-2.5 py-1 rounded-lg border flex items-center gap-1.5",
-                c.passed ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/20" : "bg-zinc-800 text-gray-400 border-white/5"
-              )}
-              title={c.tip}
-            >
-              {c.passed ? <Check size={12} className="text-emerald-400" /> : <AlertCircle size={12} className="text-amber-400" />}
-              <span>{c.label}</span>
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Tabs Navigation */}
-      <div className="flex items-center gap-2 border-b border-white/10 pb-2 overflow-x-auto no-scrollbar">
-        {[
-          { id: 'meta', label: 'العناوين والأوصاف (Meta Tags)', icon: <Search size={16} /> },
-          { id: 'articles', label: `المقالات والمدونة (${articles.length})`, icon: <FileText size={16} /> },
-          { id: 'schema', label: 'بيانات المطعم (Local Schema)', icon: <Globe size={16} /> },
-          { id: 'preview', label: 'معاينة الظهور في البحث', icon: <Eye size={16} /> }
-        ].map(tab => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id as any)}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer",
-              activeTab === tab.id
-                ? "bg-amber-500 text-black shadow-lg shadow-amber-500/20 scale-[1.02]"
-                : "bg-zinc-900 text-gray-400 hover:bg-zinc-800 hover:text-white border border-white/5"
-            )}
-          >
-            {tab.icon}
-            <span>{tab.label}</span>
-          </button>
-        ))}
-      </div>
+        {/* Main Content Column */}
+        <div className="lg:col-span-9 space-y-6">
 
       {/* TAB 1: META TAGS */}
       {activeTab === 'meta' && (
         <div className="space-y-6">
-          <div className="bg-zinc-900 border border-white/5 p-6 rounded-3xl space-y-6">
+          <div className="bg-slate-900/90 border border-slate-800 p-6 rounded-2xl space-y-6">
             {/* Title Tag */}
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -674,6 +677,8 @@ export const AdminSeoView: React.FC = () => {
           </div>
         </div>
       )}
+        </div>
+      </div>
 
       {/* MODAL: ADD / EDIT ARTICLE */}
       {isArticleModalOpen && (

@@ -28,6 +28,7 @@ import { compressImageFile, compressRemoteImageUrl } from '../lib/imageOptimizat
 import { broadcastInstantUpdateToAll } from '../utils/liveUpdateService';
 
 export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) => {
+    const authScope: 'admin' | 'seo' = seoOnly ? 'seo' : 'admin';
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState('');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -61,17 +62,17 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
     };
 
     useEffect(() => {
-        secureAuth.verifySession('admin').then(({ isValid }) => {
+        secureAuth.verifySession(authScope).then(({ isValid }) => {
             if (isValid) {
                 setIsAuthenticated(true);
             } else {
                 setIsAuthenticated(false);
             }
         });
-    }, []);
+    }, [authScope]);
 
     useEffect(() => {
-        if (!isAuthenticated) return;
+        if (!isAuthenticated || seoOnly) return;
         fetchPosDevices();
 
         const channel = supabase
@@ -113,14 +114,14 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
         try {
             // First check via secure RPC if available
             const { data: rpcData, error: rpcError } = await supabase.rpc('verify_branch_login', {
-                p_branch_name: 'admin',
+                p_branch_name: authScope,
                 p_password: password
             });
 
             if (!rpcError && rpcData && typeof rpcData === 'object') {
                 if (rpcData.success) {
                     setIsAuthenticated(true);
-                    await secureAuth.createSession('admin', 'admin');
+                    await secureAuth.createSession(authScope, authScope);
                     return;
                 } else {
                     toast.error('كلمة المرور غير صحيحة');
@@ -131,7 +132,7 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
             const { data, error } = await supabaseAdmin
                 .from('branch_credentials')
                 .select('password')
-                .eq('branch_name', 'admin')
+                .eq('branch_name', authScope)
                 .single();
 
             if (error || !data || data.password !== password) {
@@ -140,7 +141,7 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
             }
             
             setIsAuthenticated(true);
-            await secureAuth.createSession('admin', 'admin');
+            await secureAuth.createSession(authScope, authScope);
         } catch (err) {
             toast.error('حدث خطأ في الاتصال');
         } finally {
@@ -149,15 +150,20 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
     };
 
     if (!isAuthenticated) return (
-        <div className="min-h-screen bg-[#09090b] flex items-center justify-center p-6 text-white text-right" dir="rtl">
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-sm bg-zinc-900 rounded-[2rem] p-8 shadow-2xl border border-zinc-700/80 relative">
+        <div className="min-h-screen bg-[#0B0F17] flex items-center justify-center p-6 text-slate-100 text-right" dir="rtl">
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-sm bg-slate-900/95 rounded-[2rem] p-8 shadow-2xl border border-slate-800 relative">
                 <div className="text-center space-y-6">
-                    <div className="w-20 h-20 bg-primary/15 border border-primary/30 rounded-full flex items-center justify-center mx-auto text-primary">
+                    <div className={cn(
+                        "w-20 h-20 rounded-full flex items-center justify-center mx-auto border",
+                        seoOnly ? "bg-teal-500/15 border-teal-500/30 text-teal-400" : "bg-primary/15 border-primary/30 text-primary"
+                    )}>
                         <KeyRound size={32} />
                     </div>
                     <div>
                         <h1 className="text-2xl font-black text-white">{seoOnly ? 'مركز تحكم SEO' : 'إدارة النظام'}</h1>
-                        <p className="text-gray-300 text-sm mt-1">الرجاء إدخال كلمة المرور للمشرفين</p>
+                        <p className="text-slate-300 text-sm mt-1">
+                            {seoOnly ? 'الرجاء إدخال كلمة مرور مسؤول السيو' : 'الرجاء إدخال كلمة المرور للمشرفين'}
+                        </p>
                     </div>
                     <form onSubmit={handleLogin} className="space-y-4">
                         <input
@@ -165,9 +171,19 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
                             placeholder="كلمة المرور"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-zinc-800 border border-zinc-700 text-white placeholder:text-gray-400 rounded-xl p-4 text-center font-bold focus:border-primary focus:ring-2 focus:ring-primary outline-none"
+                            className={cn(
+                                "w-full bg-slate-950/90 border border-slate-700 text-white placeholder:text-slate-400 rounded-xl p-4 text-center font-bold focus:ring-2 outline-none",
+                                seoOnly ? "focus:border-teal-400 focus:ring-teal-500/40" : "focus:border-primary focus:ring-primary/40"
+                            )}
                         />
-                        <button type="submit" disabled={isLoggingIn || !password} className="w-full bg-primary hover:bg-primary/90 text-white font-black p-4 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50">
+                        <button
+                            type="submit"
+                            disabled={isLoggingIn || !password}
+                            className={cn(
+                                "w-full text-white font-black p-4 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50",
+                                seoOnly ? "bg-teal-600 hover:bg-teal-500" : "bg-primary hover:bg-primary/90"
+                            )}
+                        >
                             {isLoggingIn ? <Loader2 className="animate-spin" /> : 'دخول'}
                         </button>
                     </form>
@@ -176,18 +192,36 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
         </div>
     );
 
+    const adminTabs = [
+        { id: 'analytics', label: 'الإحصائيات والتحليلات', icon: <BarChart3 size={17} /> },
+        { id: 'orders', label: 'الطلبات الحية', icon: <ShoppingBag size={17} /> },
+        { id: 'menu', label: 'لائحة الطعام', icon: <UtensilsCrossed size={17} /> },
+        { id: 'categories', label: 'إدارة الأقسام والعبارات', icon: <Layers size={17} /> },
+        { id: 'additions', label: 'تخصيص الوجبات', icon: <Sliders size={17} /> },
+        { id: 'stories', label: 'القصص والعروض', icon: <ImageIcon size={17} /> },
+        { id: 'coupons', label: 'كوبونات الخصم', icon: <TicketPercent size={17} /> },
+        { id: 'loyalty', label: 'نظام الولاء والنقاط 🌟', icon: <Gift size={17} /> },
+        { id: 'marketing', label: 'التسويق والإشعارات 📢', icon: <Send size={17} /> },
+        { id: 'seo', label: 'إعدادات SEO والمحتوى', icon: <Search size={17} /> },
+        { id: 'theme', label: '🎨 ثيم المتجر والمواسم', icon: <Sparkles size={17} /> },
+        { id: 'settings', label: 'الفروع والإعدادات', icon: <SettingsIcon size={17} /> }
+    ];
+
     return (
-        <div className="min-h-screen bg-[#09090b] text-white text-right select-none w-full max-w-[100vw] overflow-x-hidden print:bg-white print:text-black print:min-h-0 print:overflow-visible" dir="rtl">
+        <div className="min-h-screen bg-[#0B0F17] text-slate-100 text-right select-none w-full max-w-[100vw] overflow-x-hidden print:bg-white print:text-black print:min-h-0 print:overflow-visible" dir="rtl">
             {/* Admin Header */}
-            <div className="sticky top-0 z-40 bg-zinc-900/95 backdrop-blur-md border-b border-zinc-800 shadow-xl print:hidden">
+            <div className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 shadow-lg print:hidden">
                 <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 sm:w-10 sm:h-10 bg-primary/20 border border-primary/30 rounded-xl flex items-center justify-center text-primary shrink-0">
+                        <div className={cn(
+                            "w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 border",
+                            seoOnly ? "bg-teal-500/15 border-teal-500/30 text-teal-400" : "bg-primary/15 border-primary/30 text-primary"
+                        )}>
                             {seoOnly ? <Search size={20} /> : <LayoutDashboard size={20} />}
                         </div>
                         <div>
                             <h1 className="font-black text-base sm:text-xl text-white">{seoOnly ? 'مركز تحكم SEO' : 'لوحة الإدارة'}</h1>
-                            <p className="text-[11px] text-gray-300 hidden sm:block">مطعم جمر التنور</p>
+                            <p className="text-[11px] text-slate-300 hidden sm:block">مطعم جمر التنور</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -211,43 +245,30 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
                             <span className="hidden md:inline">تحديث فوري للزبائن</span>
                         </button>
                         )}
-                        <button onClick={() => { secureAuth.clearSession('admin'); setIsAuthenticated(false); }} className="flex items-center gap-1.5 text-red-300 bg-red-500/15 border border-red-500/30 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl hover:bg-red-500/25 font-bold text-xs sm:text-sm transition-colors cursor-pointer">
+                        <button onClick={() => { secureAuth.clearSession(authScope); setIsAuthenticated(false); }} className="flex items-center gap-1.5 text-rose-300 bg-rose-500/15 border border-rose-500/30 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl hover:bg-rose-500/25 font-bold text-xs sm:text-sm transition-colors cursor-pointer">
                             <LogOut size={16} /> <span className="hidden sm:inline">تسجيل خروج</span>
                         </button>
                     </div>
                 </div>
-                {/* Responsive Touch & Mouse Friendly Tabs */}
+                {/* Mobile Horizontal Tabs (< lg) */}
                 {!seoOnly && (
                 <div 
                     onWheel={(e) => {
-                        if (e.deltaY !== 0 && window.innerWidth < 1280) {
+                        if (e.deltaY !== 0 && window.innerWidth < 1024) {
                             e.currentTarget.scrollLeft += e.deltaY;
                         }
                     }}
-                    className="max-w-7xl mx-auto px-2 sm:px-4 flex gap-1.5 sm:gap-2 flex-nowrap lg:flex-wrap overflow-x-auto lg:overflow-visible no-scrollbar pb-3 pt-1 snap-x snap-mandatory touch-pan-x"
+                    className="lg:hidden max-w-7xl mx-auto px-2 sm:px-4 flex gap-1.5 sm:gap-2 flex-nowrap overflow-x-auto no-scrollbar pb-3 pt-1 snap-x snap-mandatory touch-pan-x"
                 >
-                    {[
-                        { id: 'analytics', label: 'الإحصائيات والتحليلات', icon: <BarChart3 size={16} /> },
-                        { id: 'orders', label: 'الطلبات الحية', icon: <ShoppingBag size={16} /> },
-                        { id: 'menu', label: 'لائحة الطعام', icon: <UtensilsCrossed size={16} /> },
-                        { id: 'categories', label: 'إدارة الأقسام والعبارات', icon: <Layers size={16} /> },
-                        { id: 'additions', label: 'تخصيص الوجبات', icon: <Sliders size={16} /> },
-                        { id: 'stories', label: 'القصص والعروض', icon: <ImageIcon size={16} /> },
-                        { id: 'coupons', label: 'كوبونات الخصم', icon: <TicketPercent size={16} /> },
-                        { id: 'loyalty', label: 'نظام الولاء والنقاط 🌟', icon: <Gift size={16} /> },
-                        { id: 'marketing', label: 'التسويق والإشعارات 📢', icon: <Send size={16} /> },
-                        { id: 'seo', label: 'إعدادات SEO والمحتوى', icon: <Search size={16} /> },
-                        { id: 'theme', label: '🎨 ثيم المتجر والمواسم', icon: <Sparkles size={16} /> },
-                        { id: 'settings', label: 'الفروع والإعدادات', icon: <SettingsIcon size={16} /> }
-                    ].map(tab => (
+                    {adminTabs.map(tab => (
                         <button 
                             key={tab.id} 
                             onClick={() => setActiveTab(tab.id as any)} 
                             className={cn(
                                 "flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer snap-start shrink-0 relative", 
                                 activeTab === tab.id 
-                                    ? "bg-primary text-white shadow-lg shadow-primary/25 scale-[1.02]" 
-                                    : "bg-zinc-800/90 text-gray-200 border border-zinc-700/60 hover:bg-zinc-700 hover:text-white"
+                                    ? "bg-teal-600 text-white shadow-md shadow-teal-600/25" 
+                                    : "bg-slate-800/90 text-slate-200 border border-slate-700/70 hover:bg-slate-700 hover:text-white"
                             )}
                         >
                             {tab.icon} {tab.label}
@@ -262,7 +283,39 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
                 )}
             </div>
 
-            <main className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 w-full max-w-full overflow-hidden print:p-0 print:m-0 print:max-w-none print:overflow-visible">
+            <div className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 w-full flex flex-col lg:flex-row gap-6 items-start print:p-0 print:m-0 print:max-w-none">
+                {/* Desktop Vertical Sidebar (>= lg) */}
+                {!seoOnly && (
+                    <aside className="hidden lg:flex flex-col w-64 shrink-0 bg-slate-900/90 border border-slate-800 rounded-2xl p-3 gap-1.5 sticky top-24 shadow-xl print:hidden">
+                        <div className="px-3 py-2 text-[11px] font-bold text-slate-400">
+                            الأقسام والإدارة
+                        </div>
+                        {adminTabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id as any)}
+                                className={cn(
+                                    "w-full flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer text-right",
+                                    activeTab === tab.id
+                                        ? "bg-teal-500/15 text-teal-300 border border-teal-500/35 shadow-sm"
+                                        : "text-slate-300 hover:bg-slate-800/80 hover:text-white border border-transparent"
+                                )}
+                            >
+                                <span className="flex items-center gap-2.5">
+                                    <span className={activeTab === tab.id ? "text-teal-400" : "text-slate-400"}>{tab.icon}</span>
+                                    <span>{tab.label}</span>
+                                </span>
+                                {tab.id === 'settings' && pendingDevicesCount > 0 && (
+                                    <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-black animate-pulse">
+                                        {pendingDevicesCount}
+                                    </span>
+                                )}
+                            </button>
+                        ))}
+                    </aside>
+                )}
+
+                <main className="flex-1 min-w-0 w-full overflow-hidden print:p-0 print:m-0 print:max-w-none print:overflow-visible">
                 {/* Pending Device Approval Urgent Banner */}
                 {!seoOnly && pendingDevicesCount > 0 && (
                     <motion.div
@@ -323,7 +376,8 @@ export const AdminPage: React.FC<{ seoOnly?: boolean }> = ({ seoOnly = false }) 
                 {activeTab === 'theme' && <AdminThemeView />}
                 {activeTab === 'seo' && <AdminSeoView />}
                 {activeTab === 'settings' && <AdminSettingsView />}
-            </main>
+                </main>
+            </div>
         </div>
     );
 };

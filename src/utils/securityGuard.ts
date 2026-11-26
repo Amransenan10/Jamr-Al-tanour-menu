@@ -29,14 +29,14 @@ async function sha256(message: string): Promise<string> {
 
 // ─── Secure Session Storage ──────────────────────────────────────────────────
 export interface SecureSession {
-    scope: 'cashier' | 'admin';
-    identifier: string; // branch name or 'admin'
+    scope: 'cashier' | 'admin' | 'seo';
+    identifier: string; // branch name, 'admin', or 'seo'
     expiresAt: number;
     token: string;
 }
 
 export const secureAuth = {
-    async createSession(scope: 'cashier' | 'admin', identifier: string, durationHours = 12): Promise<void> {
+    async createSession(scope: 'cashier' | 'admin' | 'seo', identifier: string, durationHours = 12): Promise<void> {
         const expiresAt = Date.now() + (durationHours * 60 * 60 * 1000);
         const raw = `${scope}:${identifier}:${expiresAt}:${SECRET_SALT}`;
         const token = await sha256(raw);
@@ -46,7 +46,7 @@ export const secureAuth = {
         localStorage.removeItem(`jamr_${scope}_auth`);
     },
 
-    async verifySession(scope: 'cashier' | 'admin'): Promise<{ isValid: boolean; identifier?: string }> {
+    async verifySession(scope: 'cashier' | 'admin' | 'seo'): Promise<{ isValid: boolean; identifier?: string }> {
         try {
             const raw = localStorage.getItem(`jamr_${scope}_secure_session`);
             if (!raw) return { isValid: false };
@@ -72,7 +72,7 @@ export const secureAuth = {
         }
     },
 
-    clearSession(scope: 'cashier' | 'admin'): void {
+    clearSession(scope: 'cashier' | 'admin' | 'seo'): void {
         localStorage.removeItem(`jamr_${scope}_secure_session`);
         localStorage.removeItem(`jamr_${scope}_auth`);
         if (scope === 'cashier') {
