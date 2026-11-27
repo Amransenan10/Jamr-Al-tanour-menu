@@ -70,12 +70,19 @@ export const SideMenuDrawer: React.FC<SideMenuDrawerProps> = ({ isOpen, onClose,
     }
   };
 
-  // Prepare support URL (branch-specific first, fallback to general social_whatsapp)
-  const supportPhone = (selectedBranch && appSettings?.branch_whatsapp?.[selectedBranch]?.trim())
-    || appSettings?.social_whatsapp;
-  const supportUrl = supportPhone 
-    ? `https://wa.me/${supportPhone}?text=${encodeURIComponent('أهلاً، لدي استفسار/شكوى بخصوص مطعم جمر التنور:')}`
-    : '#';
+  // Prepare per-branch WhatsApp support links (no pre-filled message)
+  const suwaidiPhone = (appSettings?.branch_whatsapp?.['السويدي الغربي'] || '').replace(/[^\d]/g, '');
+  const tuwaiqPhone = (appSettings?.branch_whatsapp?.['طويق'] || '').replace(/[^\d]/g, '');
+  const fallbackPhone = (appSettings?.social_whatsapp || '').replace(/[^\d]/g, '');
+
+  const branchWhatsappItems = [
+    suwaidiPhone ? { label: 'فرع السويدي الغربي', phone: suwaidiPhone } : null,
+    tuwaiqPhone ? { label: 'فرع طويق', phone: tuwaiqPhone } : null,
+  ].filter(Boolean) as { label: string; phone: string }[];
+
+  if (branchWhatsappItems.length === 0 && fallbackPhone) {
+    branchWhatsappItems.push({ label: 'واتساب الدعم', phone: fallbackPhone });
+  }
 
   return (
     <AnimatePresence>
@@ -191,21 +198,26 @@ export const SideMenuDrawer: React.FC<SideMenuDrawerProps> = ({ isOpen, onClose,
               <div className="space-y-2">
                 <h3 className="text-xs font-bold text-gray-400 mb-2">الدعم والمساعدة</h3>
                 
-                {supportPhone ? (
-                  <a 
-                    href={supportUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full flex items-center gap-3 p-3 rounded-2xl bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/30 hover:border-green-500/50 transition-colors text-right"
-                  >
-                    <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center text-white shrink-0 shadow-md shadow-green-500/20">
-                      <MessageCircle size={20} />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-sm text-green-700 dark:text-green-400">مقترح أو شكوى</h3>
-                      <p className="text-[11px] text-green-600/70 dark:text-green-500/70">تواصل معنا عبر واتساب</p>
-                    </div>
-                  </a>
+                {branchWhatsappItems.length > 0 ? (
+                  <div className="space-y-2">
+                    {branchWhatsappItems.map((item) => (
+                      <a
+                        key={item.label}
+                        href={`https://wa.me/${item.phone}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full flex items-center gap-3 p-3 rounded-2xl bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/30 hover:border-green-500/50 transition-colors text-right"
+                      >
+                        <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center text-white shrink-0 shadow-md shadow-green-500/20">
+                          <MessageCircle size={20} />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-sm text-green-700 dark:text-green-400">{item.label}</h3>
+                          <p className="text-[11px] text-green-600/70 dark:text-green-500/70">تواصل معنا عبر واتساب</p>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
                 ) : (
                   <div className="p-3 bg-gray-50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/5 text-center">
                     <p className="text-xs text-gray-500">خدمة الواتساب غير متوفرة حالياً</p>
