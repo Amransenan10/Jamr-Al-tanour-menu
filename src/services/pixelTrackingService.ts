@@ -188,22 +188,31 @@ const injectMetaPixel = (pixelId: string) => {
 const injectGA4 = (measurementId: string) => {
   if (ga4Injected || typeof window === 'undefined' || !measurementId) return;
   try {
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
-    document.head.appendChild(script);
-
     const win = window as any;
-    win.dataLayer = win.dataLayer || [];
-    function gtag(...args: any[]) {
-      win.dataLayer.push(args);
-    }
-    win.gtag = gtag;
 
-    gtag('js', new Date());
-    gtag('config', measurementId, {
-      send_page_view: true
-    });
+    // index.html already loads gtag.js for G-DK0V9GMKGN; avoid duplicate script injection
+    if (typeof win.gtag !== 'function') {
+      const script = document.createElement('script');
+      script.async = true;
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
+      document.head.appendChild(script);
+
+      win.dataLayer = win.dataLayer || [];
+      function gtag(...args: any[]) {
+        win.dataLayer.push(args);
+      }
+      win.gtag = gtag;
+
+      gtag('js', new Date());
+      gtag('config', measurementId, {
+        send_page_view: true
+      });
+    } else if (measurementId !== 'G-DK0V9GMKGN') {
+      // Configure additional measurement ID if different from the one in index.html
+      win.gtag('config', measurementId, {
+        send_page_view: true
+      });
+    }
 
     ga4Injected = true;
     console.log('[Pixels] Google Analytics 4 initialized:', measurementId);
@@ -216,7 +225,13 @@ const injectGA4 = (measurementId: string) => {
 export const initMarketingPixels = (config?: MarketingPixelsConfig): void => {
   if (typeof window === 'undefined') return;
 
-  const conf = config || getSavedPixelConfig();
+  const saved = getSavedPixelConfig();
+  const conf: MarketingPixelsConfig = {
+    ...saved,
+    ...(config || {}),
+    ga4_enabled: config?.ga4_enabled ?? saved.ga4_enabled ?? true,
+    ga4_measurement_id: config?.ga4_measurement_id || saved.ga4_measurement_id
+  };
   activeConfig = conf;
 
   // Snapchat
@@ -432,6 +447,15 @@ export const trackInitiateCheckout = (items: any[], totalAmount: number): void =
 export const trackPurchase = (orderId: string, items: any[], totalAmount: number): void => {
   if (typeof window === 'undefined') return;
   try {
+    // Prevent duplicate purchase tracking for the same order (e.g. on page refresh)
+    const dedupeKey = `jamr_purchase_tracked_${orderId}`;
+    try {
+      if (orderId && localStorage.getItem(dedupeKey)) {
+        console.log('[Pixels] Purchase already tracked for order, skipping duplicate:', orderId);
+        return;
+      }
+    } catch (e) {}
+
     const win = window as any;
     const value = Number(totalAmount || 0);
     const count = Array.isArray(items) ? items.reduce((acc, i) => acc + (i.quantity || 1), 0) : 1;
@@ -478,6 +502,10 @@ export const trackPurchase = (orderId: string, items: any[], totalAmount: number
         }))
       });
     }
+
+    try {
+      if (orderId) localStorage.setItem(dedupeKey, '1');
+    } catch (e) {}
 
     console.log('[Pixels] Purchase event tracked successfully for order:', orderId, 'Total:', value);
   } catch (e) {
